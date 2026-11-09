@@ -1,0 +1,29 @@
+
+.inline-flex{display:inline-flex}
+@media(min-width:640px){.sm\:grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}.sm\:items-end{align-items:flex-end}}
+.ring-2.ring-amber-300{box-shadow:0 0 0 2px #fcd34d}
+.ws-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ws-chip{padding:6px 12px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid #e2e8f0;background:#fff;color:#334155;white-space:nowrap}
+.ws-chip[data-on="1"]{background:#0284c7;border-color:#0284c7;color:#fff}
+.ws-hint{font-size:11px;color:#64748b}
+.ws-sort{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#475569}
+.ws-select{border:1px solid #e2e8f0;border-radius:10px;padding:5px 8px;font-size:11px;background:#fff;color:#334155}
+.ws-title{font-size:12px;font-weight:800;color:#334155;margin:10px 0 6px}
+.ws-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory;scrollbar-width:none}
+.ws-row::-webkit-scrollbar{display:none}
+.ws-pick{flex:0 0 150px;scroll-snap-align:start;border-radius:16px;overflow:hidden}
+.ws-th>div{height:96px;width:100%}
+.ws-pb{padding:8px 10px}
+.ws-pn{font-size:11px;font-weight:700;color:#1e293b;line-height:1.25;height:28px;overflow:hidden}
+.ws-pr{display:flex;align-items:center;justify-content:space-between;margin-top:6px;font-size:11px;color:#0369a1}
+.ws-add{padding:3px 8px;border-radius:8px;background:#0284c7;color:#fff;font-size:12px}
+.ws-art{position:absolute;inset:0;display:block}
+.ws-art svg{width:100%;height:100%;display:block}
+.ws-badge{position:absolute;top:8px;left:8px;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;color:#fff;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.ws-hot{background:linear-gradient(90deg,#ef4444,#f97316)}
+.ws-new{background:linear-gradient(90deg,#10b981,#06b6d4)}
+.ws-ok{display:block;font-size:10px;font-weight:800;color:#059669}
+.ws-lack{display:block;font-size:10px;font-weight:700;color:#e11d48}
+html.dark .ws-chip,html.dark .ws-select{background:#1e293b;color:#e2e8f0;border-color:#334155}
+html.dark .ws-chip[data-on="1"]{background:#0284c7;color:#fff}
+html.dark .ws-title,html.dark .ws-pn,html.dark .ws-sort{color:#e2e8f0}

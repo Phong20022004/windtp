@@ -1,0 +1,29 @@
+
+@keyframes v43Up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes v43Sheen{0%,55%{background-position:-180% 0}100%{background-position:260% 0}}
+@keyframes v43Float{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes v43Glow{0%,100%{opacity:.55}50%{opacity:.9}}
+#tab-learn,#tab-community{position:relative;isolation:isolate}
+#tab-learn::before,#tab-community::before{content:"";position:absolute;inset:-12px -8px auto;height:220px;z-index:-1;pointer-events:none;background:radial-gradient(60% 100% at 20% 0,rgba(99,102,241,.14),transparent 70%),radial-gradient(50% 100% at 90% 0,rgba(14,165,233,.14),transparent 70%);animation:v43Glow 9s ease-in-out infinite}
+html.dark #tab-learn::before,html.dark #tab-community::before{background:radial-gradient(60% 100% at 20% 0,rgba(99,102,241,.22),transparent 70%),radial-gradient(50% 100% at 90% 0,rgba(14,165,233,.16),transparent 70%)}
+.v43-in>*{animation:v43Up .55s cubic-bezier(.2,.7,.2,1) both}
+.v43-in>*:nth-child(2){animation-delay:.05s}.v43-in>*:nth-child(3){animation-delay:.1s}.v43-in>*:nth-child(4){animation-delay:.15s}.v43-in>*:nth-child(n+5){animation-delay:.2s}
+#tab-learn .glass-card,#tab-community .glass-card{background:linear-gradient(160deg,rgba(255,255,255,.96),rgba(238,246,255,.84));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(99,102,241,.16);box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 12px 30px -20px rgba(30,64,175,.5);transition:transform .25s cubic-bezier(.2,.7,.2,1),box-shadow .25s,border-color .25s}
+#tab-learn .glass-card:hover,#tab-community .glass-card:hover{transform:translateY(-2px);border-color:rgba(99,102,241,.38);box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 18px 34px -18px rgba(79,70,229,.5)}
+html.dark #tab-learn .glass-card,html.dark #tab-community .glass-card{background:linear-gradient(160deg,rgba(30,41,59,.92),rgba(15,23,42,.86));border-color:rgba(129,140,248,.24);box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 12px 30px -18px rgba(0,0,0,.7)}
+#tab-learn [class*="bg-gradient-to"],#tab-community [class*="bg-gradient-to"]{position:relative;overflow:hidden}
+#tab-learn [class*="bg-gradient-to"]::after,#tab-community [class*="bg-gradient-to"]::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.2) 50%,transparent 62%);background-size:250% 100%;animation:v43Sheen 9s ease-in-out infinite}
+#tab-learn [class*="bg-gradient-to"]::before{content:"";position:absolute;right:-30px;top:-40px;width:150px;height:150px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(255,255,255,.22),transparent 68%)}
+#tab-learn h2,#tab-community h2{letter-spacing:-.01em}
+#tab-community>div:first-child h2::after{content:"";display:block;width:44px;height:3px;border-radius:3px;margin-top:6px;background:linear-gradient(90deg,#6366f1,#22d3ee)}
+#tab-learn button,#tab-community button{transition:transform .16s,box-shadow .2s,background-color .2s,filter .2s}
+#tab-learn button:not(:disabled):hover,#tab-community button:not(:disabled):hover{filter:brightness(1.04)}
+#tab-learn button:not(:disabled):active,#tab-community button:not(:disabled):active{transform:scale(.97)}
+#tab-learn .wd-tile-i,#tab-learn .glass-card .text-3xl,#tab-learn .glass-card .text-4xl{animation:v43Float 4.5s ease-in-out infinite}
+#tab-community article.glass-card{border-left:3px solid transparent}
+#tab-community article.glass-card:hover{border-left-color:#818cf8}
+#tab-community textarea{border-radius:16px!important;transition:box-shadow .2s,border-color .2s;background:rgba(255,255,255,.9)}
+#tab-community textarea:focus{border-color:#818cf8;box-shadow:0 0 0 4px rgba(129,140,248,.22)}
+html.dark #tab-community textarea{background:rgba(15,23,42,.8)}
+#tab-community [data-action="publish-post"]{background-image:linear-gradient(135deg,#4f46e5,#0ea5e9)!important;box-shadow:0 8px 16px -8px rgba(79,70,229,.7)}
+@media (prefers-reduced-motion:reduce){#tab-learn::before,#tab-community::before,#tab-learn [class*="bg-gradient-to"]::after,#tab-community [class*="bg-gradient-to"]::after,.v43-in>*,#tab-learn .wd-tile-i{animation:none!important}}

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WINDTP Super-App · Avatar Anime HD</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>{{include:src/styles/01-base.css}}</style>
+
+<style id="windtp-admin-fx">{{include:src/styles/02-windtp-admin-fx.css}}</style>
+<style id="windtp-avatar-image-quality">{{include:src/styles/03-windtp-avatar-image-quality.css}}</style>
+<style>{{include:src/styles/04-base.css}}</style>
+<style id="windtp-lessons">{{include:src/styles/05-windtp-lessons.css}}</style>
+<style id="windtp-realm-now">{{include:src/styles/06-windtp-realm-now.css}}</style>
+<style id="windtp-realm-fx">{{include:src/styles/07-windtp-realm-fx.css}}</style>
+<style id="windtp-shop-smart">{{include:src/styles/08-windtp-shop-smart.css}}</style>
+<style id="windtp-social-fx">{{include:src/styles/09-windtp-social-fx.css}}</style>
+<style id="hb-style">{{include:src/styles/10-hb-style.css}}</style>
+
+<style id="windtp-v5-polish">{{include:src/styles/11-windtp-v5-polish.css}}</style>
+<style id="windtp-v9-review">{{include:src/styles/12-windtp-v9-review.css}}</style>
+<style id="windtp-v11-ui">{{include:src/styles/13-windtp-v11-ui.css}}</style>
+<style id="windtp-v12-login">{{include:src/styles/14-windtp-v12-login.css}}</style>
+<style id="windtp-premium-frames">{{include:src/styles/15-windtp-premium-frames.css}}</style>
+<style id="bbl-css">{{include:src/styles/16-bbl-css.css}}</style>
+<style id="icons-banner-fix22">{{include:src/styles/17-icons-banner-fix22.css}}</style>
+<style id="hb-btn-fix24">{{include:src/styles/18-hb-btn-fix24.css}}</style>
+<style id="dark-contrast-fix2">{{include:src/styles/19-dark-contrast-fix2.css}}</style>
+<style id="pay-dark-fix">{{include:src/styles/20-pay-dark-fix.css}}</style><style id="bbl-art-v40">{{include:src/styles/21-bbl-art-v40.css}}</style>
+<style id="v43-ui">{{include:src/styles/22-v43-ui.css}}</style>
+<style id="windtp-v47-ux">{{include:src/styles/23-windtp-v47-ux.css}}</style>
+<style id="windtp-v48-lb">{{include:src/styles/24-windtp-v48-lb.css}}</style>
+<style id="windtp-v48-ui">{{include:src/styles/25-windtp-v48-ui.css}}</style>
+<script id="windtp-v47-js">{{include:src/scripts/01-windtp-v47-js.js}}</script>
+<style id="perf-v48-outer">{{include:src/styles/26-perf-v48-outer.css}}</style>
+</head>
+
+<body class="wind-bg text-slate-800 font-sans min-h-screen pb-24 antialiased selection:bg-sky-200">
+
+<!-- TOP HEADER -->
+<header id="main-header" class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-sky-100 shadow-sm">
+  <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-1.5">
+    <div data-action="open-settings" class="flex items-center gap-2.5 cursor-pointer group select-none" role="button" tabindex="0" aria-label="Mở cài đặt">
+      <div id="logo-circle" class="w-10 h-10 rounded-full bg-gradient-to-tr from-sky-500 via-blue-500 to-indigo-600 p-0.5 shadow-md shadow-sky-200 group-hover:scale-105 transition-all duration-500 flex items-center justify-center">
+        <div class="w-full h-full bg-white keep-white rounded-full flex items-center justify-center">
+          <span id="logo-char" class="font-black text-sky-600 text-lg transition-colors duration-500">风</span>
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center gap-1">
+          <span id="brand-text" class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-sky-600 via-indigo-600 to-blue-600 bg-clip-text text-transparent transition-all duration-500">WINDTP</span>
+          <span class="hidden sm:inline text-[10px] font-bold px-1.5 py-0.5 bg-sky-100 text-sky-700 rounded-full uppercase tracking-wider">Super</span>
+        </div>
+        <p class="text-[10px] text-slate-500 -mt-1 hidden sm:block">Một nền tảng - Nhiều tiện ích</p>
+      </div>
+    </div>
+
+    <!-- DESKTOP SEARCH -->
+    <div class="hidden md:flex flex-1 max-w-md mx-6">
+      <div class="relative w-full">
+        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+        <input id="search-input" type="search" autocomplete="off" placeholder="Tìm khóa học, sản phẩm, đồ thanh lý, từ vựng..." class="w-full pl-9 pr-4 py-1.5 text-sm rounded-full border border-sky-200 bg-white/90 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition-all shadow-inner">
+      </div>
+    </div>
+
+    <div class="flex items-center gap-1 sm:gap-3 min-w-0">
+      <button data-action="toggle-search" class="md:hidden p-2 rounded-full text-slate-600 hover:bg-sky-100/70" aria-label="Tìm kiếm">🔍</button>
+      <button data-action="goto" data-tab="wallet" class="flex items-center gap-2 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 px-2.5 sm:px-3 py-1.5 rounded-full hover:shadow-md transition-all active:scale-95" aria-label="Mở ví WIND Coin">
+        <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 flex items-center justify-center shadow-sm border border-yellow-200">
+          <span class="wind-coin-letter" aria-hidden="true">W</span>
+        </div>
+        <div class="text-left">
+          <p class="text-[9px] uppercase font-extrabold text-amber-700 leading-none hidden sm:block">Ví Biểu Tượng</p>
+          <p class="text-xs font-black text-amber-900 leading-tight"><span data-bind="balance">0</span> <span class="text-[10px] text-amber-600 font-bold">Xu</span></p>
+        </div>
+      </button>
+
+      <button data-action="toggle-notices" class="relative p-2 rounded-full text-slate-600 hover:bg-sky-100/70 transition-colors" aria-label="Thông báo">
+        <span class="text-lg">🔔</span>
+        <span id="notice-dot" class="hidden absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full ring-2 ring-white keep-white items-center justify-center"></span>
+      </button>
+
+      <div data-action="open-settings" class="flex items-center gap-2 border-l border-slate-200 pl-1.5 sm:pl-3 cursor-pointer shrink-0" role="button" tabindex="0" aria-label="Tài khoản">
+        <div id="header-avatar"></div>
+        <span id="header-name" class="hidden lg:inline text-xs font-semibold text-slate-700 max-w-[100px] truncate"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE SEARCH -->
+  <div id="mobile-search" class="hidden md:hidden px-3 pb-2.5">
+    <input id="search-input-m" type="search" autocomplete="off" placeholder="Tìm khóa học, sản phẩm, đồ thanh lý..." class="w-full px-4 py-2 text-sm rounded-full border border-sky-200 bg-white/90 focus:outline-none focus:ring-2 focus:ring-sky-400">
+  </div>
+</header>
+
+<!-- SEARCH RESULTS + NOTIFICATIONS PANELS -->
+<div id="search-panel" class="hidden fixed z-40 left-1/2 -translate-x-1/2 top-[60px] w-[calc(100%-1.5rem)] max-w-xl bg-white rounded-2xl shadow-2xl border border-sky-100 max-h-[70vh] overflow-y-auto"></div>
+<div id="notice-panel" class="hidden fixed z-40 right-3 top-[60px] w-[calc(100%-1.5rem)] max-w-sm bg-white rounded-2xl shadow-2xl border border-sky-100 max-h-[70vh] overflow-y-auto"></div>
+
+<!-- MAIN -->
+<main id="main-content" class="max-w-7xl mx-auto px-3 sm:px-6 pt-4">
+  <section id="tab-home" class="tab-page space-y-5"></section>
+  <section id="tab-learn" class="tab-page hidden space-y-5"></section>
+  <section id="tab-shop" class="tab-page hidden space-y-5"></section>
+  <section id="tab-entertainment" class="tab-page hidden space-y-5"></section>
+  <section id="tab-tasks" class="tab-page hidden space-y-5"></section>
+  <section id="tab-utilities" class="tab-page hidden space-y-5"></section>
+  <section id="tab-community" class="tab-page hidden space-y-5"></section>
+  <section id="tab-wallet" class="tab-page hidden space-y-5"></section>
+</main>
+
+<!-- BOTTOM NAV -->
+<nav class="fixed bottom-0 left-0 right-0 z-30 glass-nav px-1 py-1.5 shadow-2xl" aria-label="Điều hướng chính">
+  <div class="max-w-2xl mx-auto flex justify-between items-center" id="nav-bar"></div>
+</nav>
+
+<!-- MODAL HOST -->
+<div id="modal-host" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm"></div>
+
+<!-- TOAST -->
+<div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-[60] max-w-[90vw] bg-slate-900/90 text-white text-xs px-4 py-2 rounded-full shadow-lg opacity-0 pointer-events-none transition-all duration-300 flex items-center gap-2 keep-white">
+  <span>✨</span> <span id="toast-message">Thông báo</span>
+</div>
+
+<script>{{include-dir:src/core/main}}</script>
+
+<script>{{include:src/scripts/02-inline.js}}</script>
+
+
+<script id="windtp-vocabulary-tool">{{include:src/tools/vocabulary-tool.js}}</script>
+
+<script id="windtp-seoul1a-lesson1">{{include:src/players/seoul1a-lesson1.js}}</script>
+<script type="application/json" id="windtp-en-vocab">{{include:data/vocab/en.json}}</script>
+<script type="application/json" id="windtp-zh-vocab">{{include:data/vocab/zh.json}}</script>
+<script type="application/json" id="windtp-ko-vocab">{{include:data/vocab/ko.json}}</script>
+<script type="application/json" id="windtp-fr-vocab">{{include:data/vocab/fr.json}}</script>
+<script id="windtp-en-lessons">{{include:src/players/en-lessons.js}}</script>
+<script type="application/json" id="windtp-es-vocab">{{include:data/vocab/es.json}}</script>
+<script id="windtp-es-lessons">{{include:src/players/es-lessons.js}}</script>
+<script type="application/json" id="windtp-de-vocab">{{include:data/vocab/de.json}}</script>
+<script id="windtp-de-lessons">{{include:src/players/de-lessons.js}}</script>
+<script type="application/json" id="windtp-ja-vocab">{{include:data/vocab/ja.json}}</script>
+<script id="windtp-ja-lessons">{{include:src/players/ja-lessons.js}}</script>
+
+
+
+<script>{{include:src/scripts/03-inline.js}}</script>
+<script>{{include:src/scripts/04-inline.js}}</script>
+</body>
+</html>
+
+<script id="bbl-src">{{include:src/game/bbl-src.js}}</script>
+<script id="v43-ui-js">{{include:src/scripts/05-v43-ui-js.js}}</script>
+</body>
+</html>

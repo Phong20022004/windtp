@@ -1,0 +1,5 @@
+
+/* v48: khi game bài đang mở, tạm dừng vẽ và hoạt ảnh của trang WINDTP nằm phía sau */
+html.bbl-open #main-header,html.bbl-open #main-content,html.bbl-open nav.glass-nav{visibility:hidden!important}
+html.bbl-open #main-header *,html.bbl-open #main-content *,html.bbl-open nav.glass-nav *,
+html.bbl-open #main-content *::before,html.bbl-open #main-content *::after{animation-play-state:paused!important}

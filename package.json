@@ -1,0 +1,15 @@
+{
+  "name": "windtp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "WINDTP - ứng dụng học ngoại ngữ, đóng gói thành một file HTML",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "audit": "npm run build && python3 tools/audit.py",
+    "test": "npm run build && python3 tests/smoke.py",
+    "import:es": "python3 tools/import/import_es.py",
+    "import:yonsei": "python3 tools/import/import_yonsei.py"
+  },
+  "engines": { "node": ">=18" }
+}

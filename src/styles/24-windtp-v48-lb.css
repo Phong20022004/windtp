@@ -1,0 +1,24 @@
+
+/* ===== v48: hiệu ứng bảng xếp hạng Top 50 ===== */
+@keyframes lbIn{from{opacity:0;transform:translateX(-16px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes lbShine{0%{background-position:-120% 0}60%,100%{background-position:220% 0}}
+@keyframes lbMe{0%,100%{box-shadow:0 0 0 2px #f59e0b,0 0 8px rgba(245,158,11,.45)}50%{box-shadow:0 0 0 2px #f59e0b,0 0 20px rgba(245,158,11,.95)}}
+@keyframes lbTr{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-2px) rotate(8deg) scale(1.15)}}
+@keyframes lbCrown{0%,100%{filter:drop-shadow(0 0 0 rgba(255,200,0,0))}50%{filter:drop-shadow(0 0 6px rgba(255,200,0,.95))}}
+.lb-row{animation:lbIn .45s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*30ms);transition:transform .18s ease,box-shadow .18s ease}
+.lb-row:hover{transform:translateX(3px)}
+.lb-r1,.lb-r2,.lb-r3{position:relative;overflow:hidden}
+.lb-r1,.lb-r1 p,.lb-r2,.lb-r2 p,.lb-r3,.lb-r3 p,.lb-r1 b,.lb-r2 b,.lb-r3 b{color:#3b2a05!important}
+.lb-r1{background:linear-gradient(90deg,#fff4c2,#ffd35a)!important;box-shadow:0 0 0 1.5px #f5b301,0 4px 14px rgba(245,179,1,.5)}
+.lb-r2{background:linear-gradient(90deg,#f3f6fa,#cfd8e3)!important;box-shadow:0 0 0 1.5px #94a3b8,0 3px 10px rgba(148,163,184,.5)}
+.lb-r3{background:linear-gradient(90deg,#ffe9d6,#e6a672)!important;box-shadow:0 0 0 1.5px #c2793a,0 3px 10px rgba(194,121,58,.45)}
+.lb-r1::after,.lb-r2::after,.lb-r3::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.8) 50%,transparent 62%);background-size:230% 100%;animation:lbShine 3.4s ease-in-out infinite}
+.lb-r2::after{animation-delay:.5s}.lb-r3::after{animation-delay:1s}
+.lb-r1 > span:first-child{animation:lbCrown 1.8s ease-in-out infinite}
+.lb-me{animation:lbIn .45s cubic-bezier(.2,.8,.2,1) both,lbMe 2.2s ease-in-out infinite;animation-delay:calc(var(--i,0)*30ms),.8s}
+.lb-mine{animation:lbIn .5s .15s cubic-bezier(.2,.8,.2,1) both}
+.lb-btn{position:relative;overflow:hidden;transition:transform .15s ease,box-shadow .2s ease}
+.lb-btn:hover{box-shadow:0 4px 14px rgba(245,158,11,.45)}.lb-btn:active{transform:scale(.97)}
+.lb-btn::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.75) 50%,transparent 62%);background-size:240% 100%;animation:lbShine 3.6s ease-in-out infinite}
+.lb-tr{display:inline-block;animation:lbTr 2.2s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.lb-row,.lb-me,.lb-mine,.lb-tr,.lb-btn::after,.lb-r1::after,.lb-r2::after,.lb-r3::after,.lb-r1>span:first-child{animation:none!important}}

@@ -1,0 +1,8 @@
+
+html.dark .pay-box{background:linear-gradient(135deg,#f0f9ff,#eef2ff)!important;border-color:#bae6fd!important}
+html.dark .pay-box :is(.text-slate-900,.text-slate-800,.text-slate-700,.text-slate-600,.text-slate-500,.text-slate-400,b,p,label){color:#0f172a!important}
+html.dark .pay-box :is(.text-sky-900,.text-sky-800,.text-sky-700){color:#0c4a6e!important}
+html.dark .pay-box :is(.text-amber-800,.text-amber-700,.text-amber-600){color:#b45309!important}
+html.dark .pay-box .text-rose-600{color:#be123c!important}
+html.dark .pay-box small{color:#334155!important}
+html.dark .pay-box button.bg-white{background:#fff!important;color:#0c4a6e!important;border-color:#7dd3fc!important}

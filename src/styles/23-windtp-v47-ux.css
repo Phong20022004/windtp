@@ -1,0 +1,53 @@
+
+/* ===== v47: giao diện + hiệu ứng cho Cộng đồng, Không gian học ngôn ngữ, Tâm pháp chân kinh ===== */
+@keyframes v47Rise{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes v47Aurora{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes v47Shine{0%{transform:translateX(-130%) skewX(-18deg)}60%,100%{transform:translateX(330%) skewX(-18deg)}}
+@keyframes v47Float{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-7px) rotate(5deg)}}
+@keyframes v47Twinkle{0%,100%{opacity:.25;transform:scale(.7)}50%{opacity:1;transform:scale(1.15)}}
+@keyframes v47Pulse{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.55)}60%{box-shadow:0 0 0 8px rgba(16,185,129,0)}}
+@keyframes v47Ring{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+/* banner chuyển màu + vệt sáng + sao lấp lánh */
+#tab-learn .rounded-3xl[class*="bg-gradient-to-r"],#tab-community .rounded-3xl[class*="bg-gradient-to-r"],#tab-community>div:first-child>div[class*="bg-gradient"]{position:relative;overflow:hidden;background-size:220% 220%!important;animation:v47Aurora 9s ease-in-out infinite;box-shadow:0 14px 34px -14px rgba(79,70,229,.55),inset 0 1px 0 rgba(255,255,255,.35)}
+#tab-learn .rounded-3xl[class*="bg-gradient-to-r"]::before,#tab-community .rounded-3xl[class*="bg-gradient-to-r"]::before{content:"";position:absolute;top:0;left:0;width:36%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.38),transparent);animation:v47Shine 4.8s ease-in-out infinite;pointer-events:none}
+#tab-learn .rounded-3xl[class*="bg-gradient-to-r"]::after,#tab-community .rounded-3xl[class*="bg-gradient-to-r"]::after{content:"✦  ✧  ✦";position:absolute;right:14px;top:8px;font-size:14px;letter-spacing:8px;color:rgba(255,255,255,.85);animation:v47Twinkle 2.6s ease-in-out infinite;pointer-events:none}
+#tab-learn .rounded-3xl[class*="bg-gradient-to-r"]>*,#tab-community .rounded-3xl[class*="bg-gradient-to-r"]>*{position:relative;z-index:1}
+/* chọn ngôn ngữ */
+#tab-learn [data-action="select-lang"]{position:relative;overflow:hidden;animation:v47Rise .55s cubic-bezier(.2,.9,.3,1.2) both;transition:transform .25s,box-shadow .25s,border-color .25s,background .25s}
+#tab-learn [data-action="select-lang"]:nth-child(1){animation-delay:.04s}#tab-learn [data-action="select-lang"]:nth-child(2){animation-delay:.1s}#tab-learn [data-action="select-lang"]:nth-child(3){animation-delay:.16s}#tab-learn [data-action="select-lang"]:nth-child(4){animation-delay:.22s}#tab-learn [data-action="select-lang"]:nth-child(5){animation-delay:.28s}#tab-learn [data-action="select-lang"]:nth-child(6){animation-delay:.34s}#tab-learn [data-action="select-lang"]:nth-child(7){animation-delay:.4s}
+#tab-learn [data-action="select-lang"] .text-3xl{display:inline-block;filter:drop-shadow(0 6px 8px rgba(2,132,199,.28));animation:v47Float 4s ease-in-out infinite}
+#tab-learn [data-action="select-lang"]:hover,#tab-learn [data-action="select-lang"]:focus-visible{transform:translateY(-6px) scale(1.04);border-color:#38bdf8;box-shadow:0 16px 30px -12px rgba(14,165,233,.55),0 0 0 3px rgba(56,189,248,.25);background:linear-gradient(160deg,#fff,#e0f2fe)}
+#tab-learn [data-action="select-lang"]::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.75) 50%,transparent 65%);transform:translateX(-120%);transition:transform .7s}
+#tab-learn [data-action="select-lang"]:hover::after{transform:translateX(120%)}
+#tab-learn [data-action="select-lang"]:active{transform:scale(.96)}
+/* hai lối vào không gian học */
+#tab-learn [data-action="open-daily-study"],#tab-learn [data-action="open-book-library"]{position:relative;overflow:hidden;animation:v47Rise .6s cubic-bezier(.2,.9,.3,1.1) both;transition:transform .3s,box-shadow .3s}
+#tab-learn [data-action="open-book-library"]{animation-delay:.12s}
+#tab-learn [data-action="open-daily-study"]:hover,#tab-learn [data-action="open-book-library"]:hover{transform:translateY(-5px);box-shadow:0 22px 38px -16px rgba(79,70,229,.5)}
+#tab-learn [data-action="open-daily-study"]::before,#tab-learn [data-action="open-book-library"]::before{content:"";position:absolute;inset:-60%;background:conic-gradient(from 0deg,transparent 0 70%,rgba(129,140,248,.28) 85%,transparent 100%);animation:v47Ring 7s linear infinite;pointer-events:none}
+#tab-learn [data-action="open-daily-study"]>*,#tab-learn [data-action="open-book-library"]>*{position:relative}
+/* bảng tâm pháp chân kinh: các bộ giáo trình + bìa sách */
+#tab-learn section.glass-card{animation:v47Rise .6s both;border-left:4px solid #f59e0b;position:relative}
+#tab-learn section.glass-card:nth-of-type(2){animation-delay:.08s}#tab-learn section.glass-card:nth-of-type(3){animation-delay:.16s}#tab-learn section.glass-card:nth-of-type(4){animation-delay:.24s}#tab-learn section.glass-card:nth-of-type(n+5){animation-delay:.3s}
+#tab-learn section.glass-card h3{background:linear-gradient(90deg,#b45309,#f59e0b,#b45309);-webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% 100%;animation:v47Aurora 6s linear infinite}
+#tab-learn [data-action="lib-free"],#tab-learn [data-action="lib-premium"]{transition:transform .35s cubic-bezier(.2,.9,.3,1.2),box-shadow .35s;transform-style:preserve-3d;will-change:transform}
+#tab-learn [data-action="lib-free"]:hover,#tab-learn [data-action="lib-premium"]:hover{transform:perspective(600px) translateY(-6px) rotateX(4deg) rotateY(-5deg) scale(1.03);box-shadow:0 22px 34px -14px rgba(15,23,42,.6)}
+#tab-learn [data-action="lib-free"]::after,#tab-learn [data-action="lib-premium"]::after{content:"";position:absolute;top:0;left:0;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);transform:translateX(-140%) skewX(-18deg);pointer-events:none}
+#tab-learn [data-action="lib-free"]:hover::after,#tab-learn [data-action="lib-premium"]:hover::after{animation:v47Shine 1.1s ease-out 1}
+#tab-learn [data-action="lib-free"] .text-emerald-700{animation:v47Pulse 2s infinite}
+#tab-learn [data-action="lib-premium"] .absolute.right-2.bottom-2{animation:v47Float 3s ease-in-out infinite}
+/* cộng đồng */
+#tab-community .glass-card{position:relative;animation:v47Rise .55s both;transition:transform .28s,box-shadow .28s}
+#tab-community .glass-card:hover{transform:translateY(-3px);box-shadow:0 18px 34px -16px rgba(99,102,241,.45)}
+#tab-community>div:first-child{background:linear-gradient(120deg,#6366f1,#a855f7,#ec4899,#f59e0b,#6366f1)!important;background-size:300% 300%!important;animation:v47Aurora 10s ease-in-out infinite}
+#tab-community>div:first-child h2::after{content:" ✦";display:inline-block;animation:v47Twinkle 2.4s ease-in-out infinite}
+#tab-community .max-w-2xl>.glass-card:first-of-type{box-shadow:0 18px 40px -18px rgba(99,102,241,.6)}
+#tab-community textarea,#tab-community input[type=text]{transition:box-shadow .25s,border-color .25s}
+#tab-community textarea:focus,#tab-community input[type=text]:focus{border-color:#818cf8;box-shadow:0 0 0 4px rgba(129,140,248,.25);outline:none}
+#tab-community button[data-action]{transition:transform .2s,box-shadow .2s,filter .2s}
+#tab-community button[data-action]:hover{transform:translateY(-2px);filter:brightness(1.06)}
+#tab-community button[data-action]:active{transform:scale(.95)}
+.v47-rip{position:absolute;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(255,255,255,.7),rgba(129,140,248,.25) 60%,transparent 70%);transform:scale(0);animation:v47Rp .6s ease-out forwards}
+@keyframes v47Rp{to{transform:scale(1);opacity:0}}
+:root[data-theme="dark"] #tab-learn [data-action="select-lang"]:hover,html.dark #tab-learn [data-action="select-lang"]:hover{background:linear-gradient(160deg,#1e293b,#0c4a6e)}
+@media(prefers-reduced-motion:reduce){#tab-learn *,#tab-community *,#tab-learn *::before,#tab-learn *::after,#tab-community *::before,#tab-community *::after{animation:none!important;transition:none!important}}

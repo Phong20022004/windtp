@@ -1,0 +1,20 @@
+
+.glass-card{border:1px solid rgba(14,165,233,.14);box-shadow:0 8px 28px -14px rgba(2,132,199,.35);border-radius:20px}
+[data-action="open-product"]{cursor:pointer;transition:transform .2s,box-shadow .2s}
+[data-action="open-product"]:hover{transform:translateY(-3px);box-shadow:0 14px 32px -14px rgba(2,132,199,.5)}
+#modal-host [role="dialog"]{border-radius:28px;box-shadow:0 30px 80px -20px rgba(15,23,42,.55)}
+#main-header{background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(240,249,255,.82))}
+.pd-price{font-weight:900;font-size:1.6rem;color:#0369a1}
+.pd-qty{display:inline-flex;align-items:center;border:1px solid #e2e8f0;border-radius:999px;overflow:hidden}
+.pd-qty button{width:36px;height:36px;font-weight:800;font-size:18px;background:#f8fafc}
+.pd-qty span{min-width:38px;text-align:center;font-weight:800}
+.fbc{display:inline-flex;flex-direction:column;align-items:flex-start;gap:3px}
+.fbc small{font-size:12px;font-weight:800;color:#000}
+.fbc-btn{background:#000!important;color:#fff!important;font-weight:800;font-size:12px;padding:8px 14px;border-radius:12px;box-shadow:0 0 0 1.5px #fff,0 0 0 2.5px #000}
+.dark .fbc small{color:#fff}
+.pay-box{border-radius:18px;background:linear-gradient(135deg,#f0f9ff,#eef2ff);border:1px solid #bae6fd;padding:16px}
+/* Khung avatar hiện đại */
+.frame-bronze{background:conic-gradient(from 200deg,#f8dcb4,#c07a43,#7a4421,#e9b886,#f8dcb4)!important;box-shadow:0 0 0 1px rgba(255,255,255,.55) inset,0 4px 14px rgba(146,97,58,.5)}
+.frame-silver{background:conic-gradient(from 200deg,#fff,#9ca3af,#e5e7eb,#6b7280,#fff)!important;box-shadow:0 0 0 1px rgba(255,255,255,.7) inset,0 4px 14px rgba(100,116,139,.5)}
+.frame-jade{background:conic-gradient(from 200deg,#bbf7d0,#16a34a,#065f46,#4ade80,#bbf7d0)!important;box-shadow:0 0 0 1px rgba(255,255,255,.55) inset,0 4px 16px rgba(22,163,74,.5)}
+.rframe .pfp-in{box-shadow:0 0 0 2px rgba(255,255,255,.95),0 2px 8px rgba(0,0,0,.25)}

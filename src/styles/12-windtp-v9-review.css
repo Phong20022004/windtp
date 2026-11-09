@@ -1,0 +1,16 @@
+
+section:has([data-action="home-review"]){position:relative;overflow:hidden;background-size:220% 220%!important;animation:wdGrad 9s ease-in-out infinite,wdIn .6s cubic-bezier(.2,.8,.2,1) both;box-shadow:0 18px 40px -16px rgba(124,58,237,.55)}
+section:has([data-action="home-review"])::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-18deg);animation:wdSweep 4.5s ease-in-out infinite;pointer-events:none}
+section:has([data-action="home-review"]) .rf-icon{animation:wdFloat 3s ease-in-out infinite}
+[data-action="home-review"]{animation:wdPop .5s cubic-bezier(.2,.9,.3,1.3) both;transition:transform .2s,box-shadow .2s}
+[data-action="home-review"]:nth-of-type(2){animation-delay:.08s}[data-action="home-review"]:nth-of-type(3){animation-delay:.16s}
+[data-action="home-review"]:hover{transform:translateY(-3px) scale(1.04)!important;box-shadow:0 10px 24px -8px rgba(109,40,217,.6)}
+[data-action="home-review"]:active{transform:scale(.95)!important}
+.wd-conf{position:fixed;z-index:9999;pointer-events:none;font-size:20px;animation:wdBurst .9s ease-out forwards}
+@keyframes wdGrad{0%,100%{background-position:0 50%}50%{background-position:100% 50%}}
+@keyframes wdIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes wdSweep{0%,55%{left:-60%}100%{left:130%}}
+@keyframes wdFloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-6px) rotate(3deg)}}
+@keyframes wdPop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+@keyframes wdBurst{from{opacity:1;transform:translate(0,0) scale(.6)}to{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r)) scale(1.2)}}
+@media (prefers-reduced-motion:reduce){section:has([data-action="home-review"]),section:has([data-action="home-review"])::after,section:has([data-action="home-review"]) .rf-icon,[data-action="home-review"]{animation:none!important}}

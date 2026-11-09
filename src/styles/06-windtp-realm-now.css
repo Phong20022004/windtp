@@ -1,0 +1,17 @@
+
+/* ===== Bảng cảnh giới: nổi bật cảnh giới hiện tại ===== */
+.realm-row{position:relative;transition:transform .2s,box-shadow .2s}
+.realm-row-lock{opacity:.62}
+.realm-row-now{z-index:1;margin:8px -4px;padding:16px 14px!important;border:2px solid #f5d0fe!important;background:linear-gradient(120deg,#4c1d95 0%,#7e22ce 52%,#be185d 100%)!important;color:#fff;box-shadow:0 0 0 3px rgba(168,85,247,.35),0 10px 26px -8px rgba(126,34,206,.85),0 0 22px rgba(236,72,153,.45);transform:scale(1.03);animation:realmNowGlow 2.2s ease-in-out infinite;overflow:hidden}
+.realm-row-now::before{content:"";position:absolute;top:0;left:0;width:34%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.3),transparent);animation:realmNowSweep 3.2s ease-in-out infinite;pointer-events:none}
+.realm-row-now p,.realm-row-now .text-slate-500{color:#fff!important}
+.realm-row-now .font-black.text-sm{font-size:16px;text-shadow:0 1px 6px rgba(0,0,0,.45)}
+.realm-row-now>.grid{display:grid!important;place-items:center!important;width:58px!important;height:58px!important;border-radius:16px;background:rgba(255,255,255,.93);box-shadow:0 0 0 2px rgba(253,224,71,.9),0 4px 12px rgba(0,0,0,.35)}
+.realm-row-now>.grid .rk{font-size:36px!important}
+.realm-now-pill{display:inline-block;margin-left:4px;padding:2px 9px;border-radius:999px;background:linear-gradient(90deg,#fde047,#fbbf24);color:#451a03!important;font-size:10px;font-weight:900;letter-spacing:.03em;vertical-align:middle;text-shadow:none;animation:realmNowPill 1.6s ease-in-out infinite}
+.realm-row-now>.text-base{font-size:24px;filter:drop-shadow(0 0 6px #fde047)}
+@keyframes realmNowGlow{0%,100%{box-shadow:0 0 0 3px rgba(168,85,247,.35),0 10px 26px -8px rgba(126,34,206,.85),0 0 16px rgba(236,72,153,.35)}50%{box-shadow:0 0 0 5px rgba(216,180,254,.55),0 12px 30px -8px rgba(126,34,206,.95),0 0 30px rgba(236,72,153,.7)}}
+@keyframes realmNowSweep{0%,45%{transform:translateX(-130%) skewX(-20deg)}100%{transform:translateX(420%) skewX(-20deg)}}
+@keyframes realmNowPill{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+html.dark .realm-row-done,html.dark .realm-row-lock{background:rgba(30,41,59,.8)!important;border-color:rgba(148,163,184,.3)!important;color:#e2e8f0}
+@media(prefers-reduced-motion:reduce){.realm-row-now,.realm-row-now::before,.realm-now-pill{animation:none!important}}
