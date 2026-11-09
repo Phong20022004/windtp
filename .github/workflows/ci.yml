@@ -10,7 +10,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: npm run build
-      - run: python3 tools/audit.py
+      - run: python3 tools/audit/audit.py
       - run: pip install playwright && playwright install --with-deps chromium && python3 tests/smoke.py
       - uses: actions/upload-artifact@v4
         with: { name: WINDTP, path: dist/WINDTP.html }

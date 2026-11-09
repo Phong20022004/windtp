@@ -1,6 +1,6 @@
 """Báo cáo giáo trình/quyển còn trống từ vựng. Chạy: python3 tools/audit.py  (cần đã build: npm run build)"""
 import re, json, collections, subprocess, os, sys, tempfile
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 html = open(os.path.join(ROOT, 'dist', 'WINDTP.html'), encoding='utf-8').read()
 def un(t): return re.sub(r'\\u([0-9A-Fa-f]{4})|\\x([0-9A-Fa-f]{2})', lambda m: chr(int(m.group(1) or m.group(2), 16)), t)
 i = html.index('BOOK_CATALOG = {'); e = html.index('\n  };', i)
