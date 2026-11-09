@@ -2,9 +2,9 @@
   function lgLogo() {
     return `<div class="lg-brand" role="img" aria-label="WINDTP">${windLogo(84)}<div class="lg-word" aria-hidden="true">${"WINDTP".split("").map((c, i) => `<span style="--i:${i}">${c}</span>`).join("")}</div><div class="lg-tag">Một nền tảng · Nhiều tiện ích</div></div>`;
   }
-  function startSession(acct, remember) {
+  function startSession(acct) {
     const isNew = !localStorage.getItem(ukey(acct.email));
-    startSession_(acct, remember);
+    startSession_(acct);
     if (isNew && !acct.admin) { const r = localStorage.getItem("windtp-ref"); if (r && r !== userId() && !state.referredBy) { state.referredBy = r; commit(); } }
   }
   try { const r = new URLSearchParams(location.search).get("ref"); if (r && /^WIND-[A-Za-z0-9._+-]{1,40}$/.test(r)) localStorage.setItem("windtp-ref", r); } catch (e) { }

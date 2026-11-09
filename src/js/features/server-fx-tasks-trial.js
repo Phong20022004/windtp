@@ -78,7 +78,7 @@
   });
   var adminFails = 0, adminLockUntil = 0;
   Object.assign(actions, {
-    "logout": () => { save(); const keep = {}; SHARED.forEach((k) => { if (state[k] !== undefined) keep[k] = state[k]; }); Object.keys(state).forEach((k) => { if (!SHARED.includes(k)) delete state[k]; }); Object.assign(state, seed(), keep, { account: null }); commit(); closeModal(); showLogin(); },
+    "logout": () => { window.WindtpAuth.logout().catch(() => { }); localSignOut(); },
     "open-add-product": () => { if (!isAdmin()) { toast("Chỉ BigBoss mới đăng được sản phẩm."); return; } ui.ppImg = null; openModal(addProductModal); },
     "pp-submit": () => {
       if (!isAdmin()) { toast("Chỉ BigBoss mới đăng được sản phẩm."); return; }

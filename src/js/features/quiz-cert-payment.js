@@ -1581,8 +1581,7 @@
     ensureIdentity();
     if (purgeExpired()) save();
     window.setInterval(() => { if (purgeExpired()) commit(); }, 6e5);
-    try { if (state.account && state.account.session && !sessionStorage.getItem("windtp-session")) state.account = null; } catch (e) { }
-    if (!state.account) showLogin();
+    bootAuth();
     syncCustomProducts();
     applyTheme();
     rollDay();

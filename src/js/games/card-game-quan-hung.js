@@ -139,7 +139,7 @@
   try { restoreGameFriends(); } catch (e) { }
   window.setInterval(friendReqTick, 1e3);
   window.addEventListener("storage", (e) => {
-    if (e.key === KEY && e.newValue) { try { Object.assign(state, JSON.parse(e.newValue)); listeners.forEach((fn) => fn()); challengeListeners.forEach((fn) => { try { fn(); } catch (x) { } }); } catch (x) { } }
+    if (e.key === KEY && e.newValue) { try { const incoming = JSON.parse(e.newValue); delete incoming.account; /* danh tính của tab này do WindtpAuth quyết định, không lấy từ tab khác */ Object.assign(state, incoming); listeners.forEach((fn) => fn()); challengeListeners.forEach((fn) => { try { fn(); } catch (x) { } }); } catch (x) { } }
   });
   document.addEventListener("visibilitychange", refreshFriends);
 

@@ -376,7 +376,7 @@
       social: { challenges: [], record: {}, pokes: {}, points: 0 }
     };
   }
-  var SHARED = ["postsCleared", "refRewarded", "users", "posts", "listings", "orders", "customProducts", "customCats", "customTasks", "taskClaims", "payouts", "credits", "productEdits", "fbShares"];
+  var SHARED = ["postsCleared", "refRewarded", "posts", "listings", "orders", "customProducts", "customCats", "customTasks", "taskClaims", "payouts", "credits", "productEdits", "fbShares"];
   function ukey(e) { return KEY + "::u::" + String(e || "").toLowerCase(); }
   function load() {
     try {

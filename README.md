@@ -5,10 +5,33 @@
 
 ## Chạy nhanh
 ```bash
-npm run build      # tạo dist/WINDTP.html
-npm run audit      # liệt kê quyển/bài còn trống từ vựng
-npm test           # build + kiểm tra trên trình duyệt headless (cần playwright)
+npm install
+npm run build        # tạo dist/WINDTP.html (cần cấu hình Firebase, xem mục dưới)
+npm run build:test   # tạo dist/WINDTP.test.html với backend xác thực giả, dùng cho kiểm thử
+npm run audit        # liệt kê quyển/bài còn trống từ vựng
+npm test             # typecheck + unit test + kiểm tra trên trình duyệt headless (cần playwright)
 ```
+
+## Cấu hình Firebase (đăng nhập)
+Đăng nhập dùng Firebase Authentication (email/mật khẩu và Google); quyền admin là custom claim `admin` do máy chủ cấp, không còn
+mật khẩu hay email admin trong mã nguồn.
+1. Tạo dự án Firebase, bật **Authentication → Sign-in method**: Email/Password và Google.
+2. Thêm tên miền chạy app vào **Authentication → Settings → Authorized domains**. Đăng nhập Google và email xác minh cần app
+   được phục vụ qua `https://` (ví dụ Firebase Hosting hoặc GitHub Pages), không mở trực tiếp bằng `file://`.
+3. Dán cấu hình web của dự án (Project settings → Your apps → SDK setup) vào `firebase.config.json` ở thư mục gốc, hoặc đặt biến
+   môi trường `WINDTP_FIREBASE_CONFIG` (CI dùng secret cùng tên). Các trường bắt buộc: `apiKey`, `authDomain`, `projectId`, `appId`.
+   Cấu hình web của Firebase không phải bí mật; an toàn nằm ở Authorized domains và quy tắc phía máy chủ.
+
+### Cấp quyền admin
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS=/đường/dẫn/service-account.json   # tải từ Firebase, KHÔNG commit
+npm run admin:grant -- email@gmail.com             # cấp
+npm run admin:grant -- email@gmail.com --revoke    # thu hồi
+```
+Tài khoản phải đã đăng ký trong app và đã xác minh email. Quyền có hiệu lực sau khi đăng nhập lại hoặc tối đa 1 giờ.
+
+Lưu ý phạm vi: hiện mới xác thực danh tính ở máy chủ. Dữ liệu app (đơn hàng, ví Xu, bài đăng...) vẫn lưu trong trình duyệt,
+nên các thao tác admin chưa được máy chủ cưỡng chế; phần đó thuộc giai đoạn chuyển dữ liệu lên máy chủ.
 
 ## Cấu trúc
 ```
@@ -23,9 +46,10 @@ src/
     players/               trình học theo ngôn ngữ (en/ko/zh/fr, es, de, ja) + seoul1a-lesson1
     tools/                 công cụ từ vựng
   scripts/                 các script nhỏ độc lập
+  auth/                    dịch vụ xác thực bằng TypeScript (types, service, backend Firebase), esbuild nhúng vào HTML
 data/  vocab/  book-lessons/  raw/
-tools/ build/  import/  audit/
-tests/smoke.py
+tools/ build/  import/  audit/  admin/
+tests/ smoke.py, smoke_auth.py (trình duyệt), auth/*.test.ts (unit), fake-auth/ (backend giả cho build test)
 docs/STRUCTURE.md
 ```
 

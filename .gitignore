@@ -3,3 +3,6 @@ node_modules/
 __pycache__/
 *.pyc
 .DS_Store
+# Khóa dịch vụ Firebase Admin: tuyệt đối không commit
+service-account*.json
+*-adminsdk-*.json

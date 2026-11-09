@@ -3,7 +3,7 @@ Chạy: pip install playwright && playwright install chromium && python3 tests/s
 import os, sys
 from playwright.sync_api import sync_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-URL = 'file://' + os.path.join(ROOT, 'dist', 'WINDTP.html')
+URL = 'file://' + os.path.join(ROOT, 'dist', 'WINDTP.test.html')
 CASES = [  # (hàm mở bài, key, vol, bài, host id)
     ('__esOpen', 'Aula Internacional|0', 0, 1, 'windtp-es-host'),
     ('__esOpen', 'Cấu trúc ngữ pháp|0', 0, 3, 'windtp-es-host'),

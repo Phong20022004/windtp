@@ -6,7 +6,7 @@
     return `<span class="wd-logo adm-home" role="img" aria-label="WINDTP"><span>\u98CE</span></span>`;
   }
   function guardAdminCosmetics() {
-    if (!state.account || isAdmin()) return;
+    if (!state.account || isAdmin() || !window.WindtpAuth.isSettled()) return;
     if (avatarById(state.avatarId).unlock === "admin") state.avatarId = "default";
     if (frameById(state.frameId).unlock === "admin") state.frameId = "none";
   }
