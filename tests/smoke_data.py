@@ -28,7 +28,7 @@ def settle(pg):
 
 
 def new_page(browser, URL, lang=None, routes=None):
-    ctx = browser.new_context(viewport={'width': 420, 'height': 900})
+    ctx = browser.new_context(viewport={'width': 420, 'height': 900}, bypass_csp=True)  # CSP có test riêng (smoke_csp); wait_for_function dùng eval
     if routes:
         routes(ctx)
     pg = ctx.new_page()

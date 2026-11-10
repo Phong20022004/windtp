@@ -15,6 +15,7 @@ errs = []
 with serve_dist() as URL, sync_playwright() as p:
     b = p.chromium.launch(); pg = b.new_page(viewport={'width': 420, 'height': 900})
     pg.on('pageerror', lambda e: errs.append(str(e)[:200]))
+    pg.add_init_script("window.__csp=[];document.addEventListener('securitypolicyviolation',e=>window.__csp.push(e.violatedDirective+' '+(e.sample||'').slice(0,40)))")
     pg.goto(URL, wait_until='load', timeout=240000); pg.wait_for_timeout(1500)
     for fn, key, vol, les, host in CASES:
         lang = 'ko' if 'Yonsei' in key else 'es'
@@ -27,5 +28,7 @@ with serve_dist() as URL, sync_playwright() as p:
         print('OK' if ok else 'FAIL', key, 'bài', les)
         if not ok: errs.append('không mở được ' + key)
         pg.evaluate('(h)=>document.getElementById(h).shadowRoot.querySelector("#x").click()', host)
+    csp = pg.evaluate('window.__csp')
+    if csp: errs.append('vi phạm CSP: %s' % csp[:3])
     b.close()
 print('Lỗi JS:', errs or 'không có'); sys.exit(1 if errs else 0)

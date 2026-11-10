@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { buildSync } from "esbuild";
 import { LANG_CODES, type DataManifest, type LangCode, type VocabFile } from "../../src/data/types";
 import { contentHash, extractDataUris, type ExtractedAsset } from "./assets";
+import { buildCsp, loadGameHtml } from "./csp";
 import { computeDailyExtras, loadBaseTerms } from "./vocab-data";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -130,7 +131,7 @@ function writeOutputs(html: string): { dataBytes: number; assetBytes: number } {
 const manifest = buildDataFiles();
 const template = read("src/template.html");
 
-const html = template
+const assembled = template
   .replace("{{data-manifest}}", JSON.stringify(manifest))
   .replace(/\{\{(include|include-manifest|include-bundle):([^}]+)\}\}/g, (_match, kind: string, rel: string) => {
     if (kind === "include") return read(rel);
@@ -139,7 +140,11 @@ const html = template
     return (JSON.parse(read(rel)) as string[]).map((f) => read(f)).join("");
   });
 
-if (/\{\{(include|data-manifest)/.test(html)) throw new Error("Còn placeholder chưa được thay thế");
+// CSP tính sau cùng, từ chính HTML đã ghép (thẻ meta nằm ngoài mọi script nên không làm đổi băm).
+const csp = buildCsp({ html: assembled, embeddedDocs: [loadGameHtml(ROOT)], authDomain: testAuth ? undefined : loadFirebaseConfig().authDomain });
+const html = assembled.replace("{{csp}}", () => csp);
+
+if (/\{\{(include|data-manifest|csp)/.test(html)) throw new Error("Còn placeholder chưa được thay thế");
 
 const { dataBytes, assetBytes } = writeOutputs(html);
 const mb = (bytes: number): string => (bytes / 1e6).toFixed(2);

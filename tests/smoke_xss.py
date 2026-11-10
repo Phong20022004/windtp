@@ -113,6 +113,16 @@ with serve_dist() as URL, sync_playwright() as p:
         visit('cửa hàng')
     print('Hiển thị (đã được escape) trên giao diện:', sorted(seen))
     print('Chưa được hiển thị trong lần duyệt này:', sorted(set(ALL_TAGS) - seen))
+    # đầu vào từ URL (liên kết mời, định tuyến, mã giới thiệu) không được chạy mã
+    pg.evaluate("window.__xss = {}")
+    evil = '"><img src=x onerror="(window.__xss=window.__xss||{})[\'url\']=1">'
+    for suffix in ['#room=ABC123&c=' + evil + '-4-100', '#room=' + evil + '&c=' + evil, '#/' + evil, '?ref=' + evil + '#room=ZZZ999&c=poker-9-9']:
+        pg.goto(URL.split('#')[0].split('?')[0] + suffix, wait_until='load', timeout=240000)
+        pg.wait_for_function('window.WindtpAuth && window.WindtpAuth.isSettled()', timeout=60000)
+        pg.wait_for_timeout(700)
+        visit('đầu vào URL ' + suffix[:18])
+        pg.evaluate("document.querySelector('[data-action=\"join-room\"]')?.click()")
+        visit('vào bàn từ URL')
     check(not errors, 'không có lỗi JS' + ('' if not errors else ': ' + '; '.join(errors[:3])))
     browser.close()
 

@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "node --import tsx --test tests/*/*.test.ts",
     "test:worker": "node --test worker/test/api.test.mjs",
-    "test:browser": "npm run build:test && python3 tests/smoke.py && python3 tests/smoke_auth.py && python3 tests/smoke_data.py && python3 tests/smoke_xss.py && python3 tests/smoke_storage.py",
+    "test:browser": "npm run build:test && python3 tests/smoke.py && python3 tests/smoke_auth.py && python3 tests/smoke_data.py && python3 tests/smoke_xss.py && python3 tests/smoke_storage.py && python3 tests/smoke_csp.py",
     "test": "npm run typecheck && npm run test:unit && npm run test:worker && npm run test:browser",
     "audit": "npm run build:test && python3 tools/audit/audit.py",
     "admin:grant": "tsx tools/admin/set-admin-claim.ts",
