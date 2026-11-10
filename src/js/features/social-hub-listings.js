@@ -29,7 +29,7 @@
   function plv(id, d) { const v = (ui.plv || {})[id]; return esc(v === undefined ? (d || "") : v); }
   function postListingModal() {
     const cat = ui.plCat || "market";
-    const cats = [["market", "🏷️ Chợ đồ cũ"], ["jobs", "🧑‍💻 Việc làm HS/SV"], ["housing", "🏡 Tìm & nhượng phòng"], ...state.customCats.map((c) => [c.id, c.emoji + " " + esc(c.name)])];
+    const cats = [["market", "🏷️ Chợ đồ cũ"], ["jobs", "🧑‍💻 Việc làm HS/SV"], ["housing", "🏡 Tìm & nhượng phòng"], ...state.customCats.map((c) => [c.id, esc(c.emoji) + " " + esc(c.name)])];
     const inp = (id, label, ph, def) => `<div><label class="text-xs font-bold text-slate-600" for="${id}">${label}</label><input id="${id}" value="${plv(id, def)}" placeholder="${ph}" maxlength="80" class="${field} mt-1"></div>`;
     const cur = (ui.plv || {})["pl-region"] || "";
     let sp;

@@ -65,11 +65,11 @@
     const v = ui.prod || {}, p = PRODUCTS.find((x) => x.id === v.id);
     if (!p) return `${modalHead("Sản phẩm")}<p class="p-6 text-sm text-slate-500">Không tìm thấy sản phẩm.</p>`;
     const cur = state.settings.currency, q = v.qty || 1;
-    return `${modalHead(p.name)}
+    return `${modalHead(esc(p.name))}
   <div class="p-5 space-y-4">
     <div class="rounded-2xl overflow-hidden">${productThumb(p, "w-full h-60 text-7xl")}</div>
-    <div><p class="pd-price">${money(p.price[cur] * q, cur)}</p><p class="text-[11px] text-slate-500">${soldLine(p)}${meta(p).sub ? " · " + meta(p).sub : ""}</p></div>
-    <p class="text-sm text-slate-700 leading-relaxed">${p.desc}</p>
+    <div><p class="pd-price">${money(p.price[cur] * q, cur)}</p><p class="text-[11px] text-slate-500">${soldLine(p)}${meta(p).sub ? " · " + esc(meta(p).sub) : ""}</p></div>
+    <p class="text-sm text-slate-700 leading-relaxed">${esc(p.desc)}</p>
     <div><p class="text-xs font-bold text-slate-600 mb-1.5">Chọn đơn vị tiền tệ</p>${curChips(cur, "product")}</div>
     <div class="flex items-center justify-between"><span class="text-xs font-bold text-slate-600">Số lượng</span>
       <span class="pd-qty"><button data-action="prod-qty" data-d="-1" aria-label="Giảm">−</button><span>${q}</span><button data-action="prod-qty" data-d="1" aria-label="Tăng">+</button></span></div>
@@ -131,7 +131,7 @@
   function moderationModal() {
     const pendingPosts = state.posts.filter((p) => p.status === "pending");
     const pendingListings = state.listings.filter((l) => l.status === "pending");
-    const catLabel = (c) => { const f = UTIL_CATS.find((x) => x[0] === c); if (f) return f[1]; const cc = state.customCats.find((x) => x.id === c); return cc ? `${cc.emoji} ${cc.name}` : c; };
+    const catLabel = (c) => { const f = UTIL_CATS.find((x) => x[0] === c); if (f) return f[1]; const cc = state.customCats.find((x) => x.id === c); return cc ? `${esc(cc.emoji)} ${esc(cc.name)}` : esc(c); };
     const meta2 = (t) => `<p class="text-[11px] text-slate-500 mt-0.5">${t}</p>`;
     const buttons = (type, id) => `<div class="flex gap-2 pt-2"><button data-action="approve-content" data-type="${type}" data-id="${id}" class="flex-1 px-3 py-2 rounded-lg text-xs font-bold bg-emerald-600 text-white keep-white">✅ Duyệt và đăng</button><button data-action="reject-content" data-type="${type}" data-id="${id}" class="flex-1 px-3 py-2 rounded-lg text-xs font-bold bg-rose-100 text-rose-700">Từ chối</button></div>`;
     const postRow = (p) => `<div class="rounded-2xl p-3 border border-slate-200 bg-white"><p class="text-[10px] font-extrabold text-rose-600 uppercase">Bài cộng đồng · ${esc(p.tag)}</p><p class="text-sm font-extrabold text-slate-800 mt-1 break-words">${esc(p.author)}</p>${meta2(timeAgo(p.ts))}<div class="mt-2 rounded-xl bg-slate-50 border border-slate-100 p-3"><p class="text-xs text-slate-800 leading-relaxed whitespace-pre-line break-words">${esc(p.text)}</p></div>${buttons("post", p.id)}</div>`;
@@ -857,7 +857,7 @@
       if (!p) return;
       state.cart[id] = (state.cart[id] ?? 0) + 1;
       commit();
-      toast(`\u0110\xE3 th\xEAm "${p.name}" v\xE0o gi\u1ECF h\xE0ng!`);
+      toast(`\u0110\xE3 th\xEAm "${esc(p.name)}" v\xE0o gi\u1ECF h\xE0ng!`);
     },
     "contact-save": () => {
       const a = ui.afterContact || { kind: "ship" }; saveContact("ct-", CT_KEYS[a.kind]);
@@ -1373,7 +1373,7 @@
       const item = kind === "avatar" ? avatarById(id) : frameById(id);
       if (item.unlock !== "buy" || isOwned(kind, id)) return;
       if (!requireFunds(item.price)) return;
-      spend(item.price, `Mua ${kind === "avatar" ? "avatar" : "khung avatar"} ${item.name}`);
+      spend(item.price, `Mua ${kind === "avatar" ? "avatar" : "khung avatar"} ${esc(item.name)}`);
       if (kind === "avatar") {
         state.ownedAvatars.push(id);
         state.avatarId = id;
@@ -1381,10 +1381,10 @@
         state.ownedFrames.push(id);
         state.frameId = id;
       }
-      notify("\u{1F5BC}\uFE0F", `B\u1EA1n \u0111\xE3 mua ${kind === "avatar" ? "avatar" : "khung"} ${item.name}`);
+      notify("\u{1F5BC}\uFE0F", `B\u1EA1n \u0111\xE3 mua ${kind === "avatar" ? "avatar" : "khung"} ${esc(item.name)}`);
       commit();
       refreshModal();
-      toast(`\u0110\xE3 mua v\xE0 \u0111ang d\xF9ng ${item.name}!`);
+      toast(`\u0110\xE3 mua v\xE0 \u0111ang d\xF9ng ${esc(item.name)}!`);
     },
     "claim-cosmetic": (el) => {
       const kind = el.dataset.kind === "frame" ? "frame" : "avatar";
@@ -1403,11 +1403,11 @@
         state.ownedFrames.push(id);
         state.frameId = id;
       }
-      notify("\u{1F381}", `Ph\u1EA7n th\u01B0\u1EDFng \u0111\u0103ng nh\u1EADp ${STREAK_DAYS} ng\xE0y: ${item.name}`);
+      notify("\u{1F381}", `Ph\u1EA7n th\u01B0\u1EDFng \u0111\u0103ng nh\u1EADp ${STREAK_DAYS} ng\xE0y: ${esc(item.name)}`);
       commit();
       sfx("coin");
       refreshModal();
-      toast(`\u0110\xE3 nh\u1EADn ${item.name}!`);
+      toast(`\u0110\xE3 nh\u1EADn ${esc(item.name)}!`);
     },
     "reset-data": () => {
       if (!window.confirm("\u0110\u1EB7t l\u1EA1i to\xE0n b\u1ED9 d\u1EEF li\u1EC7u demo v\u1EC1 ban \u0111\u1EA7u?")) return;

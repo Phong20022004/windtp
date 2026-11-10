@@ -266,7 +266,7 @@
     return Array.from(root.querySelectorAll(sel));
   }
   function esc(s) {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
   var fmt = (n) => Math.round(n).toLocaleString("en-US");
   function norm(s) {
@@ -319,7 +319,7 @@
   }
   function thumb(src, emoji, cls, art) {
     const img = src ? `<img src="${esc(src)}" alt="" loading="lazy" class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()">` : "";
-    const body = art ? `<span class="ws-art">${art}</span>` : `<span>${emoji}</span>`;
+    const body = art ? `<span class="ws-art">${art}</span>` : `<span>${esc(emoji)}</span>`;
     return `<div class="relative overflow-hidden bg-gradient-to-br from-sky-100 to-indigo-100 flex items-center justify-center text-3xl ${cls}">${body}${img}</div>`;
   }
 

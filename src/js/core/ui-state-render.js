@@ -81,7 +81,7 @@
     }
     if (!list.length) { box.innerHTML = ""; return; }
     const cur = state.settings.currency;
-    box.innerHTML = `<div class="ws-title">${title}</div><div class="ws-row">${list.slice(0, 6).map((p) => `<div class="ws-pick glass-card" data-action="open-product" data-id="${p.id}"><div class="ws-th">${productThumb(p, "w-full text-4xl")}</div><div class="ws-pb"><p class="ws-pn">${p.name}</p><div class="ws-pr"><b>${money(p.price[cur], cur)}</b><button data-action="add-cart" data-id="${p.id}" aria-label="Thêm vào giỏ" class="ws-add">🛒</button></div></div></div>`).join("")}</div>`;
+    box.innerHTML = `<div class="ws-title">${title}</div><div class="ws-row">${list.slice(0, 6).map((p) => `<div class="ws-pick glass-card" data-action="open-product" data-id="${p.id}"><div class="ws-th">${productThumb(p, "w-full text-4xl")}</div><div class="ws-pb"><p class="ws-pn">${esc(p.name)}</p><div class="ws-pr"><b>${money(p.price[cur], cur)}</b><button data-action="add-cart" data-id="${p.id}" aria-label="Thêm vào giỏ" class="ws-add">🛒</button></div></div></div>`).join("")}</div>`;
   }
   function xuGrid() {
     const q = norm(ui.shopQuery);
@@ -142,9 +142,9 @@
     <div data-action="open-product" data-id="${p.id}" class="glass-card rounded-2xl overflow-hidden hover:shadow-md transition-all">
       ${productThumb(p, "w-full h-36 text-5xl")}
       <div class="p-3">
-        <h4 class="font-bold text-xs text-slate-800 line-clamp-1">${p.name}</h4>
-        <p class="text-[10px] text-slate-500 line-clamp-1">${p.desc}</p>
-        <p class="text-[10px] text-slate-400 mb-2">${soldLine(p)}${meta(p).sub ? " · " + meta(p).sub : ""}</p>
+        <h4 class="font-bold text-xs text-slate-800 line-clamp-1">${esc(p.name)}</h4>
+        <p class="text-[10px] text-slate-500 line-clamp-1">${esc(p.desc)}</p>
+        <p class="text-[10px] text-slate-400 mb-2">${soldLine(p)}${meta(p).sub ? " · " + esc(meta(p).sub) : ""}</p>
         ${isAdmin() ? `<div class="mb-2 flex gap-1"><button data-action="pp-edit" data-id="${p.id}" class="flex-1 py-1 rounded-lg text-[10px] font-bold bg-sky-50 text-sky-700">✏️ Sửa</button><button data-action="pp-del" data-id="${p.id}" class="flex-1 py-1 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-600">🗑 Xóa</button></div>` : ""}
         <div class="flex justify-between items-center">
           <span class="text-xs font-black text-sky-700">${money(p.price[state.settings.currency], state.settings.currency)}</span>
@@ -207,7 +207,7 @@
     <div class="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-100">
       ${avatar(p.name, "w-10 h-10")}
       <div class="flex-1 min-w-0">
-        <p class="text-xs font-bold text-slate-800">${p.name} <span class="text-emerald-600">\u2022 ${score}% h\u1EE3p</span></p>
+        <p class="text-xs font-bold text-slate-800">${esc(p.name)} <span class="text-emerald-600">\u2022 ${score}% h\u1EE3p</span></p>
         <p class="text-[10px] text-slate-500 truncate">${LEVELS[p.level]} \u2022 ${p.goal}</p>
         <p class="text-[10px] text-slate-400 truncate">${p.bio}</p>
       </div>
@@ -264,7 +264,7 @@
   function badgeFor(cat) {
     if (cat in LISTING_BADGE) return LISTING_BADGE[cat];
     const c = state.customCats.find((x) => x.id === cat);
-    return { ...CUSTOM_BADGE, label: c ? c.name : CUSTOM_BADGE.label };
+    return { ...CUSTOM_BADGE, label: c ? esc(c.name) : CUSTOM_BADGE.label };
   }
   var LISTING_BADGE = {
     market: { label: "Ch\u1EE3 \u0110\u1ED3 C\u0169", badge: "bg-teal-100 text-teal-800", price: "text-teal-600" },
@@ -355,10 +355,10 @@
     <button data-action="open-post-listing" class="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white keep-white text-xs font-bold rounded-xl shadow-sm whitespace-nowrap">+ \u0110\u0103ng tin ngay</button>
   </div>
   <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-    ${[...UTIL_CATS, ...state.customCats.map((c) => [c.id, `${c.emoji} ${esc(c.name)}`])].map(([k, label]) => `<button data-action="util-cat" data-cat="${k}" aria-pressed="${cat === k}" class="px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${cat === k ? "bg-teal-600 text-white keep-white" : "bg-white border border-slate-200 text-slate-700 hover:bg-teal-50"}">${label}</button>`).join("")}
+    ${[...UTIL_CATS, ...state.customCats.map((c) => [c.id, `${esc(c.emoji)} ${esc(c.name)}`])].map(([k, label]) => `<button data-action="util-cat" data-cat="${k}" aria-pressed="${cat === k}" class="px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${cat === k ? "bg-teal-600 text-white keep-white" : "bg-white border border-slate-200 text-slate-700 hover:bg-teal-50"}">${label}</button>`).join("")}
     <button data-action="open-category" class="px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap border border-dashed border-teal-400 text-teal-700 bg-white hover:bg-teal-50">\uFF0B T\u1EA1o danh m\u1EE5c</button>
   </div>
-  ${custom ? `<div class="flex items-center justify-between text-xs text-slate-500"><span>Danh m\u1EE5c do b\u1EA1n t\u1EA1o: <b class="text-slate-700">${custom.emoji} ${esc(custom.name)}</b></span><button data-action="delete-category" data-id="${custom.id}" class="font-bold text-rose-500 hover:text-rose-600">X\xF3a danh m\u1EE5c</button></div>` : ""}
+  ${custom ? `<div class="flex items-center justify-between text-xs text-slate-500"><span>Danh m\u1EE5c do b\u1EA1n t\u1EA1o: <b class="text-slate-700">${esc(custom.emoji)} ${esc(custom.name)}</b></span><button data-action="delete-category" data-id="${custom.id}" class="font-bold text-rose-500 hover:text-rose-600">X\xF3a danh m\u1EE5c</button></div>` : ""}
   ${isAdmin() ? modCard() : ""}
   ${utilSearchBar()}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">${parts.join("") || '<p class="col-span-full text-center text-sm text-slate-500 py-10">Ch\u01B0a c\xF3 m\u1EE5c n\xE0o trong danh m\u1EE5c n\xE0y.</p>'}</div>`;
@@ -797,8 +797,8 @@ function renderWallet() {
   <div class="p-5 flex-1 space-y-3">
     ${rows.length ? rows.map(({ p, qty }) => `
     <div class="flex items-center gap-3 border-b border-slate-100 pb-3">
-      <div class="text-3xl">${p.emoji}</div>
-      <div class="flex-1 min-w-0"><p class="text-xs font-bold text-slate-800 truncate">${p.name}</p><p class="text-[11px] font-black text-sky-700">${money(p.price[cur], cur)}</p></div>
+      <div class="text-3xl">${esc(p.emoji)}</div>
+      <div class="flex-1 min-w-0"><p class="text-xs font-bold text-slate-800 truncate">${esc(p.name)}</p><p class="text-[11px] font-black text-sky-700">${money(p.price[cur], cur)}</p></div>
       <div class="flex items-center gap-1.5">
         <button data-action="cart-dec" data-id="${p.id}" class="w-6 h-6 rounded-full bg-slate-100 text-slate-700 font-bold" aria-label="Gi\u1EA3m">\u2212</button>
         <span class="text-xs font-bold w-5 text-center">${qty}</span>
