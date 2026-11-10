@@ -410,9 +410,13 @@
       return false;
     }
   }
+  var saveWarnedAt = 0;
   function commit() {
     guardAdminCosmetics();
-    save();
+    if (!save() && Date.now() - saveWarnedAt > 30e3) {
+      saveWarnedAt = Date.now();
+      window.dispatchEvent(new CustomEvent("windtp:save-failed"));
+    }
     listeners.forEach((fn) => fn());
   }
   function resetAll() {

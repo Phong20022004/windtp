@@ -140,6 +140,10 @@
     if (toastTimer !== void 0) window.clearTimeout(toastTimer);
     toastTimer = window.setTimeout(() => el.classList.add("opacity-0", "pointer-events-none"), 2600);
   }
+  // Hoãn một nhịp để cảnh báo không bị toast của chính thao tác vừa lưu ghi đè.
+  window.addEventListener("windtp:save-failed", () => {
+    window.setTimeout(() => toast("Không lưu được dữ liệu: bộ nhớ trình duyệt đã đầy hoặc bị chặn. Hãy xóa bớt ảnh/sản phẩm cũ."), 150);
+  });
   function openModal(render, side = false) {
     ui.renderModal = render;
     ui.modalSide = side;

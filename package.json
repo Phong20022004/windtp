@@ -9,7 +9,7 @@
     "build:test": "tsx tools/build/build.ts --test-auth --out dist/test.html",
     "typecheck": "tsc --noEmit",
     "test:unit": "node --import tsx --test tests/*/*.test.ts",
-    "test:browser": "npm run build:test && python3 tests/smoke.py && python3 tests/smoke_auth.py && python3 tests/smoke_data.py && python3 tests/smoke_xss.py",
+    "test:browser": "npm run build:test && python3 tests/smoke.py && python3 tests/smoke_auth.py && python3 tests/smoke_data.py && python3 tests/smoke_xss.py && python3 tests/smoke_storage.py",
     "test": "npm run typecheck && npm run test:unit && npm run test:browser",
     "audit": "npm run build:test && python3 tools/audit/audit.py",
     "admin:grant": "tsx tools/admin/set-admin-claim.ts",
