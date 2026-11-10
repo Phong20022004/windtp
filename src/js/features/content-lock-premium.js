@@ -37,11 +37,15 @@
     "lib-free": (el) => openLessonList(el),
     "lib-premium": (el) => openLessonList(el),
     "lessons-back": () => { ui.learnStage = "library"; renderLearn(); window.scrollTo({ top: 0, behavior: "smooth" }); },
-    "lesson-open": (el) => {
+    "lesson-open": async (el) => {
       const code = el.dataset.code, g = Number(el.dataset.g), v = Number(el.dataset.v), l = Number(el.dataset.l);
       const free = v === 0 && l === 0;
       if (!free && !hasCourse(code)) { lockWith(code); return; }
       const grp = (BOOK_CATALOG[code] || [])[g];
+      if (grp && DAILY_LANGS.indexOf(code) >= 0 && !window.WindtpData.vocabSync(code)) {
+        toast("Đang tải bài học…");
+        try { await window.WindtpData.vocab(code); } catch (e) { toast("Không tải được bài học, hãy kiểm tra mạng rồi thử lại"); return; }
+      }
       if ((code === "en" || code === "fr" || code === "zh" || code === "ko") && grp && typeof window.__enOpen === "function" && window.__enHas(grp[0] + "|" + v, v, l, code)) { if (window.__enOpen(grp[0] + "|" + v, v, l, { book: grp[0], vol: grp[2][v], lang: code })) return; }
       if (code === "de" && grp && typeof window.__deOpen === "function" && window.__deHas(grp[0] + "|" + v, v, l)) { if (window.__deOpen(grp[0] + "|" + v, v, l, { book: grp[0], vol: grp[2][v], lang: "de" })) return; }
       if (code === "ja" && grp && typeof window.__jaOpen === "function" && window.__jaHas(grp[0] + "|" + v, v, l)) { if (window.__jaOpen(grp[0] + "|" + v, v, l, { book: grp[0], vol: grp[2][v] })) return; }

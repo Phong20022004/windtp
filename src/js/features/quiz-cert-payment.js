@@ -458,12 +458,14 @@
   }
   function startCertQuiz(certId) {
     const lang = langByCode(state.lang ?? "en");
+    if (!dailyReady(lang)) { enrichDaily(lang); toast("Đang tải bài học, hãy thử lại sau giây lát"); return; }
     const cert = lang.certs.find((c) => c.id === certId) ?? lang.certs[0];
     ui.quiz = baseQuiz("cert", `\u{1F4DD} Gi\u1EA3i \u0111\u1EC1 th\u1EED ${cert.name}`, cert.id, lang.code, certQuestions(lang));
     openModal(quizModal);
   }
   function startPractice(mode) {
     const lang = langByCode(state.lang ?? "en");
+    if (!dailyReady(lang)) { enrichDaily(lang); toast("Đang tải bài học, hãy thử lại sau giây lát"); return; }
     ui.quiz = baseQuiz("practice", `${PRACTICE_TITLE[mode]} ${lang.name} ${lang.flag}`, mode, lang.code, practiceQuestions(lang, mode));
     openModal(quizModal);
     speakCurrent();
@@ -637,6 +639,7 @@
     "open-vocab": () => {
       if (!state.lang) return;
       const lang = langByCode(state.lang);
+      if (!dailyReady(lang)) { enrichDaily(lang); toast("Đang tải bài học, hãy thử lại sau giây lát"); return; }
       ui.flash = { lang: lang.code, order: dailyLesson(lang).vocab.slice(), pos: 0, flipped: false, knownNow: 0, done: false };
       openModal(vocabModal);
     },
@@ -1582,6 +1585,7 @@
     if (purgeExpired()) save();
     window.setInterval(() => { if (purgeExpired()) commit(); }, 6e5);
     bootAuth();
+    if (state.lang) enrichDaily(langByCode(state.lang));
     syncCustomProducts();
     applyTheme();
     rollDay();

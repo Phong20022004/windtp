@@ -3,9 +3,10 @@ Chạy: npm run build:test && python3 tests/smoke_auth.py
 Không chạm tới Firebase thật; logic Firebase được phủ bởi tests/auth/*.test.ts (ánh xạ lỗi) và bản build production."""
 import json, os, sys
 from playwright.sync_api import sync_playwright
+from support import serve_dist
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-URL = 'file://' + os.path.join(ROOT, 'dist', 'WINDTP.test.html')
+URL = None  # gán trong khối serve_dist bên dưới
 STATE_KEY = 'windtp-super-app-v2'
 FORGED_ADMIN_EMAIL = 'windlord20022004@gmail.com'
 
@@ -62,7 +63,7 @@ def to_mode(pg, mode):
     pg.click('#login-gate [data-mode="%s"]' % mode)
 
 
-with sync_playwright() as p:
+with serve_dist() as URL, sync_playwright() as p:
     browser = p.chromium.launch()
     new_ctx = lambda: browser.new_context(viewport={'width': 420, 'height': 900})
 

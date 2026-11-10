@@ -12,28 +12,32 @@
     for (let r = 0; r < k; r++) { const base = n - r; out.push(pool.splice(idx % base, 1)[0]); idx = Math.floor(idx / base); }
     return out;
   }
-  function enrichDaily(lang) {
-    if ((lang.code !== "en" && lang.code !== "zh" && lang.code !== "ko" && lang.code !== "ja" && lang.code !== "de" && lang.code !== "fr" && lang.code !== "es") || lang.__rich) return;
-    lang.__rich = true;
-    try {
-      const V = JSON.parse(document.getElementById(lang.code === "es" ? "windtp-es-vocab" : lang.code === "fr" ? "windtp-fr-vocab" : lang.code === "de" ? "windtp-de-vocab" : lang.code === "zh" ? "windtp-zh-vocab" : lang.code === "ko" ? "windtp-ko-vocab" : lang.code === "ja" ? "windtp-ja-vocab" : "windtp-en-vocab").textContent);
-      const seen = new Set(lang.vocab.map((v) => v.term.toLowerCase())), pool = [], gr = [];
-      for (const key in V) {
-        const isG = key.indexOf("Cấu trúc") === 0;
-        for (const b of V[key]) for (const w of b[1]) {
-          if (isG) { if (w[4]) gr.push({ title: (lang.code === "de" && w[1]) ? w[1] : w[0], pattern: (lang.code === "es" && w[1]) ? w[0] + "  ≈  " + w[1] : (lang.code === "fr" && w[1]) ? w[1] : w[0], explain: w[3], example: w[4], exampleVi: w[5] }); continue; }
-          const t = w[0].toLowerCase();
-          if (!w[4] || (lang.code === "es" && !w[5]) || (lang.code === "ko" && key.indexOf("Yonsei Reading") === 0 && (w[2] === "Ngữ pháp" || !w[5])) || seen.has(t) || (lang.code === "fr" && /^câu/i.test(w[2]))) continue;
-          if (lang.code === "zh" && !/^[\u3400-\u9fff]+$/.test(w[0])) continue;
-          seen.add(t); pool.push({ term: w[0], reading: w[1], meaning: w[3], example: w[4], exampleVi: w[5] });
-        }
-      }
-      let a = lang.code === "zh" ? 20261109 : lang.code === "ko" ? 20261110 : 20261108; const r = () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; };
-      for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); const x = pool[i]; pool[i] = pool[j]; pool[j] = x; }
-      lang.vocab = lang.vocab.concat(pool.slice(0, lang.code === "es" ? 3000 : 2000));
-      if (gr.length) lang.grammar = lang.grammar.concat(gr);
-    } catch (e) {}
+  // Phần bổ sung cho bài ngày được tính trước lúc build (tools/build/vocab-data.ts) và tải theo ngôn ngữ qua WindtpData.
+  var DAILY_LANGS = ["en", "zh", "ko", "ja", "de", "fr", "es"], dailyPending = {}, dailyToastAt = 0;
+  function dailyReady(lang) {
+    return DAILY_LANGS.indexOf(lang.code) < 0 || !!lang.__rich || !!window.WindtpData.dailySync(lang.code);
   }
+  function loadDaily(code) {
+    if (dailyPending[code]) return;
+    dailyPending[code] = true;
+    window.WindtpData.daily(code).then(() => {
+      delete dailyPending[code];
+      if (state.lang === code) { renderAll(); if (ui.renderModal) refreshModal(); }
+    }, () => {
+      delete dailyPending[code];
+      if (Date.now() - dailyToastAt > 15000) { dailyToastAt = Date.now(); toast("Không tải được dữ liệu bài học, hãy kiểm tra mạng rồi thử lại"); }
+    });
+  }
+  function enrichDaily(lang) {
+    if (DAILY_LANGS.indexOf(lang.code) < 0 || lang.__rich) return;
+    const extra = window.WindtpData.dailySync(lang.code);
+    if (!extra) { loadDaily(lang.code); return; }
+    lang.__rich = true;
+    lang.vocab = lang.vocab.concat(extra.vocab);
+    if (extra.grammar.length) lang.grammar = lang.grammar.concat(extra.grammar);
+  }
+  // Mạng có lại: bài ngày đang chờ tự tải lại (bộ tải đã xóa trạng thái thất bại ở sự kiện này), tải xong sẽ tự dựng lại giao diện.
+  window.addEventListener("online", () => { if (state.lang) enrichDaily(langByCode(state.lang)); });
   function dailyLesson(lang, no) {
     no = no || dailyNo();
     enrichDaily(lang);

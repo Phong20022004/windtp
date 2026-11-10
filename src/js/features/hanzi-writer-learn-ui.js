@@ -131,6 +131,11 @@
       el.innerHTML = renderLessonList(lang);
       return;
     }
+    if (!dailyReady(lang)) {
+      enrichDaily(lang);
+      el.innerHTML = `<div class="glass-card p-5 rounded-3xl text-center text-sm font-bold text-slate-500">Đang tải bài học hôm nay…</div>`;
+      return;
+    }
     const dl = dailyLesson(lang);
     el.innerHTML = `<div class="space-y-4"><div class="flex flex-wrap items-center justify-between gap-2"><button data-action="learn-back-menu" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700">← Quay lại không gian học</button><span class="text-xs font-bold px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full">${lang.flag} ${lang.name} · MIỄN PHÍ · ${dl.dateLabel}</span></div><div class="wl-banner rounded-3xl p-5 bg-gradient-to-r from-emerald-600 to-teal-500 text-white keep-white"><span class="wl-wrap wl-corner">${windLogo(56)}</span><p class="text-xs font-bold opacity-90">ÔN TẬP MỖI NGÀY · ĐỀ NGÀY ${dl.no}/365</p><h2 class="text-2xl font-black mt-1">Học một chút mỗi ngày</h2><p class="text-sm mt-1 opacity-90">Từ vựng · Ngữ pháp · Nghe · Đọc · Viết · Hội thoại</p></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3"><button data-action="open-vocab" class="text-left p-4 bg-white rounded-2xl border border-slate-200 hover:border-sky-400 shadow-sm"><div class="text-2xl">📖</div><h3 class="font-extrabold text-sm text-sky-700 mt-2">Từ vựng</h3><p class="text-xs text-slate-500 mt-1">5 từ của đề hôm nay · Đã thuộc ${dl.knownCount}/5</p></button><button data-action="open-grammar" class="text-left p-4 bg-white rounded-2xl border border-slate-200 hover:border-indigo-400 shadow-sm"><div class="text-2xl">✍️</div><h3 class="font-extrabold text-sm text-indigo-700 mt-2">Ngữ pháp</h3><p class="text-xs text-slate-500 mt-1">2 cấu trúc của đề hôm nay kèm ví dụ.</p></button><button data-action="open-practice" class="text-left p-4 bg-white rounded-2xl border border-teal-200 hover:border-teal-400 shadow-sm"><div class="text-2xl">🎧</div><h3 class="font-extrabold text-sm text-teal-700 mt-2">Luyện tập 4 kỹ năng</h3><p class="text-xs text-slate-500 mt-1">Nghe · Đọc · Viết · Hội thoại tình huống.</p></button></div></div>`;
   }

@@ -639,6 +639,10 @@ function renderWallet() {
   }
   function grammarModal() {
     const lang = langByCode(state.lang ?? "en");
+    if (!dailyReady(lang)) {
+      enrichDaily(lang);
+      return `${modalHead("\u270D\uFE0F Ng\u1EEF ph\xE1p " + lang.name)}<div class="p-5 text-center text-sm font-bold text-slate-500">\u0110ang t\u1EA3i b\xE0i h\u1ECDc\u2026</div>`;
+    }
     return `${modalHead("\u270D\uFE0F Ng\u1EEF ph\xE1p " + lang.name)}
   <div class="p-5 space-y-3">
     ${dailyLesson(lang).grammar.map((gi, i) => {

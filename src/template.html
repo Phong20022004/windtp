@@ -122,6 +122,8 @@
   <span>✨</span> <span id="toast-message">Thông báo</span>
 </div>
 
+<script type="application/json" id="windtp-data-manifest">{{data-manifest}}</script>
+<script id="windtp-data">{{include-bundle:src/data/entry.ts}}</script>
 <script id="windtp-auth">{{include-bundle:src/auth/entry-firebase.ts}}</script>
 
 <script>{{include-manifest:src/js/main.manifest.json}}</script>
@@ -132,16 +134,9 @@
 <script id="windtp-vocabulary-tool">{{include:src/js/tools/vocabulary-tool.js}}</script>
 
 <script id="windtp-seoul1a-lesson1">{{include:src/js/players/seoul1a-lesson1.js}}</script>
-<script type="application/json" id="windtp-en-vocab">{{include:data/vocab/en.json}}</script>
-<script type="application/json" id="windtp-zh-vocab">{{include:data/vocab/zh.json}}</script>
-<script type="application/json" id="windtp-ko-vocab">{{include:data/vocab/ko.json}}</script>
-<script type="application/json" id="windtp-fr-vocab">{{include:data/vocab/fr.json}}</script>
 <script id="windtp-en-lessons">{{include:src/js/players/en-lessons.js}}</script>
-<script type="application/json" id="windtp-es-vocab">{{include:data/vocab/es.json}}</script>
 <script id="windtp-es-lessons">{{include:src/js/players/es-lessons.js}}</script>
-<script type="application/json" id="windtp-de-vocab">{{include:data/vocab/de.json}}</script>
 <script id="windtp-de-lessons">{{include:src/js/players/de-lessons.js}}</script>
-<script type="application/json" id="windtp-ja-vocab">{{include:data/vocab/ja.json}}</script>
 <script id="windtp-ja-lessons">{{include:src/js/players/ja-lessons.js}}</script>
 
 

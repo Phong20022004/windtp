@@ -1,13 +1,13 @@
 # WINDTP
 
 Ứng dụng học ngoại ngữ (Anh, Hàn, Nhật, Pháp, Đức, Trung, Tây Ban Nha). Mã nguồn được tách thành nhiều file nhỏ,
-`npm run build` ghép lại thành **một file HTML** `dist/WINDTP.html` (bản build giống từng byte với file gốc trước khi tách).
+`npm run build` ghép lại thành `dist/index.html` (khoảng 1,9 MB) cùng hai thư mục `dist/data/` (từ vựng và bài ngày theo từng ngôn ngữ, tải khi cần) và `dist/assets/` (ảnh đã tách). Trước đây toàn bộ là một file 40 MB. **Phải phục vụ qua http(s)** (hosting tĩnh, hoặc `npx serve dist`); mở trực tiếp bằng `file://` sẽ không tải được dữ liệu. Tên file trong `data/` và `assets/` chứa băm nội dung nên có thể cache vô thời hạn; khi triển khai hãy đưa lên cả ba phần.
 
 ## Chạy nhanh
 ```bash
 npm install
-npm run build        # tạo dist/WINDTP.html (cần cấu hình Firebase, xem mục dưới)
-npm run build:test   # tạo dist/WINDTP.test.html với backend xác thực giả, dùng cho kiểm thử
+npm run build        # tạo dist/index.html + data/ + assets/ (cần cấu hình Firebase, xem mục dưới)
+npm run build:test   # tạo dist/test.html với backend xác thực giả, dùng cho kiểm thử
 npm run audit        # liệt kê quyển/bài còn trống từ vựng
 npm test             # typecheck + unit test + kiểm tra trên trình duyệt headless (cần playwright)
 ```
