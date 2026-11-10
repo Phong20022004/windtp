@@ -1,0 +1,111 @@
+rules_version = '2';
+
+// WINDTP: luật bảo mật Firestore (gói Spark, không dùng Cloud Functions).
+// Mô hình: số dư nằm ở wallets/{uid}; MỌI thay đổi số dư phải đi kèm một dòng sổ giao dịch
+// wallets/{uid}/tx/{id} được ghi cùng lúc (batch/transaction) và khớp chính xác độ lệch.
+// Quyền admin chỉ lấy từ custom claim `admin` (cấp bằng `npm run admin:grant`).
+// CHƯA được kiểm thử với emulator, xem docs/BACKEND.md trước khi triển khai.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function txPath(uid, id) { return /databases/$(database)/documents/wallets/$(uid)/tx/$(id); }
+
+    // Mức thưởng tối đa mỗi lần cho các loại người dùng TỰ nhận được (khớp hằng số trong app).
+    // Nạp Xu (topup), Premium, hoàn tiền: chỉ admin được ghi.
+    function earnCap(kind) {
+      return {
+        'login': 150, 'game': 150, 'post': 150, 'task': 5000, 'checkin': 150
+      }.get(kind, 0);
+    }
+
+    // Người dùng tự thay đổi số dư: chỉ được đổi balance/lastTx/lastEarn và phải có dòng sổ khớp.
+    function validSelfChange(uid) {
+      let before = resource.data;
+      let after = request.resource.data;
+      let tx = getAfter(txPath(uid, after.lastTx)).data;
+      return after.diff(before).affectedKeys().hasOnly(['balance', 'lastTx', 'lastEarn'])
+        && after.lastTx is string
+        && after.balance is int && after.balance >= 0
+        && tx.uid == uid
+        && tx.createdAt == request.time
+        && tx.delta == after.balance - before.balance
+        && (
+          // Chi tiêu: delta âm, không vượt số dư (đã bảo đảm bởi balance >= 0).
+          (tx.kind == 'spend' && tx.delta < 0)
+          // Tự nhận thưởng: có trần mỗi lần và giãn cách tối thiểu 5 giây cho mỗi loại.
+          || (tx.delta > 0 && tx.delta <= earnCap(tx.kind)
+              && (!(tx.kind in before.lastEarn)
+                  || before.lastEarn[tx.kind] <= request.time - duration.value(5, 's')))
+        )
+        && after.lastEarn.diff(before.lastEarn).affectedKeys().hasOnly([tx.kind]);
+    }
+
+    match /wallets/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['balance', 'chips', 'premiumUntil', 'lastTx', 'lastEarn'])
+        && request.resource.data.balance == 0
+        && request.resource.data.chips == 0
+        && request.resource.data.premiumUntil == null
+        && request.resource.data.lastEarn == {};
+      allow update: if isAdmin() || (isOwner(uid) && validSelfChange(uid));
+      allow delete: if false;
+
+      match /tx/{id} {
+        allow read: if isOwner(uid) || isAdmin();
+        // Sổ giao dịch chỉ ghi thêm, không sửa/xóa. Chủ ví chỉ ghi được cùng lúc với thay đổi ví.
+        allow create: if (isOwner(uid) || isAdmin())
+          && request.resource.data.uid == uid
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.delta is int
+          && request.resource.data.kind is string
+          && request.resource.data.title is string && request.resource.data.title.size() <= 120
+          && getAfter(/databases/$(database)/documents/wallets/$(uid)).data.lastTx == id;
+        allow update, delete: if false;
+      }
+    }
+
+    // Hồ sơ người dùng: tự sửa được, không được đụng tới cờ đặc quyền.
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['name', 'avatarId', 'frameId', 'updatedAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 30;
+      allow delete: if false;
+    }
+
+    // Đơn hàng: chủ tạo ở trạng thái pending; chỉ admin duyệt/từ chối.
+    match /orders/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.keys().hasOnly(['uid', 'items', 'total', 'status', 'createdAt', 'note']);
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy'])
+        && request.resource.data.status in ['approved', 'rejected'];
+      allow delete: if false;
+    }
+
+    // Bài đăng/tin đăng cộng đồng: người khác chỉ thấy khi đã duyệt; admin kiểm duyệt.
+    match /posts/{id} {
+      allow read: if isAdmin() || resource.data.status == 'approved'
+        || (signedIn() && resource.data.authorId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.text is string && request.resource.data.text.size() <= 2000;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy']);
+      allow delete: if isAdmin() || (signedIn() && resource.data.authorId == request.auth.uid);
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
