@@ -1,3 +1,5 @@
+> **Cập nhật:** hướng Firestore rules bên dưới đã được thay bằng máy chủ Cloudflare Workers + D1 trong `worker/` (có test, chặn gian lận đúng nghĩa). `firestore.rules` chỉ giữ để tham khảo, đừng triển khai. Xem `worker/README.md`.
+
 # Backend ví / đơn hàng / kiểm duyệt (Firestore + security rules)
 
 Trạng thái: **rules đã viết, CHƯA nối vào app và CHƯA kiểm thử bằng emulator.** App hiện vẫn lưu Xu, Premium, đơn hàng

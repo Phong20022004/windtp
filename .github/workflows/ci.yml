@@ -15,6 +15,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run test:unit
+      - run: npm run test:worker
       - run: npm run build:test
       - run: python3 tools/audit/audit.py
       - run: pip install playwright && playwright install --with-deps chromium
