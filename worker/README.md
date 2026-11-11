@@ -34,3 +34,18 @@ admin: `GET /admin/orders`, `POST /admin/orders/:id/approve|reject`, `GET /admin
 Nối app vào các endpoint trên: bỏ ghi `balance/chips/premium/orders` vào localStorage ở 16 chỗ trong `src/js`
 (chủ yếu `quiz-cert-payment.js`, `lofi-radio.js`), thay bằng gọi API rồi hiển thị số liệu máy chủ trả về.
 Việc này cần build và chạy smoke test trình duyệt nên làm ở phiên có cài được gói.
+
+## Kế hoạch nối app (đã khảo sát)
+Chỗ ghi ví trong app: `earn()/spend()` (`lofi-radio.js`), thưởng nhiệm vụ và nạp Xu (`quiz-cert-payment.js`),
+duyệt đơn/Premium (`user-admin-orders.js`, `orders-friend-search.js`, `shared-player-data-chat.js`) và
+`setChips`/`xuToChips` của game bài (`card-game-quan-hung.js`). Toàn bộ là code đồng bộ gắn chặt vào giao diện,
+trong khi API là bất đồng bộ, nên cần đổi sang mô hình: gọi API -> nhận ví từ máy chủ -> vẽ lại.
+
+Quyết định thiết kế:
+1. **Máy chủ giữ Xu, Premium, đơn hàng, kiểm duyệt** (có giá trị tiền thật). Đây là phần bắt buộc.
+2. **Chip game chỉ để giải trí, không đổi thưởng** (app đã ghi rõ). Thắng/thua chip diễn ra trong trình duyệt nên
+   máy chủ không kiểm chứng được; để chip ở phía người dùng, chỉ việc đổi Xu sang chip đi qua `POST /chips/exchange`.
+   Nếu sau này chip có giá trị thật thì phải chuyển cả game bài sang chạy trên máy chủ.
+3. Lúc đăng nhập tải `GET /me` làm nguồn sự thật; ghi vào localStorage chỉ là bản chép để hiển thị.
+4. Không có máy chủ (mất mạng) thì khóa các thao tác tiền, không cho thao tác tạm trên máy.
+5. Cần test trình duyệt cho luồng ví (hiện CI chưa có test nào cho ví/giỏ hàng) trước khi gỡ code cũ.
