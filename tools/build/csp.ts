@@ -46,12 +46,17 @@ export interface CspInput {
   embeddedDocs: string[];
   /** Tên miền xác thực Firebase (authDomain), có thể là miền riêng chứ không chỉ *.firebaseapp.com. */
   authDomain?: string;
+  /** Gốc (origin) của máy chủ ví, được phép trong connect-src. */
+  apiOrigin?: string;
+  /** Chỉ cho bản test: cho phép gọi máy chủ API chạy cục bộ. */
+  allowLocalApi?: boolean;
 }
 
 const unique = (values: string[]): string[] => [...new Set(values)];
 
-export function buildCsp({ html, embeddedDocs, authDomain }: CspInput): string {
+export function buildCsp({ html, embeddedDocs, authDomain, apiOrigin, allowLocalApi }: CspInput): string {
   const authOrigin = authDomain ? [`https://${authDomain}`] : [];
+  const apiOrigins = [...(apiOrigin ? [apiOrigin] : []), ...(allowLocalApi ? ["http://127.0.0.1:*", "http://localhost:*"] : [])];
   const docs = [html, ...embeddedDocs];
   const scriptHashes = unique(docs.flatMap((doc) => extractInlineScripts(doc)).map(sha256Source));
   const handlerHashes = unique(docs.flatMap((doc) => extractInlineHandlers(doc)).map(sha256Source));
@@ -64,7 +69,7 @@ export function buildCsp({ html, embeddedDocs, authDomain }: CspInput): string {
     ["media-src", ["'self'", "data:", "blob:", "https://translate.google.com"]],
     [
       "connect-src",
-      ["'self'", "data:", "blob:", "https://*.googleapis.com", "https://*.firebaseio.com", "https://*.firebaseapp.com", ...authOrigin, "https://cdn.jsdelivr.net", "https://api.mymemory.translated.net"],
+      ["'self'", "data:", "blob:", "https://*.googleapis.com", "https://*.firebaseio.com", "https://*.firebaseapp.com", ...authOrigin, ...apiOrigins, "https://cdn.jsdelivr.net", "https://api.mymemory.translated.net"],
     ],
     ["frame-src", ["'self'", "blob:", "https://*.firebaseapp.com", ...authOrigin, "https://accounts.google.com", "https://apis.google.com", "https://content.googleapis.com"]],
     ["worker-src", ["'self'", "blob:"]],

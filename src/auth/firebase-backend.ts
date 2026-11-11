@@ -105,6 +105,10 @@ export function createFirebaseBackend(config: FirebaseOptions): AuthBackend {
       }
     },
 
+    async getIdToken(forceRefresh = false) {
+      return auth.currentUser ? auth.currentUser.getIdToken(forceRefresh) : null;
+    },
+
     async signOut() {
       try {
         await signOut(auth);

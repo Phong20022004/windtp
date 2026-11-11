@@ -125,5 +125,14 @@ export function createAuthService(backend: AuthBackend): AuthService {
     logout() {
       return guarded(() => backend.signOut());
     },
+
+    async getIdToken(forceRefresh = false) {
+      if (!account) return null;
+      try {
+        return await backend.getIdToken(forceRefresh);
+      } catch {
+        return null;
+      }
+    },
   };
 }

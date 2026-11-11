@@ -140,6 +140,17 @@ export class MemoryAuthBackend implements AuthBackend {
     this.control.resets.push(email);
   }
 
+  /** Token dạng `test.<base64url(JSON)>`: chỉ máy chủ API chạy cho test (tests/api-server.mjs) chấp nhận, không bao giờ có ở production. */
+  async getIdToken(): Promise<string | null> {
+    const user = this.currentUser();
+    if (!user) return null;
+    const claims = JSON.stringify({ sub: user.uid, email: user.email, name: user.displayName, admin: user.admin });
+    const bytes = new TextEncoder().encode(claims);
+    let binary = "";
+    bytes.forEach((b) => (binary += String.fromCharCode(b)));
+    return "test." + btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
   async signOut(): Promise<void> {
     sessionStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(SESSION_KEY);

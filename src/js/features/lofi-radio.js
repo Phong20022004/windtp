@@ -335,11 +335,8 @@
     return {
       version: VERSION,
       userName: "Nguy\u1EC5n V\u0103n A",
-      balance: 125e4,
-      history: [
-        { id: "tx-seed-2", title: "Th\u01B0\u1EDFng nhi\u1EC7m v\u1EE5: \u0110\u0103ng nh\u1EADp h\xF4m nay", amount: 1e4, kind: "in", ts: now - 60 * 6e4 },
-        { id: "tx-seed-1", title: "Mua S\u1ED5 Tay Ng\u1EEF Ph\xE1p WINDTP", amount: 8e4, kind: "out", ts: now - 14 * 36e5 }
-      ],
+      balance: 0,
+      history: [],
       cart: {},
       owned: [],
       lang: null,
@@ -372,9 +369,17 @@
       ownedFrames: [],
       premiumUntil: 0,
       chips: 0,
+      chipsDelta: 0,
       courseAccess: {},
       social: { challenges: [], record: {}, pokes: {}, points: 0 }
     };
+  }
+  // Số dư, lịch sử, quyền sở hữu và Premium chỉ do máy chủ cấp (economy-api.js); mọi giá trị cùng tên đọc từ localStorage bị bỏ.
+  function scrubEconomy(o) {
+    const d = Number(o.chipsDelta);
+    o.balance = 0; o.history = []; o.owned = []; o.premiumUntil = 0; o.courseAccess = {}; o.chips = 0;
+    o.chipsDelta = Number.isFinite(d) ? Math.max(-1e9, Math.min(1e9, Math.floor(d))) : 0;
+    return o;
   }
   var SHARED = ["postsCleared", "refRewarded", "posts", "listings", "orders", "customProducts", "customCats", "customTasks", "taskClaims", "payouts", "credits", "productEdits", "fbShares"];
   function ukey(e) { return KEY + "::u::" + String(e || "").toLowerCase(); }
@@ -387,7 +392,7 @@
           const base = seed(); let personal = parsed, shared = {};
           if (parsed.shared) { shared = parsed.shared; personal = {}; const a = parsed.account; if (a && a.email) { try { personal = JSON.parse(localStorage.getItem(ukey(a.email)) || "{}"); } catch { } } }
           else SHARED.forEach((k) => { if (parsed[k] !== undefined) shared[k] = parsed[k]; });
-          return { ...base, ...personal, ...shared, account: parsed.account || null, version: VERSION, settings: { ...base.settings, ...personal.settings }, daily: { ...base.daily, ...personal.daily } };
+          return scrubEconomy({ ...base, ...personal, ...shared, account: parsed.account || null, version: VERSION, settings: { ...base.settings, ...personal.settings }, daily: { ...base.daily, ...personal.daily } });
         }
       }
     } catch {
@@ -431,18 +436,9 @@
     state.notices.unshift({ id: uid("n"), icon, title, ts: Date.now(), read: false });
     if (state.notices.length > 40) state.notices.length = 40;
   }
-  function earn(amount, title) {
-    state.balance += amount;
-    state.history.unshift({ id: uid("tx"), title, amount, kind: "in", ts: Date.now() });
-    notify("\u{1FA99}", `${title}: +${amount.toLocaleString("en-US")} Xu`);
-    sfx("coin");
-  }
-  function spend(amount, title) {
-    if (amount <= 0 || amount > state.balance) return false;
-    state.balance -= amount;
-    state.history.unshift({ id: uid("tx"), title, amount, kind: "out", ts: Date.now() });
-    return true;
-  }
+  // Trình duyệt không được tự cộng/trừ Xu: mọi thay đổi đi qua máy chủ (economy-api.js).
+  function earn() { throw new Error("Xu do m\u00E1y ch\u1EE7 qu\u1EA3n l\u00FD"); }
+  function spend() { throw new Error("Xu do m\u00E1y ch\u1EE7 qu\u1EA3n l\u00FD"); }
   const CULTIVATION_RANKS = [
     { name: "Luyện Khí", badge: "炼", days: 0 },
     { name: "Trúc Cơ", badge: "筑", days: 1 },

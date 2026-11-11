@@ -5,8 +5,10 @@ CREATE TABLE IF NOT EXISTS wallets (
   chips INTEGER NOT NULL DEFAULT 0 CHECK (chips >= 0),
   premium_until INTEGER NOT NULL DEFAULT 0,
   birth TEXT,
+  email TEXT, -- email đã xác thực trong token, để admin tìm người nhận thưởng
   created_at INTEGER NOT NULL
 );
+CREATE INDEX IF NOT EXISTS wallets_email ON wallets (email);
 -- Sổ giao dịch chỉ ghi thêm.
 CREATE TABLE IF NOT EXISTS tx (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,6 +60,11 @@ CREATE TABLE IF NOT EXISTS orders (
   xu INTEGER NOT NULL DEFAULT 0,
   plan_id TEXT,
   code TEXT,
+  email TEXT,
+  name TEXT,
+  summary TEXT,
+  lines TEXT, -- JSON [{id, qty}] các món trong giỏ; admin dựa vào bảng giá của mình để quyết định quyền lợi
+  contact TEXT, -- JSON {address, phone, docEmail}: chỉ để admin giao hàng/gửi tài liệu
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   created_at INTEGER NOT NULL,
   reviewed_at INTEGER,

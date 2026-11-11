@@ -9,6 +9,26 @@ const bad = (code = 'bad-request') => new HttpError(400, code);
 const dayKey = (now) => new Date(now + E.VN_OFFSET_MS).toISOString().slice(0, 10);
 const isInt = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
 
+/** Giữ tối đa MAX_ORDER_LINES dòng {id, qty}; id là chuỗi ngắn, qty nguyên 1..99. Trả JSON hoặc null. */
+function cleanLines(value) {
+  if (!Array.isArray(value)) return null;
+  const out = [];
+  for (const line of value.slice(0, E.MAX_ORDER_LINES)) {
+    if (line && typeof line.id === 'string' && line.id && line.id.length <= 60 && isInt(line.qty, 1, 99)) out.push({ id: line.id, qty: line.qty });
+  }
+  return out.length ? JSON.stringify(out) : null;
+}
+
+/** Chỉ giữ các trường liên hệ cần cho giao hàng/gửi tài liệu, mỗi trường là chuỗi ngắn; trả JSON hoặc null. */
+function cleanContact(value) {
+  if (!value || typeof value !== 'object') return null;
+  const out = {};
+  for (const key of ['address', 'phone', 'docEmail']) {
+    if (typeof value[key] === 'string' && value[key].trim()) out[key] = value[key].trim().slice(0, 200);
+  }
+  return Object.keys(out).length ? JSON.stringify(out) : null;
+}
+
 function ageFromBirth(birth, now) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birth || '');
   if (!m) return -1;
@@ -35,8 +55,9 @@ export function createApi({ verify, now = () => Date.now() }) {
       throw e;
     }
   }
-  async function wallet(db, uid, t) {
+  async function wallet(db, uid, t, email) {
     await q(db, 'INSERT OR IGNORE INTO wallets (uid, created_at) VALUES (?, ?)', uid, t).run();
+    if (email) await q(db, 'UPDATE wallets SET email = ? WHERE uid = ? AND (email IS NULL OR email != ?)', email.toLowerCase(), uid, email.toLowerCase()).run();
     return q(db, 'SELECT balance, chips, premium_until AS premiumUntil, birth FROM wallets WHERE uid = ?', uid).first();
   }
   const credit = (db, uid, xu, chips) => q(db, 'UPDATE wallets SET balance = balance + ?, chips = chips + ? WHERE uid = ?', xu, chips, uid);
@@ -53,7 +74,7 @@ export function createApi({ verify, now = () => Date.now() }) {
   const route = (method, pattern, auth, fn) => routes.push({ method, re: new RegExp('^' + pattern.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), auth, fn });
 
   route('GET', '/me', 'user', async ({ db, user, t }) => {
-    const w = await wallet(db, user.uid, t);
+    const w = await wallet(db, user.uid, t, user.email);
     const rows = await q(db, 'SELECT id, kind, delta, chips_delta AS chips, title, created_at AS at FROM tx WHERE uid = ? ORDER BY id DESC LIMIT 50', user.uid).all();
     const own = await q(db, 'SELECT item_id AS id FROM entitlements WHERE uid = ?', user.uid).all();
     return { uid: user.uid, admin: user.admin, balance: w.balance, chips: w.chips, premiumUntil: w.premiumUntil, birth: w.birth, history: rows.results, owned: own.results.map((r) => r.id), serverTime: t };
@@ -121,12 +142,15 @@ export function createApi({ verify, now = () => Date.now() }) {
     const pending = await q(db, "SELECT COUNT(*) AS n FROM orders WHERE uid = ? AND status = 'pending'", user.uid).first();
     if (pending.n >= E.MAX_PENDING_ORDERS) throw new HttpError(429, 'too-many-pending');
     const code = typeof body.code === 'string' ? body.code.slice(0, 40) : null;
-    const r = await q(db, 'INSERT INTO orders (uid, kind, currency, amount, xu, plan_id, code, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', user.uid, kind, currency, amount, xu, planId, code, t).run();
+    const summary = typeof body.summary === 'string' ? body.summary.trim().slice(0, E.MAX_SUMMARY_LEN) || null : null;
+    const contact = cleanContact(body.contact);
+    const lines = cleanLines(body.lines);
+    const r = await q(db, 'INSERT INTO orders (uid, kind, currency, amount, xu, plan_id, code, email, name, summary, lines, contact, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', user.uid, kind, currency, amount, xu, planId, code, user.email || null, user.name || null, summary, lines, contact, t).run();
     return { ok: true, id: r.meta.last_row_id };
   });
 
   route('GET', '/orders/mine', 'user', async ({ db, user }) => ({
-    orders: (await q(db, 'SELECT id, kind, currency, amount, xu, plan_id AS planId, status, created_at AS at FROM orders WHERE uid = ? ORDER BY id DESC LIMIT 50', user.uid).all()).results,
+    orders: (await q(db, 'SELECT id, kind, currency, amount, xu, plan_id AS planId, code, summary, status, created_at AS at FROM orders WHERE uid = ? ORDER BY id DESC LIMIT 50', user.uid).all()).results,
   }));
 
   route('GET', '/admin/orders', 'admin', async ({ db, url }) => {
@@ -134,9 +158,23 @@ export function createApi({ verify, now = () => Date.now() }) {
     return { orders: (await q(db, 'SELECT * FROM orders WHERE status = ? ORDER BY id LIMIT 200', status).all()).results };
   });
 
-  route('POST', '/admin/orders/:id/approve', 'admin', async ({ db, user, t, params }) => {
+  route('POST', '/admin/orders/:id/approve', 'admin', async ({ db, user, t, params, body }) => {
+    const grantItems = [];
+    if (body.grants !== undefined) {
+      if (!Array.isArray(body.grants) || body.grants.length > E.MAX_ORDER_GRANTS) throw bad('bad-grants');
+      for (const id of new Set(body.grants)) {
+        if (typeof id !== 'string') throw bad('bad-grants');
+        // access:<mã ngôn ngữ> = quyền học theo khóa (không bán lẻ, chỉ admin cấp kèm đơn); còn lại phải có trong catalog.
+        if (!/^access:[a-z]{2}$/.test(id) && !(await q(db, 'SELECT 1 AS x FROM catalog WHERE id = ?', id).first())) throw bad('bad-grants');
+        grantItems.push(id);
+      }
+    }
+    // Quyền lợi bổ sung do admin quyết định (sau khi đối chiếu thanh toán), chỉ áp dụng cho đơn mua hàng và có trần.
+    const extra = { xu: body.xu ?? 0, chips: body.chips ?? 0, months: body.premiumMonths ?? 0 };
+    if (!isInt(extra.xu, 0, E.MAX_GRANT) || !isInt(extra.chips, 0, E.MAX_GRANT) || !isInt(extra.months, 0, E.MAX_PREMIUM_MONTHS_PER_ORDER)) throw bad('bad-grants');
     const order = await q(db, 'SELECT * FROM orders WHERE id = ?', +params.id).first();
     if (!order) throw new HttpError(404, 'no-order');
+    if (order.kind !== 'shop' && (extra.xu || extra.chips || extra.months)) throw bad('extras-shop-only');
     if (order.status !== 'pending') throw new HttpError(409, 'not-pending');
     await wallet(db, order.uid, t);
     const stmts = [
@@ -157,6 +195,15 @@ export function createApi({ verify, now = () => Date.now() }) {
       const day = dayKey(t);
       const bonus = [['shop', E.SHOP_TASK]];
       if (vnd >= E.BIG_SHOP_TASK.thresholdVnd) bonus.push(['bigshop', E.BIG_SHOP_TASK]);
+      if (extra.xu || extra.chips) {
+        stmts.push(credit(db, order.uid, extra.xu, extra.chips), txStmt(db, order.uid, 'grant', extra.xu, extra.chips, 'Quyền lợi đơn mua hàng', String(order.id), t));
+      }
+      if (extra.months) {
+        stmts.push(
+          q(db, 'UPDATE wallets SET premium_until = MAX(premium_until, ?) + ? WHERE uid = ?', t, extra.months * E.MONTH_MS, order.uid),
+          txStmt(db, order.uid, 'plan', 0, 0, `Premium ${extra.months} tháng theo đơn`, String(order.id), t),
+        );
+      }
       for (const [name, b] of bonus) {
         const done = await q(db, 'SELECT 1 AS x FROM claims WHERE uid = ? AND key = ?', order.uid, `task:${name}:${day}`).first();
         if (done) continue;
@@ -167,6 +214,8 @@ export function createApi({ verify, now = () => Date.now() }) {
         );
       }
     }
+    // Admin (đã đối chiếu thanh toán) có thể kèm danh sách quyền lợi theo đơn: mỗi mã phải có trong catalog.
+    for (const itemId of grantItems) stmts.push(q(db, 'INSERT OR IGNORE INTO entitlements (uid, item_id, created_at) VALUES (?, ?, ?)', order.uid, itemId, t));
     await atomic(db, stmts);
     return { ok: true };
   });
@@ -174,6 +223,23 @@ export function createApi({ verify, now = () => Date.now() }) {
   route('POST', '/admin/orders/:id/reject', 'admin', async ({ db, user, t, params }) => {
     const r = await q(db, "UPDATE orders SET status = 'rejected', reviewed_at = ?, reviewed_by = ? WHERE id = ? AND status = 'pending'", t, user.uid, +params.id).run();
     if (!r.meta.changes) throw new HttpError(409, 'not-pending');
+    return { ok: true };
+  });
+
+  // Admin cộng thưởng thủ công cho một người dùng (thay cho cơ chế `credits` lưu ở trình duyệt). Mọi lần cộng đều có dòng sổ ghi người cộng.
+  route('POST', '/admin/grant', 'admin', async ({ db, user, t, body }) => {
+    let uid = typeof body.uid === 'string' ? body.uid.trim() : '';
+    if (!uid && typeof body.email === 'string' && body.email.trim()) {
+      const hit = await q(db, 'SELECT uid FROM wallets WHERE email = ?', body.email.trim().toLowerCase()).first();
+      if (!hit) throw new HttpError(404, 'no-user');
+      uid = hit.uid;
+    }
+    const xu = body.xu === undefined ? 0 : body.xu;
+    const chips = body.chips === undefined ? 0 : body.chips;
+    if (!uid || uid.length > 128 || !isInt(xu, 0, E.MAX_GRANT) || !isInt(chips, 0, E.MAX_GRANT) || xu + chips === 0) throw bad('bad-grant');
+    const note = typeof body.note === 'string' && body.note.trim() ? body.note.trim().slice(0, 80) : 'Admin cộng thưởng';
+    await wallet(db, uid, t);
+    await atomic(db, [credit(db, uid, xu, chips), txStmt(db, uid, 'grant', xu, chips, note, `admin:${user.uid}`, t)]);
     return { ok: true };
   });
 

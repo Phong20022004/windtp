@@ -15,7 +15,10 @@ giá, mức thưởng, hạn mức do máy chủ quyết định (`src/economy.j
 - Nạp tiền vẫn là chuyển khoản + admin xác nhận thủ công: admin phải đối chiếu tiền thật trước khi bấm duyệt.
 - Chưa có giới hạn tần suất theo IP: bật Rate limiting rule trong Cloudflare cho `/orders`, `/posts`, `/claim`.
 - Các hằng số đánh dấu "(xác nhận)" trong `economy.js` được suy ra từ code app, hãy kiểm tra lại.
-- **App chưa gọi máy chủ này.** Cho tới khi nối xong (xem dưới), Xu/Premium trong app vẫn nằm ở localStorage.
+- **Bảng giá do chính admin đăng** (`PUT /admin/catalog` tự chạy khi admin mở app) và **quyền lợi của đơn mua hàng do app admin tính** từ bảng sản phẩm của admin rồi gửi kèm khi duyệt; máy chủ chỉ ép trần, tính nguyên tử, một lần, có nhật ký. Vì vậy tài khoản admin là điểm tin cậy cuối cùng: bảo vệ bằng mật khẩu mạnh và bật xác minh 2 bước.
+- **Chip thắng trong game** chỉ lưu ở trình duyệt (không quy ra tiền, không đổi lại Xu). Chip do máy chủ cấp (đổi từ Xu, thưởng, gói Premium) vẫn do máy chủ giữ.
+- **Chưa chuyển sang máy chủ** (hiện báo "tạm thời chưa dùng được"): hoa hồng giới thiệu, nhiệm vụ cộng đồng (`ctask-claim`), thưởng chia sẻ Facebook.
+- Nội dung bài học trả phí vẫn nằm trong gói tải về nên chỉ khóa mềm ở giao diện.
 
 ## Triển khai (một lần, miễn phí, không cần thẻ)
 1. Tạo tài khoản Cloudflare, cài `wrangler`, `wrangler login`.
@@ -28,9 +31,11 @@ giá, mức thưởng, hạn mức do máy chủ quyết định (`src/economy.j
 ## API
 `GET /me`, `POST /profile/birth`, `POST /claim {taskId}`, `POST /chips/exchange {xu}`, `POST /purchase {itemId}`,
 `POST /orders {kind: topup|plan|shop, currency, amount, planId, code}`, `GET /orders/mine`, `POST /posts {text}`, `GET /posts`;
-admin: `GET /admin/orders`, `POST /admin/orders/:id/approve|reject`, `GET /admin/posts`, `POST /admin/posts/:id/approve|reject`, `PUT /admin/catalog`.
+admin: `GET /admin/orders`, `POST /admin/orders/:id/approve|reject`, `GET /admin/posts`, `POST /admin/posts/:id/approve|reject`, `PUT /admin/catalog`, `POST /admin/grant {email, xu, chips, note}`.
+Đơn `shop` nhận thêm `lines [{id, qty}]` và `contact`; duyệt đơn nhận `grants`, `xu`, `chips`, `premiumMonths` (có trần).
 
-## Việc còn lại để dùng được
-Nối app vào các endpoint trên: bỏ ghi `balance/chips/premium/orders` vào localStorage ở 16 chỗ trong `src/js`
-(chủ yếu `quiz-cert-payment.js`, `lofi-radio.js`), thay bằng gọi API rồi hiển thị số liệu máy chủ trả về.
-Việc này cần build và chạy smoke test trình duyệt nên làm ở phiên có cài được gói.
+## Nối với app
+Build production cần địa chỉ máy chủ (https): đặt biến môi trường `WINDTP_API_URL` hoặc tạo `api.config.json` dạng `{"url": "https://windtp.<tên>.workers.dev"}`.
+Địa chỉ được nhúng vào trang và vào `connect-src` của CSP. Sau khi triển khai nhớ: đặt `ALLOWED_ORIGIN` đúng địa chỉ trang, gán claim `admin` cho tài khoản chủ,
+và gửi header `Content-Security-Policy: frame-ancestors 'none'` ở nơi host trang (thẻ meta không đặt được `frame-ancestors`).
+Test: `python3 tests/smoke_economy.py` chạy app thật với máy chủ này (SQLite), gồm cả kịch bản sửa localStorage.

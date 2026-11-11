@@ -49,6 +49,15 @@ class StubBackend implements AuthBackend {
     this.calls.resets.push(email);
   }
 
+  tokenCalls: boolean[] = [];
+  tokenFails = false;
+
+  async getIdToken(forceRefresh = false): Promise<string | null> {
+    this.tokenCalls.push(forceRefresh);
+    if (this.tokenFails) throw new Error("offline");
+    return "tok";
+  }
+
   async signOut(): Promise<void> {
     this.calls.signOuts += 1;
   }
@@ -161,5 +170,32 @@ describe("trạng thái phiên", () => {
     await rejectsWith(auth.requestPasswordReset("sai"), "invalid-email");
     await auth.requestPasswordReset(" A@B.vn ");
     assert.deepEqual(backend.calls.resets, ["a@b.vn"]);
+  });
+});
+
+describe("getIdToken", () => {
+  it("trả null khi chưa đăng nhập và không hỏi backend", async () => {
+    const backend = new StubBackend(null);
+    const auth = createAuthService(backend);
+    await auth.ready;
+    assert.equal(await auth.getIdToken(), null);
+    assert.deepEqual(backend.tokenCalls, []);
+  });
+
+  it("chuyển cờ làm mới xuống backend", async () => {
+    const backend = new StubBackend(user());
+    const auth = createAuthService(backend);
+    await auth.ready;
+    assert.equal(await auth.getIdToken(), "tok");
+    assert.equal(await auth.getIdToken(true), "tok");
+    assert.deepEqual(backend.tokenCalls, [false, true]);
+  });
+
+  it("mất mạng khi lấy token thì trả null thay vì ném lỗi", async () => {
+    const backend = new StubBackend(user());
+    const auth = createAuthService(backend);
+    await auth.ready;
+    backend.tokenFails = true;
+    assert.equal(await auth.getIdToken(), null);
   });
 });

@@ -22,6 +22,10 @@ mật khẩu hay email admin trong mã nguồn.
    môi trường `WINDTP_FIREBASE_CONFIG` (CI dùng secret cùng tên). Các trường bắt buộc: `apiKey`, `authDomain`, `projectId`, `appId`.
    Cấu hình web của Firebase không phải bí mật; an toàn nằm ở Authorized domains và quy tắc phía máy chủ.
 
+## Máy chủ ví (Xu, đơn hàng)
+Xu, chip, Premium và đơn hàng do máy chủ `worker/` (Cloudflare Workers + D1, miễn phí) giữ. Triển khai theo `worker/README.md`, rồi đặt
+`WINDTP_API_URL` (hoặc `api.config.json` `{"url": "https://..."}`) trước khi `npm run build`.
+
 ### Cấp quyền admin
 ```bash
 export GOOGLE_APPLICATION_CREDENTIALS=/đường/dẫn/service-account.json   # tải từ Firebase, KHÔNG commit

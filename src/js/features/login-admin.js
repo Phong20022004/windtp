@@ -1,24 +1,4 @@
   // ===== Quản trị BigBoss (quyền admin lấy từ custom claim của Firebase, xem src/auth) =====
-  function approveOrder(id) {
-    const o = state.orders.find((x) => x.id === id || x.code === id);
-    if (!o || o.status !== "pending") return false;
-    if (o.kind === "topup") earn(o.xu, `N\u1EA1p Xu (${o.code})`);
-    else {
-      const cur = o.currency;
-      state.daily.purchases += 1;
-      Object.keys(o.items || {}).forEach((pid) => { const p = PRODUCTS.find((x) => x.id === pid); if (p && p.plan) for (let i = 0; i < (o.items[pid] || 0); i++) grantCourse(p); });
-      const bigThreshold = BIG_THR[cur] || 1000000;
-      if (state.daily.bigOrderCurrency && state.daily.bigOrderCurrency !== cur) { state.daily.bigOrderAmount = 0; state.daily.bigOrder = false; }
-      state.daily.bigOrderCurrency = cur;
-      state.daily.bigOrderAmount = Number(state.daily.bigOrderAmount || 0) + o.total;
-      if (state.daily.bigOrderAmount >= bigThreshold) state.daily.bigOrder = true;
-    }
-    o.status = "done";
-    notify("\u2705", `\u0110\u01A1n ${o.code || ""} \u0111\xE3 \u0111\u01B0\u1EE3c x\xE1c nh\u1EADn`);
-    commit();
-    return true;
-  }
-  window.approveOrder = approveOrder;
   var EXPIRE_MS = 7 * 864e5;
   function purgeExpired() {
     const cut = Date.now() - EXPIRE_MS, old = (x) => x && typeof x.ts === "number" && x.ts < cut;
@@ -66,10 +46,13 @@
     Object.keys(state).forEach((k) => { if (!SHARED.includes(k)) delete state[k]; });
     const base = seed();
     Object.assign(state, base, mine || { userName: acct.admin ? "BigBoss WINDTP" : nm }, keep, { version: VERSION, settings: { ...base.settings, ...(mine && mine.settings) }, daily: { ...base.daily, ...(mine && mine.daily) } });
+    scrubEconomy(state);
     state.account = publicAccount(acct);
     commit();
+    econBoot();
   }
   function localSignOut() {
+    econReset();
     save();
     const keep = {}; SHARED.forEach((k) => { if (state[k] !== undefined) keep[k] = state[k]; });
     Object.keys(state).forEach((k) => { if (!SHARED.includes(k)) delete state[k]; });
@@ -82,7 +65,7 @@
     if (!state.account) showLogin();
     auth.ready.then((acct) => {
       if (!acct) { if (state.account) localSignOut(); return; }
-      if (state.account && state.account.email === acct.email) { state.account = publicAccount(acct); commit(); return; }
+      if (state.account && state.account.email === acct.email) { state.account = publicAccount(acct); commit(); econBoot(); return; }
       if (state.account) save();
       const gate = document.getElementById("login-gate"); if (gate) gate.remove();
       startSession(acct);

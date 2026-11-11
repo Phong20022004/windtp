@@ -2983,7 +2983,7 @@ window.__BBL_HTML=[
 "let _gt=0;const _go=()=>{if(Date.now()-_gt<700)return;_gt=Date.now();if(cus!==''&&!err())go()};$('#scu').onchange=_go;$('#scu').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();_go();e.target.blur()}};",
 "$('#scv').oninput=e=>{cv=e.target.value;sum()};",
 "$('#sbuy').onclick=go;",
-"$('#cbuy').onclick=()=>{if(blocked()||cerr())return;const n=+cv;if(W.xuToChips(n)){if(!W.chipLimit)ss(BK,{d:today(),n:bought()+n});cv='';toast('Đã đổi '+nf(n)+' WIND Coin thành '+nf(n)+' Chips.');setTimeout(R,800)}else toast('Đổi chưa thành công.')};",
+"$('#cbuy').onclick=()=>{if(blocked()||cerr())return;const n=+cv;Promise.resolve(W.xuToChips(n)).then(ok=>{if(ok){if(!W.chipLimit)ss(BK,{d:today(),n:bought()+n});cv='';toast('Đã đổi '+nf(n)+' WIND Coin thành '+nf(n)+' Chips.');setTimeout(R,800)}else toast('Đổi chưa thành công.')})};",
 "$('#sbc').onclick=()=>{if(blocked())return;if(minor){toast('Tài khoản dưới 18 tuổi chưa thể mua bằng tiền.');return}W.openCourses()};",
 "$('#sbt').onclick=()=>{if(blocked())return;W.gotoTasks()};",
 "sum();el.scrollTop=st0;if(msg){toast(msg);msg=null}}",

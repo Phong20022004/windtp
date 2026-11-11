@@ -33,5 +33,10 @@ export const BIG_SHOP_TASK = { xu: 4e4, chips: 4e4, thresholdVnd: 5e4 }; // (xá
 export const CHIP_LIM = { minorDaily: 1e5, adultDaily: 5e6 };
 export const MIN_CHIP_AGE = 12; // dưới 12 tuổi không đổi chip
 export const MAX_POST_LEN = 2000;
+export const MAX_SUMMARY_LEN = 200;
+export const MAX_ORDER_GRANTS = 10;
+export const MAX_ORDER_LINES = 20;
+export const MAX_PREMIUM_MONTHS_PER_ORDER = 1200; // 1200 tháng = gói trọn đời
+export const MAX_GRANT = 1e8; // mỗi lần admin cộng tối đa
 export const MAX_POSTS_PER_DAY = 10;
 export const MAX_PENDING_ORDERS = 5;

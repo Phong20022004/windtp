@@ -13,5 +13,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src/auth/**/*.ts", "tests/**/*.ts", "tools/**/*.ts"]
+  "include": ["src/auth/**/*.ts", "src/api/**/*.ts", "src/data/**/*.ts", "tests/**/*.ts", "tools/**/*.ts"]
 }

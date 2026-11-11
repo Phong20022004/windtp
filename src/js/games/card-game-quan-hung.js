@@ -79,7 +79,7 @@
     }
   });
   Object.assign(window.WINDTP, {
-    setChips: (n) => { n = Math.max(0, Math.floor(Number(n) || 0)); if (n === Number(state.chips || 0)) return; state.chips = n; commit(); },
+    setChips: setGameChips,
     plans: () => COURSE_PLANS.map((p) => ({ id: p.id, label: p.label, months: p.months, life: !!p.life, vnd: p.vnd, chips: p.chips })),
     money, MINPAY, chipRate: (c) => TOPUP_RATE[c] || 1, currency: () => state.settings.currency,
     buyChips: (cur, amt) => { { const ag = ageFromBirth(state.settings.birth); if (ag < 0) { toast("Hãy xác nhận ngày sinh trước khi mua chip."); return false; } if (ag < 18) { toast("Tài khoản dưới 18 tuổi chưa thể mua chip bằng tiền."); return false; } } ui.topup = null; ui.topupCode = null; const t = topupState(); t.src = "chip"; t.cur = TOPUP_RATE[cur] ? cur : state.settings.currency; t.amt = Math.floor(Number(amt)); const okAmt = t.amt > 0 && t.amt >= MINPAY[t.cur] && topupXu(t.cur, t.amt) <= 5e7; if (!okAmt) t.amt = TOPUP_PRESETS[t.cur][1]; t.step = okAmt ? 2 : 1; openModal(topupModal); return true; },
@@ -90,7 +90,7 @@
       const b = state.chipBuy, bought = b && b.d === todayIso() ? Number(b.n) || 0 : 0;
       return { group, cap, bought, left: Math.max(0, cap - bought) };
     },
-    xuToChips: (n) => { n = Math.floor(Number(n) || 0); if (n <= 0 || n > state.balance) return false; { const L = window.WINDTP.chipLimit(); if (n > L.left) { toast(L.cap ? "Vượt giới hạn đổi chip hôm nay." : "Hãy xác nhận ngày sinh (từ 12 tuổi) trước khi đổi chip."); return false; } state.chipBuy = { d: todayIso(), n: L.bought + n }; } if (!spend(n, `Đổi ${fmt(n)} Xu sang chip game`)) return false; state.chips = Number(state.chips || 0) + n; notify("🎰", `Đã đổi ${fmt(n)} Xu thành ${fmt(n)} chip game`); commit(); return true; },
+    xuToChips: exchangeChips,
     profile: () => { const s = state.settings, b = s.birth || "", a = ageFromBirth(b); return { name: state.userName, gender: s.gender || "", birth: b, age: a >= 0 ? a : null, avatarId: state.avatarId, frameId: myFrameId(), realm: cultivationIndex(), realmName: cultivationRank().name }; },
     setProfile: (o) => { o = o || {}; const s = state.settings; let ch = false; if (["nam", "nu", "khac"].includes(o.gender) && s.gender !== o.gender) { s.gender = o.gender; ch = true; } if (typeof o.birth === "string" && !s.birth) { const a = ageFromBirth(o.birth); if (a >= 0 && a <= 120) { s.birth = o.birth; ch = true; } } if (ch) commit(); return ch; },
     pfp: (name, avatarId, frameId, px, realm, emoji) => renderPfp(name, avatarId || "default", frameId || "none", px, { realm: realm == null ? null : realm, emoji: emoji || "" }),

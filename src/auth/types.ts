@@ -68,6 +68,8 @@ export interface AuthBackend {
   signInWithGoogle(persistence: Persistence): Promise<BackendUser>;
   sendPasswordReset(email: string): Promise<void>;
   signOut(): Promise<void>;
+  /** ID token hiện tại để gửi cho máy chủ (null khi chưa đăng nhập). `forceRefresh` bắt buộc làm mới, dùng khi máy chủ báo 401. */
+  getIdToken(forceRefresh?: boolean): Promise<string | null>;
 }
 
 export type AccountListener = (account: AuthAccount | null) => void;
@@ -85,4 +87,6 @@ export interface AuthService {
   loginWithGoogle(remember: boolean): Promise<AuthAccount>;
   requestPasswordReset(email: string): Promise<void>;
   logout(): Promise<void>;
+  /** ID token để gọi API ví/đơn hàng; null khi chưa đăng nhập hoặc mất mạng. */
+  getIdToken(forceRefresh?: boolean): Promise<string | null>;
 }

@@ -23,6 +23,8 @@ const OUT_DIR = path.dirname(OUT);
 
 const FIREBASE_ENTRY = "src/auth/entry-firebase.ts";
 const FAKE_ENTRY = "tests/fake-auth/entry.ts";
+const API_ENTRY = "src/api/entry.ts";
+const FAKE_API_ENTRY = "tests/fake-api/entry.ts";
 
 /**
  * Chỉ tách ảnh nhúng ở các file đã kiểm tra là chỉ dùng ảnh làm `src`/`url()`.
@@ -59,8 +61,25 @@ function loadFirebaseConfig(): Record<string, string> {
   return config as Record<string, string>;
 }
 
+/**
+ * Địa chỉ gốc của máy chủ ví (Cloudflare Worker): biến môi trường WINDTP_API_URL hoặc api.config.json {"url": "..."}.
+ * Bản test dùng máy chủ cục bộ do test dựng, địa chỉ được gán lúc chạy nên không cần cấu hình.
+ */
+function loadApiUrl(): string {
+  if (testAuth) return "";
+  const file = path.join(ROOT, "api.config.json");
+  const fromFile = fs.existsSync(file) ? (JSON.parse(fs.readFileSync(file, "utf8")) as { url?: unknown }).url : undefined;
+  const raw = process.env.WINDTP_API_URL ?? (typeof fromFile === "string" ? fromFile : undefined);
+  if (raw === undefined) {
+    throw new Error("Thiếu địa chỉ máy chủ API. Đặt biến môi trường WINDTP_API_URL hoặc tạo api.config.json ({\"url\": \"https://...\"}), xem worker/README.md.");
+  }
+  const url = new URL(raw);
+  if (url.protocol !== "https:") throw new Error("WINDTP_API_URL phải dùng https");
+  return url.origin;
+}
+
 function bundleTs(rel: string): string {
-  const actual = testAuth && rel === FIREBASE_ENTRY ? FAKE_ENTRY : rel;
+  const actual = testAuth && rel === FIREBASE_ENTRY ? FAKE_ENTRY : testAuth && rel === API_ENTRY ? FAKE_API_ENTRY : rel;
   const result = buildSync({
     entryPoints: [path.join(ROOT, actual)],
     bundle: true,
@@ -131,7 +150,9 @@ function writeOutputs(html: string): { dataBytes: number; assetBytes: number } {
 const manifest = buildDataFiles();
 const template = read("src/template.html");
 
+const apiUrl = loadApiUrl();
 const assembled = template
+  .replace("{{api-url}}", apiUrl)
   .replace("{{data-manifest}}", JSON.stringify(manifest))
   .replace(/\{\{(include|include-manifest|include-bundle):([^}]+)\}\}/g, (_match, kind: string, rel: string) => {
     if (kind === "include") return read(rel);
@@ -141,10 +162,10 @@ const assembled = template
   });
 
 // CSP tính sau cùng, từ chính HTML đã ghép (thẻ meta nằm ngoài mọi script nên không làm đổi băm).
-const csp = buildCsp({ html: assembled, embeddedDocs: [loadGameHtml(ROOT)], authDomain: testAuth ? undefined : loadFirebaseConfig().authDomain });
+const csp = buildCsp({ html: assembled, embeddedDocs: [loadGameHtml(ROOT)], authDomain: testAuth ? undefined : loadFirebaseConfig().authDomain, apiOrigin: apiUrl || undefined, allowLocalApi: testAuth });
 const html = assembled.replace("{{csp}}", () => csp);
 
-if (/\{\{(include|data-manifest|csp)/.test(html)) throw new Error("Còn placeholder chưa được thay thế");
+if (/\{\{(include|data-manifest|csp|api-url)/.test(html)) throw new Error("Còn placeholder chưa được thay thế");
 
 const { dataBytes, assetBytes } = writeOutputs(html);
 const mb = (bytes: number): string => (bytes / 1e6).toFixed(2);

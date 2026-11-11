@@ -1,4 +1,6 @@
-> **Cập nhật:** hướng Firestore rules bên dưới đã được thay bằng máy chủ Cloudflare Workers + D1 trong `worker/` (có test, chặn gian lận đúng nghĩa). `firestore.rules` chỉ giữ để tham khảo, đừng triển khai. Xem `worker/README.md`.
+> **Cập nhật mới nhất:** app đã nối vào máy chủ `worker/` (Xu, chip, Premium, mua hàng, đơn, admin duyệt đều do máy chủ giữ, `src/js/features/economy-api.js`). Phần Firestore dưới đây chỉ còn để tham khảo.
+
+> **Trước đó:** hướng Firestore rules bên dưới đã được thay bằng máy chủ Cloudflare Workers + D1 trong `worker/` (có test, chặn gian lận đúng nghĩa). `firestore.rules` chỉ giữ để tham khảo, đừng triển khai. Xem `worker/README.md`.
 
 # Backend ví / đơn hàng / kiểm duyệt (Firestore + security rules)
 
