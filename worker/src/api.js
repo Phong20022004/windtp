@@ -7,6 +7,8 @@ class HttpError extends Error {
 const bad = (code = 'bad-request') => new HttpError(400, code);
 
 const dayKey = (now) => new Date(now + E.VN_OFFSET_MS).toISOString().slice(0, 10);
+/** Tra bảng chỉ theo khóa riêng của đối tượng: chặn "constructor", "__proto__"... đi vào Object.prototype. */
+const own = (table, key) => (typeof key === 'string' && Object.hasOwn(table, key) ? table[key] : undefined);
 const isInt = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
 
 /** Giữ tối đa MAX_ORDER_LINES dòng {id, qty}; id là chuỗi ngắn, qty nguyên 1..99. Trả JSON hoặc null. */
@@ -62,9 +64,9 @@ export function createApi({ verify, now = () => Date.now() }) {
   }
   const credit = (db, uid, xu, chips) => q(db, 'UPDATE wallets SET balance = balance + ?, chips = chips + ? WHERE uid = ?', xu, chips, uid);
 
-  async function readBody(request) {
+  async function readBody(request, max = 8192) {
     const text = await request.text();
-    if (text.length > 8192) throw new HttpError(413, 'too-large');
+    if (text.length > max) throw new HttpError(413, 'too-large');
     if (!text) return {};
     try { const v = JSON.parse(text); if (v && typeof v === 'object') return v; } catch { /* rơi xuống lỗi */ }
     throw bad('bad-json');
@@ -74,7 +76,7 @@ export function createApi({ verify, now = () => Date.now() }) {
   const route = (method, pattern, auth, fn) => routes.push({ method, re: new RegExp('^' + pattern.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), auth, fn });
 
   route('GET', '/me', 'user', async ({ db, user, t }) => {
-    const w = await wallet(db, user.uid, t, user.email);
+    const w = await wallet(db, user.uid, t, user.emailVerified ? user.email : '');
     const rows = await q(db, 'SELECT id, kind, delta, chips_delta AS chips, title, created_at AS at FROM tx WHERE uid = ? ORDER BY id DESC LIMIT 50', user.uid).all();
     const own = await q(db, 'SELECT item_id AS id FROM entitlements WHERE uid = ?', user.uid).all();
     return { uid: user.uid, admin: user.admin, balance: w.balance, chips: w.chips, premiumUntil: w.premiumUntil, birth: w.birth, history: rows.results, owned: own.results.map((r) => r.id), serverTime: t };
@@ -89,7 +91,7 @@ export function createApi({ verify, now = () => Date.now() }) {
   });
 
   route('POST', '/claim', 'user', async ({ db, user, t, body }) => {
-    const task = E.DAILY_TASKS[body.taskId];
+    const task = own(E.DAILY_TASKS, body.taskId);
     if (!task) throw bad('unknown-task');
     await wallet(db, user.uid, t);
     await atomic(db, [
@@ -130,14 +132,14 @@ export function createApi({ verify, now = () => Date.now() }) {
     const { kind } = body;
     let currency = body.currency, amount = body.amount, xu = 0, planId = null;
     if (kind === 'topup') {
-      if (!(currency in E.TOPUP_RATE) || !isInt(amount, E.MINPAY[currency], E.MAX_TOPUP_UNITS[currency])) throw bad('bad-amount');
+      if (own(E.TOPUP_RATE, currency) === undefined || !isInt(amount, E.MINPAY[currency], E.MAX_TOPUP_UNITS[currency])) throw bad('bad-amount');
       xu = Math.round(amount * E.TOPUP_RATE[currency]);
     } else if (kind === 'plan') {
-      const plan = E.PLANS[body.planId];
+      const plan = own(E.PLANS, body.planId);
       if (!plan) throw bad('bad-plan');
       planId = body.planId; currency = 'VND'; amount = plan.vnd;
     } else if (kind === 'shop') {
-      if (!(currency in E.TOPUP_RATE) || !isInt(amount, 1, E.MAX_TOPUP_UNITS[currency])) throw bad('bad-amount');
+      if (own(E.TOPUP_RATE, currency) === undefined || !isInt(amount, 1, E.MAX_TOPUP_UNITS[currency])) throw bad('bad-amount');
     } else if (kind === 'fbshare' || kind === 'ctask') {
       currency = 'VND'; amount = 1;
     } else throw bad('bad-kind');
@@ -163,7 +165,7 @@ export function createApi({ verify, now = () => Date.now() }) {
     const contact = cleanContact(body.contact);
     const lines = cleanLines(body.lines);
     if (guards.length) await atomic(db, guards.map(([u, k]) => q(db, 'INSERT INTO claims (uid, key, created_at) VALUES (?, ?, ?)', u, k, t)));
-    const r = await q(db, 'INSERT INTO orders (uid, kind, currency, amount, xu, plan_id, code, email, name, summary, lines, contact, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', user.uid, kind, currency, amount, xu, planId, code, user.email || null, user.name || null, summary, lines, contact, t).run();
+    const r = await q(db, 'INSERT INTO orders (uid, kind, currency, amount, xu, plan_id, code, email, name, summary, lines, contact, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', user.uid, kind, currency, amount, xu, planId, code, user.emailVerified ? user.email || null : null, user.name || null, summary, lines, contact, t).run();
     return { ok: true, id: r.meta.last_row_id };
   });
 
@@ -328,7 +330,7 @@ export function createApi({ verify, now = () => Date.now() }) {
     const stmts = [q(db, 'DELETE FROM tasks')];
     for (const i of body.items) {
       if (!i || typeof i.id !== 'string' || !/^[\w-]{1,40}$/.test(i.id) || seen.has(i.id) || typeof i.title !== 'string' || !i.title.trim()
-        || !isInt(i.xu, 0, E.MAX_GRANT) || !isInt(i.chips, 0, E.MAX_GRANT) || !isInt(i.money, 0, 1e9) || !(i.cur in E.TOPUP_RATE)) throw bad('bad-item');
+        || !isInt(i.xu, 0, E.MAX_GRANT) || !isInt(i.chips, 0, E.MAX_GRANT) || !isInt(i.money, 0, 1e9) || own(E.TOPUP_RATE, i.cur) === undefined) throw bad('bad-item');
       seen.add(i.id);
       stmts.push(q(db, 'INSERT INTO tasks (id, title, xu, chips, money, cur) VALUES (?, ?, ?, ?, ?, ?)', i.id, i.title.trim().slice(0, 120), i.xu, i.chips, i.money, i.cur));
     }
@@ -361,7 +363,7 @@ export function createApi({ verify, now = () => Date.now() }) {
       let user;
       try { user = await verify(auth.startsWith('Bearer ') ? auth.slice(7) : '', env); } catch { throw new HttpError(401, 'unauthenticated'); }
       if (match.r.auth === 'admin' && !user.admin) throw new HttpError(403, 'forbidden');
-      const body = request.method === 'GET' ? {} : await readBody(request);
+      const body = request.method === 'GET' ? {} : await readBody(request, match.r.auth === 'admin' ? 65536 : 8192);
       const out = await match.r.fn({ db: env.DB, env, user, t: now(), body, url, params: match.m.groups || {} });
       if (out instanceof Response) return new Response(out.body, { status: out.status, headers }); // nội dung thô (bài học), vẫn kèm CORS/no-store
       return reply(200, out);

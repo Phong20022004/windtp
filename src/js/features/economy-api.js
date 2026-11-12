@@ -321,7 +321,7 @@
     if (!xu && !chips) { toast("Nhập số Xu hoặc chip"); return; }
     const ok = await econRun("grant", async () => {
       try { await econClient().admin.grant({ email, xu, chips, note: "Admin cộng thưởng" }); }
-      catch (e) { if (e && e.code === "not-found") { toast("Không tìm thấy email này: người nhận cần đăng nhập app ít nhất một lần"); return false; } throw e; }
+      catch (e) { if (e && e.code === "not-found") { toast("Không tìm thấy email này: người nhận cần đăng nhập app (đã xác minh email) ít nhất một lần"); return false; } throw e; }
       return true;
     });
     if (ok) toast("Đã cộng thưởng cho " + email);

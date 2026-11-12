@@ -15,7 +15,7 @@ const verify = async (token) => {
   if (prefix !== 'test' || !body) throw new Error('bad-token');
   const claims = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
   if (typeof claims.sub !== 'string' || !claims.sub) throw new Error('bad-sub');
-  return { uid: claims.sub, email: claims.email || '', name: String(claims.name || '').slice(0, 30), admin: claims.admin === true };
+  return { uid: claims.sub, email: claims.email || '', name: String(claims.name || '').slice(0, 30), emailVerified: claims.email_verified !== false, admin: claims.admin === true };
 };
 
 const handle = createApi({ verify });

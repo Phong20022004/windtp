@@ -16,6 +16,8 @@ giá, mức thưởng, hạn mức do máy chủ quyết định (`src/economy.j
 - Chưa có giới hạn tần suất theo IP: bật Rate limiting rule trong Cloudflare cho `/orders`, `/posts`, `/claim`.
 - Các hằng số đánh dấu "(xác nhận)" trong `economy.js` được suy ra từ code app, hãy kiểm tra lại.
 - **Bảng giá do chính admin đăng** (`PUT /admin/catalog` tự chạy khi admin mở app) và **quyền lợi của đơn mua hàng do app admin tính** từ bảng sản phẩm của admin rồi gửi kèm khi duyệt; máy chủ chỉ ép trần, tính nguyên tử, một lần, có nhật ký. Vì vậy tài khoản admin là điểm tin cậy cuối cùng: bảo vệ bằng mật khẩu mạnh và bật xác minh 2 bước.
+- **Bài đăng cộng đồng và tin rao vặt vẫn lưu cục bộ**: máy chủ đã có `/posts` và kiểm duyệt nhưng app chưa nối, nên kiểm duyệt chỉ có tác dụng trên máy admin. Không liên quan tiền, nhưng chưa có kiểm duyệt thật cho nội dung người dùng đăng.
+- Email chỉ được ghi vào ví (để admin cộng thưởng theo email) khi Firebase xác nhận `email_verified`.
 - **Chip thắng trong game** chỉ lưu ở trình duyệt (không quy ra tiền, không đổi lại Xu). Chip do máy chủ cấp (đổi từ Xu, thưởng, gói Premium) vẫn do máy chủ giữ.
 - Thưởng chia sẻ Facebook (1.000 Xu/kỳ nửa tháng, link không dùng lại) và nhiệm vụ đặc biệt (admin đăng bằng `PUT /admin/tasks`) chạy qua đơn `fbshare`/`ctask`: admin xem link/ảnh rồi duyệt, máy chủ tự quyết số thưởng. Tiền thật của nhiệm vụ vẫn do admin chuyển khoản thủ công.
 - **Chưa chuyển sang máy chủ**: hoa hồng giới thiệu (cần ánh xạ ID `WIND-…` sang tài khoản thật), hiện báo "tạm thời chưa dùng được".

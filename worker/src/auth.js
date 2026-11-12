@@ -8,14 +8,14 @@ const b64urlToBytes = (s) => {
 };
 const parseJson = (s) => JSON.parse(new TextDecoder().decode(b64urlToBytes(s)));
 
-let jwksCache = { keys: null, exp: 0 };
+let jwksCache = { keys: null, exp: 0, fetchedAt: 0 };
 
-async function loadJwks(fetchFn, now) {
-  if (jwksCache.keys && jwksCache.exp > now) return jwksCache.keys;
+async function loadJwks(fetchFn, now, force = false) {
+  if (!force && jwksCache.keys && jwksCache.exp > now) return jwksCache.keys;
   const res = await fetchFn(JWKS_URL);
   if (!res.ok) throw new Error('jwks-unavailable');
   const body = await res.json();
-  jwksCache = { keys: body.keys, exp: now + 3600 * 1000 };
+  jwksCache = { keys: body.keys, exp: now + 3600 * 1000, fetchedAt: now };
   return body.keys;
 }
 
@@ -28,8 +28,12 @@ export async function verifyFirebaseToken(token, { projectId, now = Date.now(), 
   const payload = parseJson(parts[1]);
   if (header.alg !== 'RS256' || !header.kid) throw new Error('bad-alg');
 
-  const keys = jwks || (await loadJwks(fetchFn, now));
-  const jwk = keys.find((k) => k.kid === header.kid);
+  let keys = jwks || (await loadJwks(fetchFn, now));
+  let jwk = keys.find((k) => k.kid === header.kid);
+  if (!jwk && !jwks) {
+    // Google xoay khóa ký định kỳ: gặp kid lạ thì tải lại một lần (giới hạn tần suất để không bị kích tải vô hạn).
+    if (now - jwksCache.fetchedAt > 60 * 1000) { keys = await loadJwks(fetchFn, now, true); jwk = keys.find((k) => k.kid === header.kid); }
+  }
   if (!jwk) throw new Error('unknown-key');
   const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
   const ok = await crypto.subtle.verify(
@@ -51,6 +55,7 @@ export async function verifyFirebaseToken(token, { projectId, now = Date.now(), 
     uid: payload.sub,
     email: typeof payload.email === 'string' ? payload.email : '',
     name: typeof payload.name === 'string' ? payload.name.slice(0, 30) : '',
+    emailVerified: payload.email_verified === true,
     admin: payload.admin === true,
   };
 }

@@ -249,7 +249,7 @@ test('admin cộng thưởng: chỉ admin, số hợp lệ, có dòng sổ ghi n
 
 test('admin cộng thưởng theo email đã xác thực; email lạ trả 404', async () => {
   const app = await makeApp();
-  await app.call('GET', '/me', { token: await app.as('u1', { email: 'An@Gmail.com' }) });
+  await app.call('GET', '/me', { token: await app.as('u1', { email: 'An@Gmail.com', email_verified: true }) });
   const grant = (body) => app.call('POST', '/admin/grant', { uid: 'boss', admin: true, body });
   assert.equal((await grant({ email: 'an@gmail.com', xu: 700 })).status, 200);
   assert.equal(app.balance('u1').balance, 700);
@@ -361,4 +361,50 @@ test('nội dung trả phí: cần Premium còn hạn và khóa học của đú
   app.state.t += 40 * 86400000;
   assert.equal((await get('u1', 'en')).status, 403, 'hết hạn Premium thì ngừng gửi');
   assert.equal((await get('boss', 'fr', true)).status, 404, 'chưa tải nội dung lên R2');
+});
+
+test('khóa kiểu "constructor"/"__proto__" không lọt qua bảng tra (nhiệm vụ, tiền tệ, gói, nhiệm vụ đặc biệt)', async () => {
+  const app = await makeApp();
+  for (const id of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+    assert.equal((await app.call('POST', '/claim', { uid: 'u1', body: { taskId: id } })).status, 400, `claim ${id}`);
+    assert.equal((await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'plan', planId: id } })).status, 400, `plan ${id}`);
+    assert.equal((await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'shop', currency: id, amount: 1000 } })).status, 400, `shop ${id}`);
+    assert.equal((await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'topup', currency: id, amount: 1000 } })).status, 400, `topup ${id}`);
+    const put = await app.call('PUT', '/admin/tasks', { uid: 'boss', admin: true, body: { items: [{ id: 't', title: 'x', xu: 1, chips: 0, money: 0, cur: id }] } });
+    assert.equal(put.status, 400, `task cur ${id}`);
+  }
+  assert.equal(app.balance('u1'), undefined, 'không tạo ví/cộng gì');
+});
+
+test('email chỉ được ghi vào ví khi token xác nhận đã xác minh; admin không cộng nhầm cho email chưa xác minh', async () => {
+  const app = await makeApp();
+  const unverified = await app.as('attacker', { email: 'victim@x.vn', email_verified: false });
+  const verified = await app.as('victim', { email: 'victim@x.vn', email_verified: true });
+  await app.call('GET', '/me', { token: unverified });
+  assert.equal((await app.call('POST', '/admin/grant', { uid: 'boss', admin: true, body: { email: 'victim@x.vn', xu: 100 } })).status, 404, 'email chưa xác minh không dùng được để cộng');
+  await app.call('GET', '/me', { token: verified });
+  assert.equal((await app.call('POST', '/admin/grant', { uid: 'boss', admin: true, body: { email: 'victim@x.vn', xu: 100 } })).status, 200);
+  assert.equal(app.balance('victim').balance, 100);
+  assert.equal(app.balance('attacker').balance, 0);
+});
+
+test('body lớn: người dùng thường giới hạn 8KB, admin (bảng giá/nhiệm vụ) được 64KB', async () => {
+  const app = await makeApp();
+  assert.equal((await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'shop', currency: 'VND', amount: 1000, summary: 'x'.repeat(9000) } })).status, 413);
+  const items = Array.from({ length: 300 }, (_, i) => ({ id: `item-${i}`, kind: 'avatar', name: 'Avatar số ' + i, price: 1000 + i }));
+  assert.ok(JSON.stringify({ items }).length > 8192);
+  assert.equal((await app.call('PUT', '/admin/catalog', { uid: 'boss', admin: true, body: { items } })).status, 200);
+});
+
+test('khóa công khai Firebase đổi: gặp kid lạ thì tải lại danh sách một lần', async () => {
+  const { makeIssuer } = await import('./helpers.mjs');
+  const a = await makeIssuer(), b = await makeIssuer();
+  b.jwk.kid = 'k2';
+  const tokenB = await b.sign({ sub: 'u' }, { kid: 'k2' });
+  let calls = 0;
+  const fetchFn = async () => { calls++; return new Response(JSON.stringify({ keys: calls === 1 ? [a.jwk] : [a.jwk, b.jwk] })); };
+  const opts = { projectId: PROJECT, fetchFn, now: Date.now() };
+  assert.equal((await verifyFirebaseToken(await a.sign({ sub: 'u' }), opts)).uid, 'u');
+  assert.equal((await verifyFirebaseToken(tokenB, { ...opts, now: opts.now + 61000 })).uid, 'u', 'sau khi xoay khóa vẫn xác thực được');
+  assert.equal(calls, 2);
 });
