@@ -2,6 +2,8 @@ import { createApiClient, type ApiClient } from "./client";
 import { createWalletStore, type WalletStore } from "./wallet";
 
 export interface WindtpApi {
+  /** Gốc địa chỉ máy chủ, không có dấu / cuối (dùng ghép địa chỉ ảnh). */
+  baseUrl: string;
   client: ApiClient;
   wallet: WalletStore;
 }
@@ -18,7 +20,7 @@ export function installApi(baseUrl: string, win: Window = window): WindtpApi {
   if (!baseUrl) throw new Error("Thiếu địa chỉ máy chủ API (WINDTP_API_URL)");
   const client = createApiClient({ baseUrl, getToken: (forceRefresh) => win.WindtpAuth.getIdToken(forceRefresh) });
   const wallet = createWalletStore(client);
-  const api: WindtpApi = { client, wallet };
+  const api: WindtpApi = { baseUrl: baseUrl.replace(/\/+$/, ""), client, wallet };
   win.WindtpApi = api;
   return api;
 }

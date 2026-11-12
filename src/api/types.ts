@@ -175,3 +175,27 @@ export class ApiError extends Error {
     this.serverCode = serverCode;
   }
 }
+
+/** Sản phẩm admin thêm (đã được máy chủ làm sạch); `img` là khóa ảnh trên máy chủ. */
+export interface StoreProduct {
+  id: string;
+  custom: true;
+  name: string;
+  desc: string;
+  price: { VND: number; KRW: number; JPY: number };
+  cat: string;
+  sub: string;
+  emoji: string;
+  img?: string;
+  ts: number;
+  rewardXu: number;
+  rewardChips: number;
+}
+
+export interface StoreConfig {
+  customProducts: StoreProduct[];
+  productEdits: Record<string, Partial<Omit<StoreProduct, "id" | "custom" | "cat" | "sub" | "emoji" | "ts">>>;
+  hiddenProducts: string[];
+  customCats: { id: string; name: string; emoji: string }[];
+  updatedAt: number;
+}

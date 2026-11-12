@@ -69,7 +69,8 @@
   /** Nhiệm vụ đặc biệt (admin đăng) và trạng thái chia sẻ Facebook/nhiệm vụ của chính người dùng, đều lấy từ máy chủ. */
   function econSocial() {
     const api = econClient();
-    return Promise.all([api.tasks(), api.myOrders(), api.posts(), isAdmin() ? api.admin.posts() : Promise.resolve([])]).then(([tasks, orders, posts, pending]) => {
+    return Promise.all([api.tasks(), api.myOrders(), api.posts(), isAdmin() ? api.admin.posts() : Promise.resolve([]), api.store()]).then(([tasks, orders, posts, pending, store]) => {
+      econApplyStore(store);
       // Bài đăng do máy chủ giữ; lượt thích và bình luận vẫn chỉ lưu trên máy này.
       const old = new Map((state.posts || []).map((p) => [p.id, p]));
       const keep = (id) => old.get(id) || {};
@@ -428,3 +429,73 @@
   });
   const openModerationOrig = actions["open-moderation"];
   actions["open-moderation"] = async (el, ev) => { if (!isAdmin()) { openModerationOrig(el, ev); return; } await econSocial().catch(() => { }); openModerationOrig(el, ev); };
+
+  // ----- Cấu hình cửa hàng do admin đăng (sản phẩm, chỉnh sửa, ẩn, danh mục) và ảnh sản phẩm trên R2 -----
+  var lastStoreJson = "";
+  function econImgUrl(key) { return typeof key === "string" && /^img\//.test(key) ? window.WindtpApi.baseUrl + "/" + key : key; }
+  function econImgKey(url) { const root = window.WindtpApi.baseUrl + "/"; return typeof url === "string" && url.indexOf(root + "img/") === 0 ? url.slice(root.length) : null; }
+  function econStoreView(cfg) {
+    const fix = (o) => (o && o.img ? Object.assign({}, o, { img: econImgUrl(o.img) }) : o);
+    const edits = {}; Object.keys(cfg.productEdits).forEach((k) => { edits[k] = fix(cfg.productEdits[k]); });
+    return { customProducts: cfg.customProducts.map(fix), productEdits: edits, hiddenProducts: cfg.hiddenProducts.slice(), customCats: cfg.customCats.slice() };
+  }
+  function econApplyStore(cfg) {
+    // Admin lần đầu dùng máy chủ: chuyển dữ liệu cửa hàng cũ trên máy này lên một lần.
+    if (isAdmin() && !cfg.updatedAt && window.__legacyStore) {
+      const legacy = window.__legacyStore; window.__legacyStore = null;
+      Object.assign(state, { customProducts: legacy.customProducts, productEdits: legacy.productEdits, hiddenProducts: legacy.hiddenProducts, customCats: legacy.customCats });
+      syncCustomProducts(); econPutStore(); return;
+    }
+    window.__legacyStore = null;
+    const view = econStoreView(cfg), json = JSON.stringify(view);
+    if (json === lastStoreJson) return;
+    lastStoreJson = json;
+    Object.assign(state, view);
+    syncCustomProducts();
+    if (["shop", "community", "utilities"].includes(ui.tab)) renderTab(ui.tab);
+  }
+  function econDataBlob(dataUrl) {
+    const m = /^data:(image\/[a-z+]+);base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl); if (!m) return null;
+    const bin = atob(m[2]), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: m[1] });
+  }
+  /** Ảnh mới chọn (data URL) được tải lên R2 rồi thay bằng địa chỉ máy chủ; ảnh đã ở máy chủ giữ nguyên. */
+  async function econUploadImg(o) {
+    if (!o || !o.img || econImgKey(o.img)) return;
+    const blob = econDataBlob(o.img);
+    if (!blob) { delete o.img; return; }
+    o.img = econImgUrl(await econClient().admin.uploadImage(blob));
+  }
+  function econPutStore() {
+    if (!isAdmin()) return Promise.resolve(false);
+    return econRun("store", async () => {
+      for (const p of state.customProducts) await econUploadImg(p);
+      for (const k of Object.keys(state.productEdits || {})) await econUploadImg(state.productEdits[k]);
+      const strip = (o) => { if (!o || !o.img) return o; const key = econImgKey(o.img); const c = Object.assign({}, o); if (key) c.img = key; else delete c.img; return c; };
+      const edits = {}; Object.keys(state.productEdits || {}).forEach((k) => { edits[k] = strip(state.productEdits[k]); });
+      await econClient().admin.putStore({ customProducts: state.customProducts.map(strip), productEdits: edits, hiddenProducts: state.hiddenProducts || [], customCats: state.customCats || [] });
+      lastStoreJson = "";
+      commit();
+      return true;
+    });
+  }
+  ["pp-submit", "pp-edit-save", "pp-edit-reset", "pp-del"].forEach((name) => {
+    const orig = actions[name];
+    if (typeof orig !== "function") return;
+    actions[name] = (el, ev) => {
+      if (!isAdmin()) return;
+      const before = JSON.stringify([state.customProducts, state.productEdits, state.hiddenProducts]);
+      orig(el, ev);
+      if (JSON.stringify([state.customProducts, state.productEdits, state.hiddenProducts]) !== before) econPutStore();
+    };
+  });
+  ["open-category", "submit-category", "delete-category"].forEach((name) => {
+    const orig = actions[name];
+    actions[name] = (el, ev) => {
+      if (!isAdmin()) { toast("Chỉ BigBoss mới tạo và xóa được danh mục."); return; }
+      const before = JSON.stringify(state.customCats);
+      orig(el, ev);
+      if (JSON.stringify(state.customCats) !== before) econPutStore();
+    };
+  });

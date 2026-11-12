@@ -16,6 +16,7 @@ giá, mức thưởng, hạn mức do máy chủ quyết định (`src/economy.j
 - Chưa có giới hạn tần suất theo IP: bật Rate limiting rule trong Cloudflare cho `/orders`, `/posts`, `/claim`.
 - Các hằng số đánh dấu "(xác nhận)" trong `economy.js` được suy ra từ code app, hãy kiểm tra lại.
 - **Bảng giá do chính admin đăng** (`PUT /admin/catalog` tự chạy khi admin mở app) và **quyền lợi của đơn mua hàng do app admin tính** từ bảng sản phẩm của admin rồi gửi kèm khi duyệt; máy chủ chỉ ép trần, tính nguyên tử, một lần, có nhật ký. Vì vậy tài khoản admin là điểm tin cậy cuối cùng: bảo vệ bằng mật khẩu mạnh và bật xác minh 2 bước.
+- **Cửa hàng do admin đăng nằm ở máy chủ** (`PUT /admin/store`, `GET /store`): sản phẩm thêm/sửa/ẩn và danh mục tin rao. Ảnh sản phẩm tải lên R2 qua `PUT /admin/image` (JPEG/PNG/WebP ≤ 250KB, nhận dạng theo nội dung, tên theo hash) và phục vụ công khai ở `GET /img/<hash>`. Danh mục tin rao nay chỉ admin tạo/xóa. Admin dùng máy chủ lần đầu thì dữ liệu cửa hàng cũ trên máy mình được chuyển lên một lần.
 - **Bài đăng cộng đồng do máy chủ giữ và kiểm duyệt** (admin đăng hiện ngay, người dùng chờ duyệt, chỉ chủ bài hoặc admin xóa được). **Lượt thích, bình luận và tin rao vặt (Chợ đồ cũ, Việc làm, Phòng trọ) vẫn chỉ lưu trên từng máy**: chưa có kiểm duyệt thật cho tin rao vặt.
 - Email chỉ được ghi vào ví (để admin cộng thưởng theo email) khi Firebase xác nhận `email_verified`.
 - **Chip thắng trong game** chỉ lưu ở trình duyệt (không quy ra tiền, không đổi lại Xu). Chip do máy chủ cấp (đổi từ Xu, thưởng, gói Premium) vẫn do máy chủ giữ.

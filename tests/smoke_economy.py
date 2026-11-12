@@ -9,6 +9,8 @@ from support import serve_dist, serve_api, api_call, api_token
 
 STATE_KEY = 'windtp-super-app-v2'
 failures, page_errors = [], []
+# PNG 1x1 hợp lệ, dùng làm ảnh sản phẩm trong test
+PNG_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 
 
 def check(cond, label):
@@ -68,6 +70,8 @@ with serve_dist() as URL, sync_playwright() as p:
         ctx_user = browser.new_context(viewport={'width': 420, 'height': 900}, bypass_csp=True)
 
         # Admin: uid-0 (được seed đầu tiên); người dùng: uid-3 (seed 3 tài khoản đệm để uid không trùng giữa hai trình duyệt)
+        legacy = {'customProducts': [{'id': 'px-old', 'custom': True, 'name': 'Sách cũ của admin', 'desc': 'Từ localStorage', 'price': {'VND': 50000, 'KRW': 2600, 'JPY': 310}, 'cat': 'study', 'sub': 'books', 'emoji': '📚', 'img': PNG_DATA_URL, 'ts': 1, 'rewardXu': 0, 'rewardChips': 0}], 'productEdits': {}, 'hiddenProducts': [], 'customCats': []}
+        ctx_admin.add_init_script("try{localStorage.setItem(%s, %s)}catch(e){}" % (json.dumps(STATE_KEY), json.dumps(json.dumps({'version': 2, 'account': None, 'shared': legacy}))))
         adm = open_page(ctx_admin, API)
         adm.evaluate("window.__fakeAuth.seed({email:'boss@wind.vn',password:'secret1',name:'Boss',admin:true})")
         login(adm, 'boss@wind.vn', 'secret1')
@@ -223,6 +227,21 @@ with serve_dist() as URL, sync_playwright() as p:
         r = adm.evaluate("window.WindtpApi.client.deletePost(%d).then(()=>'ok',e=>e.serverCode)" % usr.evaluate("window.WindtpApi.client.posts().then(p=>p[0].id)"))
         check(r == 'ok', 'E45 admin xóa được bài của người dùng')
 
+        # 9e. Cửa hàng do admin đăng: dữ liệu cũ trên máy admin được chuyển lên, người dùng khác thấy, ảnh nằm ở máy chủ
+        status, store = api_call(API, 'GET', '/store', user_token, origin=ORIGIN)
+        ok_store = eventually(lambda: api_call(API, 'GET', '/store', user_token, origin=ORIGIN)[1]['customProducts'])
+        status, store = api_call(API, 'GET', '/store', user_token, origin=ORIGIN)
+        prod = store['customProducts'][0] if store['customProducts'] else {}
+        check(prod.get('name') == 'Sách cũ của admin' and str(prod.get('img', '')).startswith('img/'), 'E47 dữ liệu cửa hàng cũ trên máy admin được chuyển lên máy chủ kèm ảnh (%s)' % prod.get('img'))
+        usr.evaluate('()=>window.dispatchEvent(new Event("online"))')
+        eventually(lambda: 'Sách cũ của admin' in wallet_text(usr) or True)
+        seen = eventually(lambda: usr.evaluate("()=>{const b=document.createElement('button');b.dataset.action='goto';b.dataset.tab='shop';document.body.appendChild(b);b.click();b.remove();return document.body.innerText.includes('Sách cũ của admin')}"))
+        check(seen, 'E48 người dùng thường thấy sản phẩm admin đăng trong cửa hàng')
+        src = usr.evaluate("(()=>{const i=[...document.querySelectorAll('img')].find(x=>x.src.includes('/img/'));return i?i.src:''})()")
+        check(src.startswith(API + '/img/'), 'E49 ảnh sản phẩm tải từ máy chủ (%s)' % src[:60])
+        status, _ = api_call(API, 'PUT', '/admin/store', user_token, {'customProducts': [], 'productEdits': {}, 'hiddenProducts': [], 'customCats': []}, ORIGIN)
+        check(status == 403, 'E50 người thường không ghi được cấu hình cửa hàng')
+
         # 9. Người dùng thấy số dư đúng sau khi làm mới ví
         usr.evaluate('window.WindtpApi.wallet.refresh()')
         usr.reload(wait_until='load', timeout=240000)
@@ -239,6 +258,6 @@ with serve_dist() as URL, sync_playwright() as p:
 
         browser.close()
 
-check(not page_errors, 'E46 không có lỗi JS: %s' % page_errors[:3])
+check(not page_errors, 'E51 không có lỗi JS: %s' % page_errors[:3])
 print('Thất bại: %d' % len(failures))
 sys.exit(1 if failures else 0)

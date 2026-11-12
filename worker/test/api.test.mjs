@@ -428,3 +428,49 @@ test('bài đăng: admin đăng hiện ngay, người dùng chờ duyệt; chỉ
   assert.equal((await app.call('POST', `/posts/${adm.json.id}/delete`, { uid: 'boss', admin: true })).status, 200);
   assert.equal((await app.call('GET', '/posts', { uid: 'u2' })).json.posts.length, 0);
 });
+
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
+
+test('ảnh sản phẩm: chỉ admin tải lên, nhận dạng theo nội dung, tên theo hash, phục vụ công khai và an toàn', async () => {
+  const app = await makeApp();
+  assert.equal((await app.call('PUT', '/admin/image', { uid: 'u1', raw: PNG })).status, 403);
+  assert.equal((await app.call('PUT', '/admin/image', { uid: 'boss', admin: true, raw: new TextEncoder().encode('<svg onload=alert(1)>') })).status, 400, 'SVG/HTML bị từ chối');
+  assert.equal((await app.call('PUT', '/admin/image', { uid: 'boss', admin: true, raw: new Uint8Array(300 * 1024).fill(0xff) })).status, 413);
+  const up = await app.call('PUT', '/admin/image', { uid: 'boss', admin: true, raw: PNG });
+  assert.equal(up.status, 200);
+  assert.match(up.json.key, /^img\/[0-9a-f]{32}\.png$/);
+  const again = await app.call('PUT', '/admin/image', { uid: 'boss', admin: true, raw: PNG });
+  assert.equal(again.json.key, up.json.key, 'cùng nội dung cùng khóa');
+  const got = await app.call('GET', '/' + up.json.key, {});
+  assert.equal(got.status, 200);
+  assert.equal(got.headers.get('content-type'), 'image/png');
+  assert.match(got.headers.get('cache-control'), /immutable/);
+  assert.equal(got.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal((await app.call('GET', '/img/..%2Fvocab%2Fen.json', {})).status, 404, 'không đọc được khóa ngoài thư mục ảnh');
+  assert.equal((await app.call('GET', '/img/' + 'a'.repeat(32) + '.png', {})).status, 404);
+});
+
+test('cấu hình cửa hàng: admin ghi, mọi người đọc; dữ liệu sai bị từ chối cả gói', async () => {
+  const app = await makeApp();
+  const img = (await app.call('PUT', '/admin/image', { uid: 'boss', admin: true, raw: PNG })).json.key;
+  const good = {
+    customProducts: [{ id: 'px-1', custom: true, name: 'Sách mới', desc: 'Mô tả', price: { VND: 100000, KRW: 5000, JPY: 600 }, cat: 'study', sub: 'books', emoji: '📚', img, ts: 1, rewardXu: 10, rewardChips: 0, evil: '<script>' }],
+    productEdits: { 'sp-1': { name: 'Tên mới', price: { VND: 90000 } } },
+    hiddenProducts: ['sp-2'],
+    customCats: [{ id: 'cat-1', name: 'Đồ ăn', emoji: '🍜' }],
+  };
+  assert.equal((await app.call('PUT', '/admin/store', { uid: 'u1', body: good })).status, 403);
+  assert.equal((await app.call('PUT', '/admin/store', { uid: 'boss', admin: true, body: good })).status, 200);
+  const read = (await app.call('GET', '/store', { uid: 'u2' })).json;
+  assert.equal(read.customProducts[0].name, 'Sách mới');
+  assert.equal(read.customProducts[0].evil, undefined, 'trường lạ bị bỏ');
+  assert.equal(read.productEdits['sp-1'].price.VND, 90000);
+  assert.deepEqual(read.hiddenProducts, ['sp-2']);
+  const bad = (patch) => app.call('PUT', '/admin/store', { uid: 'boss', admin: true, body: { ...good, ...patch } });
+  assert.equal((await bad({ customProducts: [{ ...good.customProducts[0], img: 'https://evil.com/x.png' }] })).status, 400, 'ảnh phải là khóa của máy chủ');
+  assert.equal((await bad({ customProducts: [{ ...good.customProducts[0], price: { VND: -5, KRW: 1, JPY: 1 } }] })).status, 400);
+  assert.equal((await bad({ customProducts: [{ ...good.customProducts[0], id: '../x' }] })).status, 400);
+  assert.equal((await bad({ productEdits: { 'sp-1': { rewardXu: 1e12 } } })).status, 400, 'thưởng vượt trần');
+  assert.equal((await bad({ customCats: Array.from({ length: 9 }, (_, i) => ({ id: 'c' + i, name: 'Danh mục', emoji: '📌' })) })).status, 400);
+  assert.equal((await app.call('GET', '/store', { uid: 'u2' })).json.productEdits['sp-1'].name, 'Tên mới', 'gói sai không ghi đè dữ liệu cũ');
+});

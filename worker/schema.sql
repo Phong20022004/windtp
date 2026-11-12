@@ -94,3 +94,10 @@ CREATE TABLE IF NOT EXISTS posts (
   reviewed_by TEXT
 );
 CREATE INDEX IF NOT EXISTS posts_status ON posts (status, id DESC);
+
+-- Cấu hình cửa hàng do admin đăng: một dòng JSON đã làm sạch (xem worker/src/store.js).
+CREATE TABLE IF NOT EXISTS store (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  json TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);

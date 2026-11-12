@@ -6,6 +6,7 @@ import {
   type ApiErrorCode,
   type CatalogItem,
   type SpecialTask,
+  type StoreConfig,
   type Me,
   type Order,
   type OrderInput,
@@ -57,6 +58,8 @@ export interface ApiClient {
   createOrder(input: OrderInput): Promise<{ id: number }>;
   myOrders(): Promise<Order[]>;
   tasks(): Promise<SpecialTask[]>;
+  /** Cấu hình cửa hàng do admin đăng (sản phẩm, chỉnh sửa, ẩn, danh mục). */
+  store(): Promise<StoreConfig>;
   /** Từ vựng đầy đủ của một ngôn ngữ; máy chủ chỉ gửi khi còn Premium và có khóa học đó. */
   vocabContent(lang: string): Promise<unknown>;
   createPost(text: string, tag: string): Promise<{ id: number; status: "pending" | "approved" }>;
@@ -71,6 +74,9 @@ export interface ApiClient {
     rejectPost(id: number): Promise<void>;
     putCatalog(items: CatalogItem[]): Promise<number>;
     putTasks(items: SpecialTask[]): Promise<number>;
+    putStore(store: Omit<StoreConfig, "updatedAt">): Promise<void>;
+    /** Tải ảnh (JPEG/PNG/WebP, tối đa 250KB) lên R2; trả về khóa dạng img/<hash>.jpg. */
+    uploadImage(image: Blob): Promise<string>;
     grant(input: { uid?: string; email?: string; xu?: number; chips?: number; note?: string }): Promise<void>;
   };
 }
@@ -83,9 +89,10 @@ export function createApiClient({ baseUrl, getToken, fetchImpl }: ApiClientOptio
     const token = await getToken(forceRefresh);
     if (!token) throw new ApiError("unauthenticated", 401, "no-token");
     const headers: Record<string, string> = { authorization: `Bearer ${token}` };
-    if (body !== undefined) headers["content-type"] = "application/json";
+    const binary = body instanceof Blob;
+    if (body !== undefined) headers["content-type"] = binary ? "application/octet-stream" : "application/json";
     try {
-      return await doFetch(root + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), cache: "no-store" });
+      return await doFetch(root + path, { method, headers, body: body === undefined ? undefined : binary ? body : JSON.stringify(body), cache: "no-store" });
     } catch {
       throw new ApiError("network");
     }
@@ -131,6 +138,7 @@ export function createApiClient({ baseUrl, getToken, fetchImpl }: ApiClientOptio
     purchase: async (itemId) => ({ itemId: String((await post("/purchase", { itemId })).itemId ?? itemId) }),
     createOrder: async (input) => ({ id: Number((await post("/orders", input)).id) }),
     vocabContent: (lang) => request<unknown>("GET", `/content/vocab/${encodeURIComponent(lang)}`),
+    store: async () => { const r = await request<StoreConfig>("GET", "/store"); if (!Array.isArray(r.customProducts) || !Array.isArray(r.hiddenProducts) || !Array.isArray(r.customCats)) throw new ApiError("bad-response", 200); return r; },
     tasks: async () => (await request<{ tasks: SpecialTask[] }>("GET", "/tasks")).tasks,
     myOrders: async () => (await request<{ orders: Order[] }>("GET", "/orders/mine")).orders,
     createPost: async (text, tag) => { const r = await post("/posts", { text, tag }); return { id: Number(r.id), status: r.status === "approved" ? "approved" : "pending" }; },
@@ -144,6 +152,8 @@ export function createApiClient({ baseUrl, getToken, fetchImpl }: ApiClientOptio
       approvePost: (id) => done(post(`/admin/posts/${id}/approve`)),
       rejectPost: (id) => done(post(`/admin/posts/${id}/reject`)),
       grant: (input) => done(post("/admin/grant", input)),
+      putStore: (store) => done(request("PUT", "/admin/store", store)),
+      uploadImage: async (image) => String((await request<{ key: string }>("PUT", "/admin/image", image)).key),
       putTasks: async (items) => Number((await request<{ count: number }>("PUT", "/admin/tasks", { items })).count),
       putCatalog: async (items) => Number((await request<{ count: number }>("PUT", "/admin/catalog", { items })).count),
     },

@@ -49,15 +49,17 @@ export async function makeApp({ clock } = {}) {
   const verify = (token) => verifyFirebaseToken(token, { projectId: PROJECT, now: state.t, jwks: [issuer.jwk] });
   const handle = createApi({ verify, now: () => state.t });
   const objects = new Map([['vocab/en.json', '{"Sach|0":[[1,[["a"]]],[2,[["b"]]]]}'], ['vocab/ko.json', '{"K|0":[[1,[["c"]]]]}']]);
-  const env = { DB: db, ALLOWED_ORIGIN: ORIGIN, CONTENT: { get: async (key) => (objects.has(key) ? { body: objects.get(key) } : null) } };
+  const env = { DB: db, ALLOWED_ORIGIN: ORIGIN, CONTENT: { get: async (key) => (objects.has(key) ? { body: objects.get(key) } : null), put: async (key, bytes) => { objects.set(key, bytes); } } };
   const as = (uid, extra = {}) => issuer.sign({ sub: uid, name: uid, ...extra });
-  const call = async (method, path, { uid, token, body, admin, origin = ORIGIN } = {}) => {
+  const call = async (method, path, { uid, token, body, raw, admin, origin = ORIGIN } = {}) => {
     const headers = { origin };
     const tk = token ?? (uid ? await as(uid, admin ? { admin: true } : {}) : null);
     if (tk) headers.authorization = `Bearer ${tk}`;
-    const res = await handle(new Request('https://api.test' + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }), env);
-    return { status: res.status, json: res.status === 204 ? null : await res.json() };
+    const res = await handle(new Request('https://api.test' + path, { method, headers, body: raw ?? (body === undefined ? undefined : JSON.stringify(body)) }), env);
+    const type = res.headers.get('content-type') || '';
+    if (!type.includes('json')) return { status: res.status, bytes: new Uint8Array(await res.arrayBuffer()), headers: res.headers };
+    return { status: res.status, json: res.status === 204 ? null : await res.json(), headers: res.headers };
   };
   const balance = (uid) => db.sqlite.prepare('SELECT balance, chips, premium_until AS p FROM wallets WHERE uid = ?').get(uid);
-  return { call, db, issuer, state, balance, as };
+  return { call, db, issuer, state, balance, as, objects };
 }

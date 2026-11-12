@@ -20,8 +20,11 @@ const verify = async (token) => {
 
 const handle = createApi({ verify });
 // Giả lập R2: đọc bản đầy đủ do build xuất ra premium-content/ (cùng nội dung sẽ được tải lên R2 thật).
+const uploaded = new Map(); // ảnh tải lên trong lúc test (R2 giả, mất khi tắt máy chủ)
 const CONTENT = {
+  put: async (key, bytes) => { uploaded.set(key, Buffer.from(bytes)); },
   get: async (key) => {
+    if (uploaded.has(key)) return { body: uploaded.get(key) };
     const file = new URL(`../premium-content/${key}`, import.meta.url);
     return /^vocab\/[a-z]{2}\.json$/.test(key) && fs.existsSync(file) ? { body: fs.readFileSync(file) } : null;
   },

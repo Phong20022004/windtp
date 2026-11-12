@@ -1,5 +1,6 @@
 // API ví / đơn hàng / kiểm duyệt. Trình duyệt chỉ GỬI YÊU CẦU; mọi số tiền, giá, thưởng do máy chủ quyết định.
 import * as E from './economy.js';
+import { sanitizeStore, sniffImage, IMAGE_TYPES, IMG_KEY, MAX_IMAGE_BYTES } from './store.js';
 
 class HttpError extends Error {
   constructor(status, code) { super(code); this.status = status; this.code = code; }
@@ -350,6 +351,23 @@ export function createApi({ verify, now = () => Date.now() }) {
   });
   route('GET', '/tasks', 'user', async ({ db }) => ({ tasks: (await q(db, 'SELECT id, title, xu, chips, money, cur FROM tasks ORDER BY rowid').all()).results }));
 
+  async function authenticate(request, env) {
+    const auth = request.headers.get('authorization') || '';
+    try { return await verify(auth.startsWith('Bearer ') ? auth.slice(7) : '', env); } catch { throw new HttpError(401, 'unauthenticated'); }
+  }
+
+  // Cấu hình cửa hàng: mọi người đọc, chỉ admin ghi (bản đã làm sạch, từ chối cả gói nếu có phần tử sai).
+  route('PUT', '/admin/store', 'admin', async ({ db, t, body }) => {
+    const clean = sanitizeStore(body);
+    if (!clean) throw bad('bad-store');
+    await q(db, 'INSERT INTO store (id, json, updated_at) VALUES (1, ?, ?) ON CONFLICT (id) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at', JSON.stringify(clean), t).run();
+    return { ok: true };
+  });
+  route('GET', '/store', 'user', async ({ db }) => {
+    const row = await q(db, 'SELECT json, updated_at FROM store WHERE id = 1').first();
+    return row ? { ...JSON.parse(row.json), updatedAt: row.updated_at } : { customProducts: [], productEdits: {}, hiddenProducts: [], customCats: [], updatedAt: 0 };
+  });
+
   return async function handle(request, env) {
     const url = new URL(request.url);
     const origin = env.ALLOWED_ORIGIN || '';
@@ -368,11 +386,29 @@ export function createApi({ verify, now = () => Date.now() }) {
       if (!origin) throw new HttpError(500, 'not-configured');
       const reqOrigin = request.headers.get('origin');
       if (reqOrigin && reqOrigin !== origin) throw new HttpError(403, 'bad-origin');
+      if (request.method === 'GET' && url.pathname.startsWith('/img/')) {
+        // Ảnh sản phẩm: công khai, tên theo nội dung nên cache vĩnh viễn được.
+        const key = url.pathname.slice(1);
+        const obj = IMG_KEY.test(key) && env.CONTENT ? await env.CONTENT.get(key) : null;
+        if (!obj) throw new HttpError(404, 'not-found');
+        return new Response(obj.body, { headers: { 'content-type': IMAGE_TYPES[key.split('.').pop()], 'cache-control': 'public, max-age=31536000, immutable', 'x-content-type-options': 'nosniff', 'cross-origin-resource-policy': 'cross-origin', 'content-security-policy': "default-src 'none'; sandbox" } });
+      }
+      if (request.method === 'PUT' && url.pathname === '/admin/image') {
+        const user = await authenticate(request, env);
+        if (!user.admin) throw new HttpError(403, 'forbidden');
+        const bytes = new Uint8Array(await request.arrayBuffer());
+        if (bytes.length === 0 || bytes.length > MAX_IMAGE_BYTES) throw new HttpError(413, 'too-large');
+        const ext = sniffImage(bytes);
+        if (!ext) throw new HttpError(400, 'bad-image');
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        const key = `img/${[...new Uint8Array(digest)].slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('')}.${ext}`;
+        if (!env.CONTENT) throw new HttpError(500, 'not-configured');
+        await env.CONTENT.put(key, bytes, { httpMetadata: { contentType: IMAGE_TYPES[ext] } });
+        return reply(200, { ok: true, key });
+      }
       const match = routes.map((r) => ({ r, m: r.method === request.method ? r.re.exec(url.pathname) : null })).find((x) => x.m);
       if (!match) throw new HttpError(404, 'not-found');
-      const auth = request.headers.get('authorization') || '';
-      let user;
-      try { user = await verify(auth.startsWith('Bearer ') ? auth.slice(7) : '', env); } catch { throw new HttpError(401, 'unauthenticated'); }
+      const user = await authenticate(request, env);
       if (match.r.auth === 'admin' && !user.admin) throw new HttpError(403, 'forbidden');
       const body = request.method === 'GET' ? {} : await readBody(request, match.r.auth === 'admin' ? 65536 : 8192);
       const out = await match.r.fn({ db: env.DB, env, user, t: now(), body, url, params: match.m.groups || {} });
