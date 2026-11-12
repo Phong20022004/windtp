@@ -367,7 +367,7 @@
       ["New Headway", "from-sky-600 to-cyan-400", ["Beginner", "Elementary", "Pre-Intermediate", "Intermediate", "Upper-Intermediate", "Advanced"]],
       ["Interchange", "from-rose-600 to-orange-400", ["Intro", "Level 1", "Level 2", "Level 3"]],
       ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Tổng hợp"]],
-      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Ngữ pháp tổng hợp"]]
+      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Quyển 1", "Quyển 2", "Quyển 3", "Quyển 4", "Quyển 5", "Quyển 6"]]
     ],
     ko: [
       ["Tiếng Hàn tổng hợp", "from-rose-600 to-pink-400", ["Quyển 1", "Quyển 2", "Quyển 3", "Quyển 4", "Quyển 5", "Quyển 6"]],
@@ -396,14 +396,14 @@
       ["Édito", "from-blue-700 to-sky-400", ["A1", "A2", "B1", "B2", "C1"]],
       ["Cosmopolite", "from-violet-700 to-fuchsia-400", ["A1", "A2", "B1", "B2", "C1"]],
       ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Tổng hợp"]],
-      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Ngữ pháp A1–C1"]]
+      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Quyển 1", "Quyển 2", "Quyển 3", "Quyển 4", "Quyển 5", "Quyển 6"]]
     ],
     es: [
       ["Aula Internacional", "from-red-700 to-orange-400", ["A1", "A2", "B1", "B2", "C1"]],
       ["Nuevo Prisma", "from-violet-700 to-pink-400", ["A1", "A2", "B1", "B2", "C1", "C2"]],
       ["Nuevo Español sin Fronteras", "from-sky-700 to-cyan-400", ["A1", "A1–A2", "A2", "B1", "B2"]],
       ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Tổng hợp"]],
-      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Ngữ pháp A1–C2"]]
+      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Quyển 1", "Quyển 2", "Quyển 3", "Quyển 4", "Quyển 5", "Quyển 6"]]
     ],
     zh: [
       ["Giáo trình Hán ngữ", "from-emerald-700 to-teal-400", ["Tập 1", "Tập 2", "Tập 3", "Tập 4", "Tập 5", "Tập 6"]],
@@ -412,7 +412,7 @@
       ["Boya Chinese", "from-indigo-700 to-violet-400", ["1-1", "1-2", "2-1", "2-2", "3-1", "3-2", "4-1", "4-2", "4-3"]],
       ["Develop Chinese", "from-sky-700 to-blue-400", ["1-1", "1-2", "2-1", "2-2", "3-1", "3-2"]],
       ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Tổng hợp"]],
-      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Ngữ pháp tổng hợp"]],
+      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Quyển 1", "Quyển 2", "Quyển 3", "Quyển 4", "Quyển 5", "Quyển 6"]],
       ["HSK Cũ", "from-red-700 to-orange-400", ["HSK 1", "HSK 2", "HSK 3", "HSK 4", "HSK 5", "HSK 6"]]
     ],
     de: [
@@ -422,7 +422,7 @@
       ["Studio 21", "from-rose-700 to-pink-400", ["A1", "A2", "B1"]],
       ["Aspekte Neu", "from-indigo-700 to-violet-400", ["B1+", "B2", "C1"]],
       ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Bộ từ vựng tổng hợp"]],
-      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Ngữ pháp A1–C1"]]
+      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Quyển 1", "Quyển 2", "Quyển 3", "Quyển 4", "Quyển 5", "Quyển 6"]]
     ]
   };
   function bookGradient(tokens) {
