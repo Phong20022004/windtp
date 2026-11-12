@@ -367,7 +367,7 @@
       ["New Headway", "from-sky-600 to-cyan-400", ["Beginner", "Elementary", "Pre-Intermediate", "Intermediate", "Upper-Intermediate", "Advanced"]],
       ["Interchange", "from-rose-600 to-orange-400", ["Intro", "Level 1", "Level 2", "Level 3"]],
       ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Tổng hợp"]],
-      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Quyển 1", "Quyển 2", "Quyển 3", "Quyển 4", "Quyển 5", "Quyển 6"]]
+      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Ngữ pháp tổng hợp"]]
     ],
     ko: [
       ["Tiếng Hàn tổng hợp", "from-rose-600 to-pink-400", ["Quyển 1", "Quyển 2", "Quyển 3", "Quyển 4", "Quyển 5", "Quyển 6"]],
