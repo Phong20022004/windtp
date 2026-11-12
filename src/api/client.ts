@@ -5,6 +5,7 @@ import {
   type ApprovalExtras,
   type ApiErrorCode,
   type CatalogItem,
+  type SpecialTask,
   type Me,
   type Order,
   type OrderInput,
@@ -53,6 +54,7 @@ export interface ApiClient {
   purchase(itemId: string): Promise<{ itemId: string }>;
   createOrder(input: OrderInput): Promise<{ id: number }>;
   myOrders(): Promise<Order[]>;
+  tasks(): Promise<SpecialTask[]>;
   createPost(text: string): Promise<{ id: number }>;
   posts(): Promise<PublicPost[]>;
   admin: {
@@ -63,6 +65,7 @@ export interface ApiClient {
     approvePost(id: number): Promise<void>;
     rejectPost(id: number): Promise<void>;
     putCatalog(items: CatalogItem[]): Promise<number>;
+    putTasks(items: SpecialTask[]): Promise<number>;
     grant(input: { uid?: string; email?: string; xu?: number; chips?: number; note?: string }): Promise<void>;
   };
 }
@@ -122,6 +125,7 @@ export function createApiClient({ baseUrl, getToken, fetchImpl }: ApiClientOptio
     exchangeChips: (xu) => done(post("/chips/exchange", { xu })),
     purchase: async (itemId) => ({ itemId: String((await post("/purchase", { itemId })).itemId ?? itemId) }),
     createOrder: async (input) => ({ id: Number((await post("/orders", input)).id) }),
+    tasks: async () => (await request<{ tasks: SpecialTask[] }>("GET", "/tasks")).tasks,
     myOrders: async () => (await request<{ orders: Order[] }>("GET", "/orders/mine")).orders,
     createPost: async (text) => ({ id: Number((await post("/posts", { text })).id) }),
     posts: async () => (await request<{ posts: PublicPost[] }>("GET", "/posts")).posts,
@@ -133,6 +137,7 @@ export function createApiClient({ baseUrl, getToken, fetchImpl }: ApiClientOptio
       approvePost: (id) => done(post(`/admin/posts/${id}/approve`)),
       rejectPost: (id) => done(post(`/admin/posts/${id}/reject`)),
       grant: (input) => done(post("/admin/grant", input)),
+      putTasks: async (items) => Number((await request<{ count: number }>("PUT", "/admin/tasks", { items })).count),
       putCatalog: async (items) => Number((await request<{ count: number }>("PUT", "/admin/catalog", { items })).count),
     },
   };

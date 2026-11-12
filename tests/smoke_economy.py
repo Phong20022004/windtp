@@ -154,6 +154,30 @@ with serve_dist() as URL, sync_playwright() as p:
         status, _ = api_call(API, 'POST', '/admin/orders/1/approve', admin_token, {}, ORIGIN)
         check(me(user_token)['balance'] == bal + 50000, 'E23 duyệt lại cùng một đơn không cộng thêm')
 
+
+        # 9b. Chia sẻ Facebook và nhiệm vụ đặc biệt qua máy chủ
+        bal = me(user_token)['balance']
+        period = usr.evaluate("(()=>{const d=new Date(Date.now()+7*36e5).toISOString();return d.slice(0,7)+'-'+(+d.slice(8,10)<=15?'a':'b')})()")
+        r = usr.evaluate("window.WindtpApi.client.createOrder({kind:'fbshare',link:'https://www.facebook.com/hs/posts/1',period:%s}).then(()=>'ok',e=>e.code)" % json.dumps(period))
+        check(r == 'ok' and me(user_token)['balance'] == bal, 'E27 gửi link Facebook chưa cộng Xu')
+        r = usr.evaluate("window.WindtpApi.client.createOrder({kind:'fbshare',link:'https://www.facebook.com/hs/posts/2',period:%s}).then(()=>'ok',e=>e.code)" % json.dumps(period))
+        check(r != 'ok', 'E28 một kỳ chỉ gửi được một link')
+        adm.evaluate("window.WindtpApi.client.admin.putTasks([{id:'ct-1',title:'Quay video',xu:700,chips:0,money:0,cur:'VND'}])")
+        adm.evaluate('()=>{const b=document.createElement("button");b.dataset.action="open-orders";document.body.appendChild(b);b.click();b.remove()}')
+        adm.wait_for_selector('[data-action="admin-confirm"]', timeout=15000)
+        check('facebook.com/hs/posts/1' in adm.locator('body').inner_text(), 'E29 admin thấy link Facebook cần xác minh')
+        adm.click('[data-action="admin-confirm"]')
+        adm.wait_for_timeout(1500)
+        check(me(user_token)['balance'] == bal + 1000, 'E30 xác minh thì máy chủ cộng đúng 1.000 Xu (người dùng không tự đặt số)')
+        r = usr.evaluate("window.WindtpApi.client.createOrder({kind:'ctask',taskId:'ct-1',summary:'x'}).then(()=>'ok',e=>e.code)")
+        check(r == 'ok', 'E31 nộp nhiệm vụ đặc biệt do admin đăng')
+        usr.evaluate("window.WindtpApi.client.createOrder({kind:'ctask',taskId:'ct-1'}).then(()=>'ok',e=>e.code)")
+        adm.evaluate('()=>{const b=document.createElement("button");b.dataset.action="open-orders";document.body.appendChild(b);b.click();b.remove()}')
+        adm.wait_for_selector('[data-action="admin-confirm"]', timeout=15000)
+        adm.click('[data-action="admin-confirm"]')
+        adm.wait_for_timeout(1500)
+        check(me(user_token)['balance'] == bal + 1700, 'E32 nhiệm vụ đặc biệt cộng đúng 700 Xu theo bảng của máy chủ')
+
         # 9. Người dùng thấy số dư đúng sau khi làm mới ví
         usr.evaluate('window.WindtpApi.wallet.refresh()')
         usr.reload(wait_until='load', timeout=240000)
@@ -170,6 +194,6 @@ with serve_dist() as URL, sync_playwright() as p:
 
         browser.close()
 
-check(not page_errors, 'E26 không có lỗi JS: %s' % page_errors[:3])
+check(not page_errors, 'E33 không có lỗi JS: %s' % page_errors[:3])
 print('Thất bại: %d' % len(failures))
 sys.exit(1 if failures else 0)

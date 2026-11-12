@@ -40,3 +40,7 @@ export const MAX_PREMIUM_MONTHS_PER_ORDER = 1200; // 1200 tháng = gói trọn �
 export const MAX_GRANT = 1e8; // mỗi lần admin cộng tối đa
 export const MAX_POSTS_PER_DAY = 10;
 export const MAX_PENDING_ORDERS = 5;
+
+export const FB_REWARD = 1000; // thưởng chia sẻ Facebook, mỗi người mỗi kỳ nửa tháng một lần
+export const FB_LINK_RE = /^https:\/\/(?:www\.|m\.|web\.|mbasic\.)?(?:facebook\.com|fb\.com|fb\.watch|fb\.me)\/[^\s]{3,}$/i;
+export const MAX_TASKS = 100;

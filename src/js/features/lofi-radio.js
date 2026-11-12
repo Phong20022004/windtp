@@ -377,7 +377,7 @@
   // Số dư, lịch sử, quyền sở hữu và Premium chỉ do máy chủ cấp (economy-api.js); mọi giá trị cùng tên đọc từ localStorage bị bỏ.
   function scrubEconomy(o) {
     const d = Number(o.chipsDelta);
-    o.balance = 0; o.history = []; o.owned = []; o.premiumUntil = 0; o.courseAccess = {}; o.chips = 0;
+    o.balance = 0; o.history = []; o.owned = []; o.premiumUntil = 0; o.courseAccess = {}; o.chips = 0; o.customTasks = []; o.taskClaims = []; o.fbShares = []; o.payouts = []; o.orders = []; o.credits = [];
     o.chipsDelta = Number.isFinite(d) ? Math.max(-1e9, Math.min(1e9, Math.floor(d))) : 0;
     return o;
   }

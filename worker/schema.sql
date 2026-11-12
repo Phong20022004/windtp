@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS entitlements (
 CREATE TABLE IF NOT EXISTS orders (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   uid TEXT NOT NULL,
-  kind TEXT NOT NULL CHECK (kind IN ('topup', 'plan', 'shop')),
+  kind TEXT NOT NULL CHECK (kind IN ('topup', 'plan', 'shop', 'fbshare', 'ctask')),
   currency TEXT NOT NULL,
   amount INTEGER NOT NULL CHECK (amount > 0),
   xu INTEGER NOT NULL DEFAULT 0,
@@ -69,6 +69,15 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at INTEGER NOT NULL,
   reviewed_at INTEGER,
   reviewed_by TEXT
+);
+-- Nhiệm vụ đặc biệt do admin đăng; thưởng lấy từ đây khi duyệt (không tin con số từ trình duyệt).
+CREATE TABLE IF NOT EXISTS tasks (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  xu INTEGER NOT NULL DEFAULT 0 CHECK (xu >= 0),
+  chips INTEGER NOT NULL DEFAULT 0 CHECK (chips >= 0),
+  money INTEGER NOT NULL DEFAULT 0 CHECK (money >= 0),
+  cur TEXT NOT NULL DEFAULT 'VND'
 );
 CREATE INDEX IF NOT EXISTS orders_uid ON orders (uid, id DESC);
 CREATE INDEX IF NOT EXISTS orders_status ON orders (status, id);

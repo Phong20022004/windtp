@@ -21,7 +21,7 @@ export interface Me {
   serverTime: number;
 }
 
-export type OrderKind = "topup" | "plan" | "shop";
+export type OrderKind = "topup" | "plan" | "shop" | "fbshare" | "ctask";
 export type OrderStatus = "pending" | "approved" | "rejected";
 export type Currency = "VND" | "KRW" | "JPY";
 
@@ -36,7 +36,21 @@ export interface OrderInput {
   /** Các món trong giỏ; admin dựa vào bảng giá của mình để quyết định quyền lợi khi duyệt. */
   lines?: Array<{ id: string; qty: number }>;
   /** Thông tin giao hàng/gửi tài liệu, chỉ admin đọc được. */
-  contact?: { address?: string; phone?: string; docEmail?: string };
+  contact?: { address?: string; phone?: string; docEmail?: string; bank?: string; bankName?: string; holder?: string };
+  /** fbshare: link bài viết Facebook và kỳ nửa tháng (YYYY-MM-a|b). */
+  link?: string;
+  period?: string;
+  /** ctask: mã nhiệm vụ đặc biệt; phần thưởng lấy từ bảng của máy chủ. */
+  taskId?: string;
+}
+
+export interface SpecialTask {
+  id: string;
+  title: string;
+  xu: number;
+  chips: number;
+  money: number;
+  cur: Currency;
 }
 
 export interface Order {

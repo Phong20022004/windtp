@@ -217,7 +217,7 @@ test('người dùng chỉ thấy đơn và lịch sử của chính mình', asy
 
 test('đơn hàng lưu mô tả và thông tin liên hệ đã lọc; admin thấy, người dùng chỉ thấy mô tả', async () => {
   const app = await makeApp();
-  const body = { kind: 'shop', currency: 'VND', amount: 250000, code: 'ABC', summary: '  2 sản phẩm WIND Store  ', contact: { address: 'Hà Nội', phone: '0900', docEmail: 'a@b.vn', evil: '<script>', bank: '123' } };
+  const body = { kind: 'shop', currency: 'VND', amount: 250000, code: 'ABC', summary: '  2 sản phẩm WIND Store  ', contact: { address: 'Hà Nội', phone: '0900', docEmail: 'a@b.vn', evil: '<script>', password: '123' } };
   const o = await app.call('POST', '/orders', { uid: 'u1', body });
   assert.equal(o.status, 200);
   const mine = (await app.call('GET', '/orders/mine', { uid: 'u1' })).json.orders[0];
@@ -298,4 +298,47 @@ test('quyền học theo khóa access:<ngôn ngữ> chỉ cấp được qua adm
   assert.equal((await approve(['access:en', 'access:ko'])).status, 200);
   assert.deepEqual((await app.call('GET', '/me', { uid: 'u1' })).json.owned.sort(), ['access:en', 'access:ko']);
   assert.equal((await app.call('POST', '/purchase', { uid: 'u2', body: { itemId: 'access:en' } })).status, 404, 'không có trong catalog nên không mua được');
+});
+
+test('thưởng chia sẻ Facebook: link hợp lệ, mỗi kỳ một lần, link không dùng lại, từ chối thì nộp lại được, thưởng do máy chủ định', async () => {
+  const app = await makeApp();
+  const day = new Date(app.state.t + 7 * 36e5).toISOString().slice(0, 10);
+  const cur = `${day.slice(0, 7)}-${+day.slice(8) <= 15 ? 'a' : 'b'}`, other = cur.endsWith('a') ? cur.slice(0, 8) + 'b' : cur.slice(0, 8) + 'a';
+  const send = (uid, link, period = cur) => app.call('POST', '/orders', { uid, body: { kind: 'fbshare', link, period, amount: 99999999 } });
+  const link = 'https://www.facebook.com/user/posts/123';
+  assert.equal((await send('u1', 'http://facebook.com/x/y')).status, 400, 'phải https');
+  assert.equal((await send('u1', 'https://evil.com/facebook.com/x')).status, 400);
+  assert.equal((await send('u1', link, 'ky-bat-ky')).status, 400);
+  const first = await send('u1', link);
+  assert.equal(first.status, 200);
+  assert.equal((await send('u1', 'https://facebook.com/other/2')).status, 409, 'cùng kỳ chỉ một lần');
+  assert.equal((await send('u2', link + '/')).status, 409, 'link đã được người khác dùng');
+  assert.equal((await send('u1', 'https://facebook.com/other/2', other)).status, 400, 'chỉ nhận kỳ hiện tại');
+  assert.equal((await app.call('POST', `/admin/orders/${first.json.id}/approve`, { uid: 'u1' })).status, 403, 'người thường không duyệt');
+  assert.equal((await app.call('POST', `/admin/orders/${first.json.id}/approve`, { uid: 'boss', admin: true, body: { xu: 5 } })).status, 400, 'admin không đổi được mức thưởng');
+  assert.equal((await app.call('POST', `/admin/orders/${first.json.id}/approve`, { uid: 'boss', admin: true })).status, 200);
+  assert.equal(app.balance('u1').balance, 1000);
+  assert.equal((await app.call('POST', `/admin/orders/${first.json.id}/approve`, { uid: 'boss', admin: true })).status, 409);
+  const r2 = await send('u3', 'https://facebook.com/u3/9');
+  assert.equal((await app.call('POST', `/admin/orders/${r2.json.id}/reject`, { uid: 'boss', admin: true })).status, 200);
+  assert.equal((await send('u3', 'https://facebook.com/u3/9')).status, 200, 'bị từ chối thì được nộp lại');
+});
+
+test('nhiệm vụ đặc biệt: admin đăng, người dùng nộp một lần, thưởng lấy từ bảng của máy chủ', async () => {
+  const app = await makeApp();
+  const put = (uid, items, admin) => app.call('PUT', '/admin/tasks', { uid, admin, body: { items } });
+  const t1 = { id: 't1', title: 'Chia sẻ video', xu: 700, chips: 50, money: 0, cur: 'VND' };
+  assert.equal((await put('u1', [t1], false)).status, 403);
+  assert.equal((await put('boss', [{ ...t1, xu: -1 }], true)).status, 400);
+  assert.equal((await put('boss', [t1, t1], true)).status, 400, 'trùng id');
+  assert.equal((await put('boss', [t1], true)).status, 200);
+  assert.equal((await app.call('GET', '/tasks', { uid: 'u1' })).json.tasks.length, 1);
+  assert.equal((await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'ctask', taskId: 'khong-co' } })).status, 404);
+  const o = await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'ctask', taskId: 't1', xu: 99999999, contact: { bank: '123', holder: 'A' } } });
+  assert.equal(o.status, 200);
+  assert.equal((await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'ctask', taskId: 't1' } })).status, 409, 'một lần mỗi nhiệm vụ');
+  assert.equal((await app.call('POST', `/admin/orders/${o.json.id}/approve`, { uid: 'boss', admin: true })).status, 200);
+  const w = app.balance('u1');
+  assert.equal(w.balance, 700);
+  assert.equal(w.chips, 50);
 });

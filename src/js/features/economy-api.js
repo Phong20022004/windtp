@@ -55,7 +55,7 @@
   /** Lấy lại ví từ máy chủ. Lỗi mạng thì giữ số liệu đang hiển thị. */
   function econRefresh(quiet) {
     if (!state.account || !window.WindtpApi) return Promise.resolve(false);
-    return window.WindtpApi.wallet.refresh().then((me) => { econApplyWallet(me); econSyncBirth(me); return true; }, (e) => { econFail(e, quiet !== false); return false; });
+    return window.WindtpApi.wallet.refresh().then((me) => { econApplyWallet(me); econSyncBirth(me); econSocial(); return true; }, (e) => { econFail(e, quiet !== false); return false; });
   }
 
   /** Ngày sinh đã khai trong Cài đặt được gửi một lần; sau đó máy chủ giữ và không cho đổi. */
@@ -66,6 +66,18 @@
     econClient().setBirth(b).then(() => econRefresh(), () => { });
   }
 
+  /** Nhiệm vụ đặc biệt (admin đăng) và trạng thái chia sẻ Facebook/nhiệm vụ của chính người dùng, đều lấy từ máy chủ. */
+  function econSocial() {
+    const api = econClient();
+    Promise.all([api.tasks(), api.myOrders()]).then(([tasks, orders]) => {
+      const me = userId();
+      state.customTasks = tasks.map((t) => ({ id: t.id, title: t.title, desc: "", xu: t.xu, chips: t.chips, money: t.money, cur: t.cur, ts: 0 }));
+      const st = (o) => (o.status === "approved" ? "granted" : o.status === "pending" ? "sent" : "rejected");
+      state.taskClaims = orders.filter((o) => o.kind === "ctask" && o.status !== "rejected").map((o) => ({ id: "o" + o.id, taskId: String(o.code || "").slice(6), uid: me, title: o.summary || "", ts: o.at, status: st(o), bank: null }));
+      state.fbShares = orders.filter((o) => o.kind === "fbshare").map((o) => { const key = String(o.code || "").slice(3).toUpperCase(); return { id: "o" + o.id, uid: me, link: o.summary || "", period: key, periodLabel: key, ts: o.at, status: st(o) }; });
+      commit(); renderTasks();
+    }, () => { });
+  }
   function econBoot() {
     econ.me = null; econ.ordersLoaded = false;
     econRefresh(false).then(() => { if (isAdmin()) econPublishCatalog(); });
@@ -254,14 +266,15 @@
     const done = o.status !== "pending", c = econOrderContact(o), g = econOrderGrant(o);
     const badge = o.status === "approved" ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">Đã xử lý</span>' : o.status === "rejected" ? '<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold">Đã từ chối</span>' : '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold">Đang chờ xử lý</span>';
     const paid = money(o.amount, o.currency);
-    const give = [o.kind === "topup" ? "🪙 " + fmt(o.xu) + " Xu" : "", g.xu ? "🪙 " + fmt(g.xu) + " Xu" : "", g.chips ? "🎰 " + fmt(g.chips) + " chip" : "", g.notes.length ? "👑 " + g.notes.map(esc).join(", ") : ""].filter(Boolean).join(" · ");
+    const task = o.kind === "ctask" ? (state.customTasks || []).find((x) => "ctask:" + x.id === o.code) : null;
+    const give = [o.kind === "fbshare" ? "🪙 1,000 Xu" : "", task && task.xu ? "🪙 " + fmt(task.xu) + " Xu" : "", task && task.chips ? "🎰 " + fmt(task.chips) + " chip" : "", task && task.money ? "💵 " + money(task.money, task.cur) + " (chuyển khoản thủ công)" : "", o.kind === "topup" ? "🪙 " + fmt(o.xu) + " Xu" : "", g.xu ? "🪙 " + fmt(g.xu) + " Xu" : "", g.chips ? "🎰 " + fmt(g.chips) + " chip" : "", g.notes.length ? "👑 " + g.notes.map(esc).join(", ") : ""].filter(Boolean).join(" · ");
     const mismatch = adm && o.kind === "shop" && g.totalCheck > 0 && Math.round(g.totalCheck) !== Number(o.amount) ? `<p class="text-[11px] font-bold text-rose-600">⚠ Khách khai ${paid} nhưng bảng giá tính ra ${money(g.totalCheck, o.currency)}. Hãy đối chiếu tiền thật nhận được.</p>` : "";
     const who = adm ? `<p class="text-[11px] text-slate-600">Người đặt: <b>${esc(o.name || "")}</b> · ${esc(o.email || "")} · <span class="break-all">${esc(o.uid || "")}</span></p>` : "";
     const ship = adm && o.kind === "shop" ? `<p class="text-[11px] text-slate-600">Địa chỉ: ${esc(c.address || "—")} · SĐT: ${esc(c.phone || "—")} · Gmail: ${esc(c.docEmail || "—")}</p>` : "";
     const doc = adm && g.docs ? `<p class="text-[11px] font-bold text-sky-700">📨 Có tài liệu: gửi về Gmail ${esc(c.docEmail || "(không có)")}</p>` : "";
     const buttons = adm && !done ? `<div class="grid grid-cols-2 gap-2"><button data-action="admin-confirm" data-id="${o.id}" class="${btnPrimary}">Xác nhận đã thanh toán</button><button data-action="admin-reject" data-id="${o.id}" class="${btnGhost}">Từ chối</button></div>` : "";
     return `<div class="rounded-xl border border-slate-200 p-3 space-y-1.5"><div class="flex justify-between items-center gap-2"><p class="font-bold text-slate-800">${esc(o.code || "")} · ${paid}</p>${badge}</div>
-      ${who}<p class="text-[11px] text-slate-600">${esc(o.summary || "")}</p>${ship}${mismatch}${doc}
+      ${who}${o.kind === "fbshare" ? `<a href="${esc(o.summary || "")}" target="_blank" rel="noopener noreferrer nofollow" class="block text-[11px] text-blue-700 underline break-all">${esc(o.summary || "")}</a>` : `<p class="text-[11px] text-slate-600">${esc(o.summary || "")}</p>`}${adm && o.kind === "ctask" && c.bank ? `<p class="text-[11px] text-slate-600">Ngân hàng: ${esc(c.bankName || "")} · ${esc(c.bank)} · ${esc(c.holder || "")}</p>` : ""}${ship}${mismatch}${doc}
       ${give && (adm || done) ? `<p class="text-[11px] font-bold text-amber-700">${o.status === "approved" ? "Đã cộng" : "Sẽ cộng"}: ${give}</p>` : ""}${buttons}</div>`;
   }
   function ordersModal() {
@@ -314,8 +327,45 @@
     if (ok) toast("Đã cộng thưởng cho " + email);
   };
 
-  // Các luồng thưởng còn tính ở trình duyệt đã bị tắt vì có thể bị làm giả; chúng cần máy chủ hỗ trợ (xem docs/BACKEND.md).
+  // Hoa hồng giới thiệu cần ánh xạ ID WIND-… sang tài khoản thật nên tạm tắt (xem worker/README.md).
   function econUnavailable() { toast("Tính năng này đang được chuyển sang máy chủ, tạm thời chưa dùng được."); }
   actions["claim-referral-commission"] = econUnavailable;
-  actions["ctask-claim"] = econUnavailable;
   function creditTo() { econUnavailable(); return false; }
+
+  // ----- Chia sẻ Facebook và nhiệm vụ đặc biệt: gửi lên máy chủ, admin duyệt, máy chủ tự quyết số thưởng -----
+  actions["fb-submit"] = async () => {
+    if (userId() === "WIND-guest") { toast("Hãy đăng nhập để làm nhiệm vụ"); return; }
+    const cur = fbMine(); if (cur && cur.status !== "rejected") { toast("Bạn đã gửi link cho kỳ này rồi"); return; }
+    const link = (val("fb-link") || "").trim();
+    if (!FB_LINK_RE.test(link)) { toast("Link không hợp lệ. Hãy dán link bài viết từ facebook.com"); return; }
+    if (!$("#fb-ok")?.checked) { toast("Hãy tích cam kết công khai và không dùng nick clone"); return; }
+    const ok = await econRun("fb", async () => {
+      try { await econClient().createOrder({ kind: "fbshare", link, period: fbPeriod().key.toLowerCase(), summary: link }); }
+      catch (e) { if (e && e.code === "duplicate") { toast("Link này (hoặc kỳ này) đã được gửi trước đó"); return false; } throw e; }
+      return true;
+    });
+    if (ok) { toast("Đã gửi link, chờ xác minh"); econSocial(); }
+  };
+  actions["fb-approve"] = actions["fb-reject"] = () => { if (isAdmin()) actions["open-orders"](); };
+  actions["task-grant"] = () => { if (isAdmin()) actions["open-orders"](); };
+  actions["ctask-sent"] = async () => {
+    const t = (state.customTasks || []).find((x) => x.id === ui.proofTask); if (!t) return;
+    const c = contact();
+    const ok = await econRun("ctask:" + t.id, async () => {
+      try { await econClient().createOrder({ kind: "ctask", taskId: t.id, contact: t.money ? { bank: c.bank, bankName: c.bankName, holder: c.holder } : undefined }); }
+      catch (e) { if (e && e.code === "duplicate") { toast("Bạn đã gửi nhiệm vụ này rồi"); return false; } throw e; }
+      return true;
+    });
+    if (!ok) return;
+    closeModal(); toast("Đã ghi nhận, chờ xử lý"); econSocial();
+  };
+  /** Admin đăng/sửa/xóa nhiệm vụ: thực hiện trên danh sách hiện có rồi ghi đè lên máy chủ. */
+  function econPutTasks() {
+    return econClient().admin.putTasks((state.customTasks || []).map((t) => ({ id: String(t.id), title: String(t.title), xu: t.xu | 0, chips: t.chips | 0, money: t.money | 0, cur: t.cur || "VND" })))
+      .then(() => econSocial(), (e) => econFail(e));
+  }
+  ["task-save", "task-del", "task-edit-save"].forEach((name) => {
+    const orig = actions[name];
+    if (typeof orig !== "function") return;
+    actions[name] = (el, ev) => { if (!isAdmin()) return; orig(el, ev); econPutTasks(); };
+  });

@@ -23,7 +23,7 @@ function cleanLines(value) {
 function cleanContact(value) {
   if (!value || typeof value !== 'object') return null;
   const out = {};
-  for (const key of ['address', 'phone', 'docEmail']) {
+  for (const key of ['address', 'phone', 'docEmail', 'bank', 'bankName', 'holder']) {
     if (typeof value[key] === 'string' && value[key].trim()) out[key] = value[key].trim().slice(0, 200);
   }
   return Object.keys(out).length ? JSON.stringify(out) : null;
@@ -138,13 +138,31 @@ export function createApi({ verify, now = () => Date.now() }) {
       planId = body.planId; currency = 'VND'; amount = plan.vnd;
     } else if (kind === 'shop') {
       if (!(currency in E.TOPUP_RATE) || !isInt(amount, 1, E.MAX_TOPUP_UNITS[currency])) throw bad('bad-amount');
+    } else if (kind === 'fbshare' || kind === 'ctask') {
+      currency = 'VND'; amount = 1;
     } else throw bad('bad-kind');
     const pending = await q(db, "SELECT COUNT(*) AS n FROM orders WHERE uid = ? AND status = 'pending'", user.uid).first();
     if (pending.n >= E.MAX_PENDING_ORDERS) throw new HttpError(429, 'too-many-pending');
-    const code = typeof body.code === 'string' ? body.code.slice(0, 40) : null;
-    const summary = typeof body.summary === 'string' ? body.summary.trim().slice(0, E.MAX_SUMMARY_LEN) || null : null;
+    let code = typeof body.code === 'string' ? body.code.slice(0, 40) : null;
+    let summary = typeof body.summary === 'string' ? body.summary.trim().slice(0, E.MAX_SUMMARY_LEN) || null : null;
+    const guards = []; // khóa chống nộp trùng; được xóa khi đơn bị từ chối để người dùng nộp lại
+    if (kind === 'fbshare') {
+      const link = typeof body.link === 'string' ? body.link.trim() : '';
+      const day = dayKey(t); // kỳ hiện tại theo giờ Việt Nam: 01-15 là 'a', còn lại 'b'
+      const period = `${day.slice(0, 7)}-${+day.slice(8) <= 15 ? 'a' : 'b'}`;
+      if (!E.FB_LINK_RE.test(link) || link.length > 190) throw bad('bad-link');
+      if (body.period !== period) throw bad('bad-period');
+      code = `fb:${body.period}`; summary = link;
+      guards.push([user.uid, `sub:${code}`], ['*', `fblink:${link.toLowerCase().replace(/\/+$/, '')}`]);
+    } else if (kind === 'ctask') {
+      const task = await q(db, 'SELECT id, title, xu, chips, money, cur FROM tasks WHERE id = ?', String(body.taskId || '')).first();
+      if (!task) throw new HttpError(404, 'no-task');
+      code = `ctask:${task.id}`; summary = `Nhiệm vụ: ${task.title}`.slice(0, E.MAX_SUMMARY_LEN);
+      guards.push([user.uid, `sub:${code}`]);
+    }
     const contact = cleanContact(body.contact);
     const lines = cleanLines(body.lines);
+    if (guards.length) await atomic(db, guards.map(([u, k]) => q(db, 'INSERT INTO claims (uid, key, created_at) VALUES (?, ?, ?)', u, k, t)));
     const r = await q(db, 'INSERT INTO orders (uid, kind, currency, amount, xu, plan_id, code, email, name, summary, lines, contact, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', user.uid, kind, currency, amount, xu, planId, code, user.email || null, user.name || null, summary, lines, contact, t).run();
     return { ok: true, id: r.meta.last_row_id };
   });
@@ -189,6 +207,12 @@ export function createApi({ verify, now = () => Date.now() }) {
         q(db, 'UPDATE wallets SET premium_until = MAX(premium_until, ?) + ?, chips = chips + ? WHERE uid = ?', t, plan.months * E.MONTH_MS, plan.chips, order.uid),
         txStmt(db, order.uid, 'plan', 0, plan.chips, `Premium ${order.plan_id}`, String(order.id), t),
       );
+    } else if (order.kind === 'fbshare') {
+      stmts.push(credit(db, order.uid, E.FB_REWARD, 0), txStmt(db, order.uid, 'task', E.FB_REWARD, 0, 'Thưởng chia sẻ Facebook', String(order.id), t));
+    } else if (order.kind === 'ctask') {
+      const task = await q(db, 'SELECT * FROM tasks WHERE id = ?', String(order.code || '').slice(6)).first();
+      if (!task) throw new HttpError(404, 'no-task');
+      if (task.xu || task.chips) stmts.push(credit(db, order.uid, task.xu, task.chips), txStmt(db, order.uid, 'task', task.xu, task.chips, `Thưởng nhiệm vụ: ${task.title}`.slice(0, 80), String(order.id), t));
     } else {
       // Đơn mua hàng: thưởng nhiệm vụ mua sắm, mỗi loại một lần/ngày (máy chủ biết đơn có thật vì chính admin duyệt).
       const vnd = order.amount * E.TOPUP_RATE[order.currency];
@@ -223,6 +247,11 @@ export function createApi({ verify, now = () => Date.now() }) {
   route('POST', '/admin/orders/:id/reject', 'admin', async ({ db, user, t, params }) => {
     const r = await q(db, "UPDATE orders SET status = 'rejected', reviewed_at = ?, reviewed_by = ? WHERE id = ? AND status = 'pending'", t, user.uid, +params.id).run();
     if (!r.meta.changes) throw new HttpError(409, 'not-pending');
+    const o = await q(db, 'SELECT uid, kind, code, summary FROM orders WHERE id = ?', +params.id).first();
+    if (o && (o.kind === 'fbshare' || o.kind === 'ctask')) {
+      await q(db, 'DELETE FROM claims WHERE uid = ? AND key = ?', o.uid, `sub:${o.code}`).run();
+      if (o.kind === 'fbshare') await q(db, 'DELETE FROM claims WHERE uid = ? AND key = ?', '*', `fblink:${String(o.summary).toLowerCase().replace(/\/+$/, '')}`).run();
+    }
     return { ok: true };
   });
 
@@ -277,6 +306,22 @@ export function createApi({ verify, now = () => Date.now() }) {
     if (stmts.length) await atomic(db, stmts);
     return { ok: true, count: stmts.length };
   });
+
+  // Danh sách nhiệm vụ đặc biệt: admin ghi đè toàn bộ, mọi người dùng đọc được.
+  route('PUT', '/admin/tasks', 'admin', async ({ db, body }) => {
+    if (!Array.isArray(body.items) || body.items.length > E.MAX_TASKS) throw bad('bad-items');
+    const seen = new Set();
+    const stmts = [q(db, 'DELETE FROM tasks')];
+    for (const i of body.items) {
+      if (!i || typeof i.id !== 'string' || !/^[\w-]{1,40}$/.test(i.id) || seen.has(i.id) || typeof i.title !== 'string' || !i.title.trim()
+        || !isInt(i.xu, 0, E.MAX_GRANT) || !isInt(i.chips, 0, E.MAX_GRANT) || !isInt(i.money, 0, 1e9) || !(i.cur in E.TOPUP_RATE)) throw bad('bad-item');
+      seen.add(i.id);
+      stmts.push(q(db, 'INSERT INTO tasks (id, title, xu, chips, money, cur) VALUES (?, ?, ?, ?, ?, ?)', i.id, i.title.trim().slice(0, 120), i.xu, i.chips, i.money, i.cur));
+    }
+    await atomic(db, stmts);
+    return { ok: true, count: body.items.length };
+  });
+  route('GET', '/tasks', 'user', async ({ db }) => ({ tasks: (await q(db, 'SELECT id, title, xu, chips, money, cur FROM tasks ORDER BY rowid').all()).results }));
 
   return async function handle(request, env) {
     const url = new URL(request.url);
