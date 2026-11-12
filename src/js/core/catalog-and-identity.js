@@ -359,43 +359,41 @@
   }
   var BOOK_CATALOG = {
     en: [
+      ["IELTS 2.0", "from-slate-800 to-slate-600", ["Book 5", "Books 6–7", "Books 8–9"]],
+      ["IELTS", "from-emerald-600 to-teal-400", ["Book 1", "Book 2"]],
+      ["TOEIC", "from-blue-800 to-sky-500", ["Book 1", "Book 2"]],
+      ["TOEFL", "from-violet-700 to-indigo-400", ["Book 1", "Book 2"]],
       ["English File", "from-indigo-600 to-blue-500", ["Starter", "Elementary", "Pre-Intermediate", "Intermediate", "Upper-Intermediate", "Advanced"]],
       ["New Headway", "from-sky-600 to-cyan-400", ["Beginner", "Elementary", "Pre-Intermediate", "Intermediate", "Upper-Intermediate", "Advanced"]],
       ["Interchange", "from-rose-600 to-orange-400", ["Intro", "Level 1", "Level 2", "Level 3"]],
-      ["IELTS", "from-slate-800 to-slate-600", ["Book 5", "Books 6–7", "Books 8–9"]],
-      ["IELTS New", "from-emerald-600 to-teal-400", ["Book 1", "Book 2"]],
-      ["TOEIC", "from-blue-800 to-sky-500", ["Book 1", "Book 2"]],
-      ["TOEFL", "from-violet-700 to-indigo-400", ["Book 1", "Book 2"]],
-      ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Tổng hợp"]],
-      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Quyển 1", "Quyển 2", "Quyển 3", "Quyển 4", "Quyển 5", "Quyển 6"]]
-    ],
-    ko: [
-      ["Yonsei Tổng hợp", "from-blue-700 to-sky-400", ["1-1", "1-2", "2-1", "2-2", "3-1", "3-2", "4-1", "4-2", "5-1", "5-2", "6-1", "6-2"]],
-      ["Yonsei Reading / Listening", "from-cyan-700 to-teal-400", ["Reading/Listening 1", "Reading/Listening 2", "Reading/Listening 3", "Reading/Listening 4", "Reading/Listening 5", "Reading/Listening 6"]],
-      ["Seoul Korean", "from-orange-600 to-amber-300", ["1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B", "5A", "5B", "6A", "6B"]],
-      ["TOPIK I", "from-emerald-700 to-lime-400", ["Luyện thi TOPIK I"]],
-      ["TOPIK II", "from-violet-700 to-fuchsia-400", ["Luyện thi TOPIK II"]],
-      ["EPS-TOPIK", "from-sky-700 to-blue-400", ["Tập 1 · Bài 1–10", "Tập 2 · Bài 11–20", "Tập 3 · Bài 21–30", "Tập 4 · Bài 31–40", "Tập 5 · Bài 41–50", "Tập 6 · Bài 51–60"]],
-      ["Từ vựng Sơ cấp", "from-rose-600 to-pink-400", ["Quyển 1", "Quyển 2"]],
-      ["Từ vựng Trung cấp", "from-orange-600 to-yellow-300", ["Quyển 3", "Quyển 4"]],
-      ["Từ vựng Cao cấp", "from-indigo-700 to-purple-400", ["Quyển 5", "Quyển 6"]],
       ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Tổng hợp"]],
       ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Ngữ pháp tổng hợp"]]
     ],
+    ko: [
+      ["Tiếng Hàn tổng hợp", "from-rose-600 to-pink-400", ["Quyển 1", "Quyển 2", "Quyển 3", "Quyển 4", "Quyển 5", "Quyển 6"]],
+      ["Seoul Korean", "from-orange-600 to-amber-300", ["1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B", "5A", "5B", "6A", "6B"]],
+      ["Yonsei Korean", "from-blue-700 to-sky-400", ["1-1", "1-2", "2-1", "2-2", "3-1", "3-2", "4-1", "4-2", "5-1", "5-2", "6-1", "6-2"]],
+      ["Yonsei Reading / Listening", "from-cyan-700 to-teal-400", ["Reading/Listening 1", "Reading/Listening 2", "Reading/Listening 3", "Reading/Listening 4", "Reading/Listening 5", "Reading/Listening 6"]],
+      ["EPS-TOPIK", "from-sky-700 to-blue-400", ["Tập 1 · Bài 1–10", "Tập 2 · Bài 11–20", "Tập 3 · Bài 21–30", "Tập 4 · Bài 31–40", "Tập 5 · Bài 41–50", "Tập 6 · Bài 51–60"]],
+      ["TOPIK I", "from-emerald-700 to-lime-400", ["Luyện thi TOPIK I"]],
+      ["TOPIK II", "from-violet-700 to-fuchsia-400", ["Luyện thi TOPIK II"]],
+      ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Tổng hợp"]],
+      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Quyển 1", "Quyển 2", "Quyển 3", "Quyển 4", "Quyển 5", "Quyển 6"]]
+    ],
     ja: [
-      ["Genki", "from-orange-500 to-amber-300", ["Genki I", "Genki II"]],
+      ["Nihongo", "from-red-700 to-rose-400", ["Sơ cấp 1", "Sơ cấp 2", "Trung cấp 1", "Trung cấp 2"]],
       ["Mimikara Nomi", "from-blue-700 to-cyan-400", ["N5", "N4", "N3", "N2", "N1"]],
       ["Shin Kanzen – Từ vựng Shen", "from-emerald-700 to-lime-400", ["Shen N5", "Shen N4", "Shen N3", "Shen N2", "Shen N1"]],
+      ["Genki", "from-orange-500 to-amber-300", ["Genki I", "Genki II"]],
       ["TRY!", "from-rose-600 to-pink-400", ["TRY! N5", "TRY! N4", "TRY! N3", "TRY! N2", "TRY! N1"]],
       ["Quartet", "from-indigo-700 to-violet-400", ["Quartet I", "Quartet II"]],
-      ["Nihongo", "from-red-700 to-rose-400", ["Sơ cấp 1", "Sơ cấp 2", "Trung cấp 1", "Trung cấp 2"]],
-      ["Từ Hán (Kanji)", "from-slate-700 to-slate-500", ["Hán tự tổng hợp"]],
       ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Tổng hợp"]],
+      ["Từ Hán (Kanji)", "from-slate-700 to-slate-500", ["Hán tự tổng hợp"]],
       ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["N5", "N4", "N3", "N2", "N1", "Nâng cao"]]
     ],
     fr: [
-      ["Édito", "from-blue-700 to-sky-400", ["A1", "A2", "B1", "B2", "C1"]],
       ["Alter Ego", "from-rose-600 to-orange-300", ["A1", "A2", "B1", "B2"]],
+      ["Édito", "from-blue-700 to-sky-400", ["A1", "A2", "B1", "B2", "C1"]],
       ["Cosmopolite", "from-violet-700 to-fuchsia-400", ["A1", "A2", "B1", "B2", "C1"]],
       ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Tổng hợp"]],
       ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Ngữ pháp A1–C1"]]
@@ -408,22 +406,22 @@
       ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Ngữ pháp A1–C2"]]
     ],
     zh: [
-      ["HSK Cũ", "from-red-700 to-orange-400", ["HSK 1", "HSK 2", "HSK 3", "HSK 4", "HSK 5", "HSK 6"]],
-      ["HSK Standard Course", "from-blue-700 to-cyan-400", ["Standard 1", "Standard 2", "Standard 3", "Standard 4", "Standard 5", "Standard 6"]],
-      ["HSK Mới", "from-rose-700 to-red-400", ["HSK 1", "HSK 2", "HSK 3", "HSK 4", "HSK 5", "HSK 6", "HSK 7.1", "HSK 7.2", "HSK 7.3", "HSK 7.4", "HSK 7.5", "HSK 7.6", "HSK 8.1", "HSK 8.2", "HSK 8.3", "HSK 8.4", "HSK 8.5", "HSK 8.6", "HSK 8.7", "HSK 9.1", "HSK 9.2", "HSK 9.3", "HSK 9.4", "HSK 9.5", "HSK 9.6", "HSK 9.7"]],
       ["Giáo trình Hán ngữ", "from-emerald-700 to-teal-400", ["Tập 1", "Tập 2", "Tập 3", "Tập 4", "Tập 5", "Tập 6"]],
+      ["HSK Standard Course", "from-blue-700 to-cyan-400", ["Standard 1", "Standard 2", "Standard 3", "Standard 4", "Standard 5", "Standard 6"]],
+      ["New HSK Course", "from-rose-700 to-red-400", ["HSK 1", "HSK 2", "HSK 3", "HSK 4", "HSK 5", "HSK 6", "HSK 7.1", "HSK 7.2", "HSK 7.3", "HSK 7.4", "HSK 7.5", "HSK 7.6", "HSK 8.1", "HSK 8.2", "HSK 8.3", "HSK 8.4", "HSK 8.5", "HSK 8.6", "HSK 8.7", "HSK 9.1", "HSK 9.2", "HSK 9.3", "HSK 9.4", "HSK 9.5", "HSK 9.6", "HSK 9.7"]],
       ["Boya Chinese", "from-indigo-700 to-violet-400", ["1-1", "1-2", "2-1", "2-2", "3-1", "3-2", "4-1", "4-2", "4-3"]],
       ["Develop Chinese", "from-sky-700 to-blue-400", ["1-1", "1-2", "2-1", "2-2", "3-1", "3-2"]],
       ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Tổng hợp"]],
-      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Ngữ pháp tổng hợp"]]
+      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Ngữ pháp tổng hợp"]],
+      ["HSK Cũ", "from-red-700 to-orange-400", ["HSK 1", "HSK 2", "HSK 3", "HSK 4", "HSK 5", "HSK 6"]]
     ],
     de: [
-      ["Aspekte Neu", "from-indigo-700 to-violet-400", ["B1+", "B2", "C1"]],
       ["Menschen", "from-orange-600 to-amber-300", ["A1", "A2", "B1"]],
-      ["Netzwerk Neu", "from-sky-700 to-cyan-400", ["A1", "A2", "B1"]],
       ["Schritte International", "from-emerald-700 to-lime-400", ["A1", "A2", "B1"]],
+      ["Netzwerk Neu", "from-sky-700 to-cyan-400", ["A1", "A2", "B1"]],
       ["Studio 21", "from-rose-700 to-pink-400", ["A1", "A2", "B1"]],
-      ["37 Chủ đề từ vựng", "from-amber-500 to-orange-300", ["Bộ từ vựng tổng hợp"]],
+      ["Aspekte Neu", "from-indigo-700 to-violet-400", ["B1+", "B2", "C1"]],
+      ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Bộ từ vựng tổng hợp"]],
       ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Ngữ pháp A1–C1"]]
     ]
   };
