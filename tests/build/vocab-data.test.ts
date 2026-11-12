@@ -33,7 +33,7 @@ describe("computeDailyExtras: lọc từ", () => {
   it("tiếng Hàn: bỏ mục ngữ pháp và mục thiếu nghĩa trong Yonsei Reading", () => {
     const rows = [word("가다", "r", "Động từ", "m", "e", "v"), word("문법", "r", "Ngữ pháp", "m", "e", "v"), word("공백", "r", "n", "m", "e", "")];
     assert.deepEqual(computeDailyExtras("ko", [], vocab({ "Yonsei Reading / Listening|0": rows })).vocab.map((w) => w.term), ["가다"]);
-    assert.equal(computeDailyExtras("ko", [], vocab({ "Yonsei Tổng hợp|0": rows })).vocab.length, 3, "quy tắc chỉ áp dụng cho Yonsei Reading");
+    assert.equal(computeDailyExtras("ko", [], vocab({ "Yonsei Korean|0": rows })).vocab.length, 3, "quy tắc chỉ áp dụng cho Yonsei Reading");
   });
 
   it("tiếng Pháp: bỏ loại từ bắt đầu bằng 'câu'", () => {
