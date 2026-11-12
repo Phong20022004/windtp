@@ -40,6 +40,21 @@ def wallet_text(pg):
     return pg.locator('#tab-wallet').inner_text()
 
 
+def eventually(fn, ms=10000):
+    """Chờ điều kiện đúng (thao tác giao diện chạy bất đồng bộ qua mạng); trả về kết quả cuối cùng."""
+    import time
+    end = time.time() + ms / 1000
+    while True:
+        try:
+            if fn():
+                return True
+        except Exception:
+            pass
+        if time.time() > end:
+            return False
+        time.sleep(0.15)
+
+
 def me(token):
     status, body = api_call(API, 'GET', '/me', token, origin=ORIGIN)
     return body if status == 200 else None
@@ -118,7 +133,7 @@ with serve_dist() as URL, sync_playwright() as p:
         adm.fill('#ac-chip', '0')
         adm.click('[data-action="admin-credit"]')
         adm.wait_for_timeout(1200)
-        check(me(user_token)['balance'] == 300200, 'E13 admin cộng 300.000 Xu theo email qua giao diện, máy chủ ghi nhận')
+        check(eventually(lambda: me(user_token)['balance'] == 300200), 'E13 admin cộng 300.000 Xu theo email qua giao diện, máy chủ ghi nhận')
 
         # 6. Mua tài liệu: giá do máy chủ lấy từ bảng giá admin đã đăng, trừ Xu ở máy chủ
         before = me(user_token)['balance']
@@ -150,7 +165,7 @@ with serve_dist() as URL, sync_playwright() as p:
         check('TOPTEST1' in card and 'hs@wind.vn' in card, 'E21 admin thấy đơn kèm email người đặt')
         adm.click('[data-action="admin-confirm"]')
         adm.wait_for_timeout(1500)
-        check(me(user_token)['balance'] == bal + 50000, 'E22 admin xác nhận thì máy chủ cộng đúng 50.000 Xu')
+        check(eventually(lambda: me(user_token)['balance'] == bal + 50000), 'E22 admin xác nhận thì máy chủ cộng đúng 50.000 Xu')
         status, _ = api_call(API, 'POST', '/admin/orders/1/approve', admin_token, {}, ORIGIN)
         check(me(user_token)['balance'] == bal + 50000, 'E23 duyệt lại cùng một đơn không cộng thêm')
 
@@ -168,7 +183,7 @@ with serve_dist() as URL, sync_playwright() as p:
         check('facebook.com/hs/posts/1' in adm.locator('body').inner_text(), 'E29 admin thấy link Facebook cần xác minh')
         adm.click('[data-action="admin-confirm"]')
         adm.wait_for_timeout(1500)
-        check(me(user_token)['balance'] == bal + 1000, 'E30 xác minh thì máy chủ cộng đúng 1.000 Xu (người dùng không tự đặt số)')
+        check(eventually(lambda: me(user_token)['balance'] == bal + 1000), 'E30 xác minh thì máy chủ cộng đúng 1.000 Xu (người dùng không tự đặt số)')
         r = usr.evaluate("window.WindtpApi.client.createOrder({kind:'ctask',taskId:'ct-1',summary:'x'}).then(()=>'ok',e=>e.code)")
         check(r == 'ok', 'E31 nộp nhiệm vụ đặc biệt do admin đăng')
         usr.evaluate("window.WindtpApi.client.createOrder({kind:'ctask',taskId:'ct-1'}).then(()=>'ok',e=>e.code)")
@@ -176,7 +191,7 @@ with serve_dist() as URL, sync_playwright() as p:
         adm.wait_for_selector('[data-action="admin-confirm"]', timeout=15000)
         adm.click('[data-action="admin-confirm"]')
         adm.wait_for_timeout(1500)
-        check(me(user_token)['balance'] == bal + 1700, 'E32 nhiệm vụ đặc biệt cộng đúng 700 Xu theo bảng của máy chủ')
+        check(eventually(lambda: me(user_token)['balance'] == bal + 1700), 'E32 nhiệm vụ đặc biệt cộng đúng 700 Xu theo bảng của máy chủ')
 
         # 9c. Nội dung trả phí: bản tải về chỉ có bài miễn phí, bản đầy đủ chỉ máy chủ gửi cho người có quyền
         free = usr.evaluate("window.WindtpData.vocab('en').then(v=>Object.entries(v).map(([k,l])=>[k,l.length]))")
@@ -201,7 +216,7 @@ with serve_dist() as URL, sync_playwright() as p:
         adm.evaluate('()=>{const b=document.createElement("button");b.dataset.action="open-moderation";document.body.appendChild(b);b.click();b.remove()}')
         adm.wait_for_selector('[data-action="approve-content"][data-type="post"]', timeout=15000)
         adm.click('[data-action="approve-content"][data-type="post"]')
-        adm.wait_for_timeout(1500)
+        eventually(lambda: usr.evaluate("window.WindtpApi.client.posts().then(p=>p.length)") == 1)
         feed = usr.evaluate("window.WindtpApi.client.posts().then(p=>p.map(x=>[x.tag,x.mine,x.admin]))")
         check(feed == [['Học tập', True, False]], 'E43 admin duyệt trên giao diện thì bài hiện cho mọi người (%s)' % feed)
         check(adm.evaluate("window.__xss === undefined"), 'E44 nội dung bài không chạy script')
