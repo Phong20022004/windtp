@@ -369,7 +369,7 @@
   }
   function postCard_(p) {
     const open = ui.openComments.has(p.id);
-    const mine = p.author === state.userName;
+    const mine = p.mine === true;
     return `
   <article class="glass-card p-4 rounded-2xl space-y-3${p.admin ? " adm-post" + (Date.now() - p.ts < 8000 ? " adm-pop" : "") : ""}">
     <div class="flex items-center gap-3">

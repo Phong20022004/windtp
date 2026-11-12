@@ -86,7 +86,9 @@ CREATE TABLE IF NOT EXISTS posts (
   uid TEXT NOT NULL,
   author TEXT NOT NULL,
   text TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  tag TEXT NOT NULL DEFAULT 'Chung',
+  is_admin INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'deleted')),
   created_at INTEGER NOT NULL,
   reviewed_at INTEGER,
   reviewed_by TEXT

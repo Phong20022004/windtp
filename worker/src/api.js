@@ -276,19 +276,30 @@ export function createApi({ verify, now = () => Date.now() }) {
 
   route('POST', '/posts', 'user', async ({ db, user, t, body }) => {
     const text = typeof body.text === 'string' ? body.text.trim() : '';
-    if (!text || text.length > E.MAX_POST_LEN) throw bad('bad-text');
-    const n = await q(db, 'SELECT COUNT(*) AS n FROM posts WHERE uid = ? AND created_at > ?', user.uid, t - 86400000).first();
+    if (text.length < 3 || text.length > E.MAX_POST_LEN) throw bad('bad-text');
+    const tag = typeof body.tag === 'string' ? body.tag.trim() : 'Chung';
+    if (!tag || tag.length > 20) throw bad('bad-text');
+    const n = await q(db, "SELECT COUNT(*) AS n FROM posts WHERE uid = ? AND created_at > ? AND status != 'deleted'", user.uid, t - 86400000).first();
     if (n.n >= E.MAX_POSTS_PER_DAY) throw new HttpError(429, 'too-many-posts');
-    const r = await q(db, 'INSERT INTO posts (uid, author, text, created_at) VALUES (?, ?, ?, ?)', user.uid, user.name || 'Người dùng', text, t).run();
-    return { ok: true, id: r.meta.last_row_id };
+    // Bài của admin hiện ngay; bài của người dùng phải chờ admin duyệt (kiểm duyệt do máy chủ giữ, không phải trình duyệt).
+    const adm = user.admin ? 1 : 0;
+    const r = await q(db, 'INSERT INTO posts (uid, author, text, tag, is_admin, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)', user.uid, user.name || 'Người dùng', text, tag, adm, adm ? 'approved' : 'pending', t).run();
+    return { ok: true, id: r.meta.last_row_id, status: adm ? 'approved' : 'pending' };
+  });
+  route('GET', '/posts', 'user', async ({ db, user }) => ({
+    posts: (await q(db, "SELECT id, author, text, tag, is_admin AS admin, created_at AS at, (uid = ?) AS mine FROM posts WHERE status = 'approved' ORDER BY id DESC LIMIT 100", user.uid).all()).results
+      .map((p) => ({ ...p, admin: !!p.admin, mine: !!p.mine })),
+  }));
+  route('POST', '/posts/:id/delete', 'user', async ({ db, user, params }) => {
+    const r = user.admin
+      ? await q(db, "UPDATE posts SET status = 'deleted' WHERE id = ? AND status != 'deleted'", +params.id).run()
+      : await q(db, "UPDATE posts SET status = 'deleted' WHERE id = ? AND uid = ? AND status != 'deleted'", +params.id, user.uid).run();
+    if (!r.meta.changes) throw new HttpError(404, 'not-found');
+    return { ok: true };
   });
 
-  route('GET', '/posts', 'user', async ({ db }) => ({
-    posts: (await q(db, "SELECT id, author, text, created_at AS at FROM posts WHERE status = 'approved' ORDER BY id DESC LIMIT 100").all()).results,
-  }));
-
   route('GET', '/admin/posts', 'admin', async ({ db }) => ({
-    posts: (await q(db, "SELECT * FROM posts WHERE status = 'pending' ORDER BY id LIMIT 200").all()).results,
+    posts: (await q(db, "SELECT id, uid, author, text, tag, status, created_at FROM posts WHERE status = 'pending' ORDER BY id LIMIT 200").all()).results,
   }));
 
   for (const [action, status] of [['approve', 'approved'], ['reject', 'rejected']]) {

@@ -98,12 +98,16 @@ export interface PublicPost {
   id: number;
   author: string;
   text: string;
+  tag: string;
+  admin: boolean;
+  mine: boolean;
   at: number;
 }
 
 export interface AdminPost {
   id: number;
   uid: string;
+  tag: string;
   author: string;
   text: string;
   status: string;

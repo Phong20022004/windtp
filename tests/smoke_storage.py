@@ -1,8 +1,9 @@
 """Khi bộ nhớ trình duyệt đầy, ứng dụng phải báo người dùng (và không báo dồn dập).
 Chạy: npm run build:test && python3 tests/smoke_storage.py"""
-import sys
+import json, sys
+from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright
-from support import serve_dist
+from support import serve_dist, serve_api
 
 failures = []
 
@@ -13,9 +14,11 @@ def check(cond, label):
         failures.append(label)
 
 
-with serve_dist() as URL, sync_playwright() as p:
+with serve_dist() as URL, sync_playwright() as p, serve_api('%s://%s' % (urlparse(URL).scheme, urlparse(URL).netloc)) as API:
     browser = p.chromium.launch()
-    pg = browser.new_context(viewport={'width': 420, 'height': 900}).new_page()
+    ctx = browser.new_context(viewport={'width': 420, 'height': 900}, bypass_csp=True)
+    ctx.add_init_script('window.__WINDTP_API_URL__ = %s' % json.dumps(API))
+    pg = ctx.new_page()
     errors = []
     pg.on('pageerror', lambda e: errors.append(str(e)[:160]))
     pg.goto(URL, wait_until='load', timeout=240000)
@@ -27,7 +30,7 @@ with serve_dist() as URL, sync_playwright() as p:
     pg.fill('#lg-pw', 'secret1')
     pg.fill('#lg-pw2', 'secret1')
     pg.click('#lg-submit')
-    pg.wait_for_timeout(800)
+    pg.wait_for_timeout(2500)  # để ví và dữ liệu máy chủ tải xong, tránh đồng bộ nền chen vào lúc mô phỏng
     toasts = lambda: pg.evaluate("document.body.innerText.split('Không lưu được dữ liệu').length - 1")
     check(toasts() == 0, '1 bình thường không có cảnh báo lưu')
     # mô phỏng bộ nhớ đầy: mọi setItem đều ném QuotaExceededError
@@ -38,17 +41,16 @@ with serve_dist() as URL, sync_playwright() as p:
             return real.call(this, key, value);
         };
     }""")
-    pg.evaluate("document.querySelector('[data-action=\"goto\"][data-tab=\"community\"]')?.click()")
-    pg.wait_for_timeout(300)
-    pg.fill('#post-draft', 'Bài thử, đủ dài để được đăng')
-    pg.evaluate("document.querySelector('[data-action=\"publish-post\"]')?.click()")
+    # Một thay đổi cục bộ bất kỳ (đổi tiền tệ) buộc app ghi vào localStorage
+    def local_change(cur):
+        pg.evaluate("(c)=>{const b=document.createElement('button');b.dataset.action='set-currency';b.dataset.cur=c;document.body.appendChild(b);b.click();b.remove()}", cur)
+    local_change('KRW')
     pg.wait_for_timeout(450)
     check(toasts() >= 1, '2 bộ nhớ đầy thì hiện cảnh báo tiếng Việt')
     # chỉ cảnh báo một lần trong 30 giây dù lưu hỏng liên tiếp
     seen = pg.evaluate("window.__warns = 0, window.addEventListener('windtp:save-failed', () => window.__warns++), 0")
     for i in range(3):
-        pg.fill('#post-draft', 'Bài thử tiếp số %d' % i)
-        pg.evaluate("document.querySelector('[data-action=\"publish-post\"]')?.click()")
+        local_change('JPY' if i % 2 else 'KRW')
         pg.wait_for_timeout(200)
     check(pg.evaluate('window.__warns') == 0, '3 không báo dồn dập: lưu hỏng liên tiếp không phát cảnh báo mới trong 30 giây')
     check(not errors, '4 không có lỗi JS khi lưu thất bại' + ('' if not errors else ': ' + '; '.join(errors[:2])))

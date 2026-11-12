@@ -193,6 +193,21 @@ with serve_dist() as URL, sync_playwright() as p:
         blocked = usr.evaluate("(()=>{const e=new KeyboardEvent('keydown',{key:'F12',cancelable:true,bubbles:true});window.dispatchEvent(e);return e.defaultPrevented})()")
         check(blocked, 'E39 phím F12 bị chặn trên giao diện')
 
+        # 9d. Bài đăng cộng đồng: lưu và kiểm duyệt ở máy chủ
+        r = usr.evaluate("window.WindtpApi.client.createPost('<img src=x onerror=alert(1)> Xin chao','Học tập').then(r=>r.status,e=>e.serverCode)")
+        check(r == 'pending', 'E41 bài của người dùng chờ duyệt (%s)' % r)
+        feed = usr.evaluate("window.WindtpApi.client.posts().then(p=>p.length)")
+        check(feed == 0, 'E42 bài chưa duyệt không hiện trong bảng tin')
+        adm.evaluate('()=>{const b=document.createElement("button");b.dataset.action="open-moderation";document.body.appendChild(b);b.click();b.remove()}')
+        adm.wait_for_selector('[data-action="approve-content"][data-type="post"]', timeout=15000)
+        adm.click('[data-action="approve-content"][data-type="post"]')
+        adm.wait_for_timeout(1500)
+        feed = usr.evaluate("window.WindtpApi.client.posts().then(p=>p.map(x=>[x.tag,x.mine,x.admin]))")
+        check(feed == [['Học tập', True, False]], 'E43 admin duyệt trên giao diện thì bài hiện cho mọi người (%s)' % feed)
+        check(adm.evaluate("window.__xss === undefined"), 'E44 nội dung bài không chạy script')
+        r = adm.evaluate("window.WindtpApi.client.deletePost(%d).then(()=>'ok',e=>e.serverCode)" % usr.evaluate("window.WindtpApi.client.posts().then(p=>p[0].id)"))
+        check(r == 'ok', 'E45 admin xóa được bài của người dùng')
+
         # 9. Người dùng thấy số dư đúng sau khi làm mới ví
         usr.evaluate('window.WindtpApi.wallet.refresh()')
         usr.reload(wait_until='load', timeout=240000)
@@ -209,6 +224,6 @@ with serve_dist() as URL, sync_playwright() as p:
 
         browser.close()
 
-check(not page_errors, 'E40 không có lỗi JS: %s' % page_errors[:3])
+check(not page_errors, 'E46 không có lỗi JS: %s' % page_errors[:3])
 print('Thất bại: %d' % len(failures))
 sys.exit(1 if failures else 0)

@@ -69,7 +69,12 @@
   /** Nhiệm vụ đặc biệt (admin đăng) và trạng thái chia sẻ Facebook/nhiệm vụ của chính người dùng, đều lấy từ máy chủ. */
   function econSocial() {
     const api = econClient();
-    Promise.all([api.tasks(), api.myOrders()]).then(([tasks, orders]) => {
+    return Promise.all([api.tasks(), api.myOrders(), api.posts(), isAdmin() ? api.admin.posts() : Promise.resolve([])]).then(([tasks, orders, posts, pending]) => {
+      // Bài đăng do máy chủ giữ; lượt thích và bình luận vẫn chỉ lưu trên máy này.
+      const old = new Map((state.posts || []).map((p) => [p.id, p]));
+      const keep = (id) => old.get(id) || {};
+      state.posts = posts.map((p) => ({ id: "s" + p.id, author: p.author, tag: p.tag, text: p.text, ts: p.at, admin: p.admin || undefined, mine: p.mine, status: "approved", likes: keep("s" + p.id).likes || 0, liked: !!keep("s" + p.id).liked, comments: keep("s" + p.id).comments || [] }))
+        .concat(pending.map((p) => ({ id: "s" + p.id, author: p.author, tag: p.tag, text: p.text, ts: p.created_at, status: "pending", likes: 0, liked: false, comments: [] })));
       const me = userId();
       state.customTasks = tasks.map((t) => ({ id: t.id, title: t.title, desc: "", xu: t.xu, chips: t.chips, money: t.money, cur: t.cur, ts: 0 }));
       const st = (o) => (o.status === "approved" ? "granted" : o.status === "pending" ? "sent" : "rejected");
@@ -384,3 +389,42 @@
     });
     return !!ok;
   }
+
+  // ----- Bài đăng cộng đồng: lưu và kiểm duyệt ở máy chủ -----
+  const serverPostId = (el) => Number(String(el.dataset.id || "").replace(/^s/, ""));
+  actions["publish-post"] = async () => {
+    const text = (ui.draft || "").trim();
+    if (text.length < 3) { toast("Bài viết cần tối thiểu 3 ký tự"); return; }
+    let res = null;
+    const ok = await econRun("post", async () => { res = await econClient().createPost(text, ui.draftTag || "Chung"); return true; });
+    if (!ok) return;
+    ui.draft = "";
+    state.daily.posts += 1;
+    commit();
+    if (res.status === "approved") { admBurst(); toast("\u{1F451} Đã đăng bài, hiển thị ngay cho mọi người."); }
+    else toast("Bài viết đã gửi và đang chờ chủ quản kiểm duyệt trước khi hiển thị công khai.");
+    econSocial();
+  };
+  actions["delete-post"] = async (el) => {
+    const ok = await econRun("delpost", async () => { await econClient().deletePost(serverPostId(el)); return true; });
+    if (!ok) return;
+    toast("Đã xóa bài viết"); econSocial();
+  };
+  actions["admin-del-post"] = async (el) => {
+    if (!isAdmin() || !confirm("Xóa bài đăng này?")) return;
+    const ok = await econRun("delpost", async () => { await econClient().deletePost(serverPostId(el)); return true; });
+    if (ok) { toast("Đã xóa bài đăng"); econSocial(); }
+  };
+  ["approve-content", "reject-content"].forEach((name) => {
+    const orig = actions[name], approve = name === "approve-content";
+    actions[name] = async (el, ev) => {
+      if (el.dataset.type !== "post") { if (orig) orig(el, ev); return; }
+      if (!isAdmin()) { toast("Chỉ BigBoss mới được kiểm duyệt nội dung."); return; }
+      const ok = await econRun("mod:" + el.dataset.id, async () => { const api = econClient().admin, id = serverPostId(el); await (approve ? api.approvePost(id) : api.rejectPost(id)); return true; });
+      if (!ok) return;
+      toast(approve ? "Đã duyệt nội dung và cho phép hiển thị." : "Đã từ chối nội dung.");
+      await econSocial(); refreshModal();
+    };
+  });
+  const openModerationOrig = actions["open-moderation"];
+  actions["open-moderation"] = async (el, ev) => { if (!isAdmin()) { openModerationOrig(el, ev); return; } await econSocial().catch(() => { }); openModerationOrig(el, ev); };

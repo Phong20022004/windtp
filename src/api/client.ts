@@ -59,7 +59,8 @@ export interface ApiClient {
   tasks(): Promise<SpecialTask[]>;
   /** Từ vựng đầy đủ của một ngôn ngữ; máy chủ chỉ gửi khi còn Premium và có khóa học đó. */
   vocabContent(lang: string): Promise<unknown>;
-  createPost(text: string): Promise<{ id: number }>;
+  createPost(text: string, tag: string): Promise<{ id: number; status: "pending" | "approved" }>;
+  deletePost(id: number): Promise<void>;
   posts(): Promise<PublicPost[]>;
   admin: {
     orders(status?: "pending" | "approved" | "rejected"): Promise<AdminOrder[]>;
@@ -132,7 +133,8 @@ export function createApiClient({ baseUrl, getToken, fetchImpl }: ApiClientOptio
     vocabContent: (lang) => request<unknown>("GET", `/content/vocab/${encodeURIComponent(lang)}`),
     tasks: async () => (await request<{ tasks: SpecialTask[] }>("GET", "/tasks")).tasks,
     myOrders: async () => (await request<{ orders: Order[] }>("GET", "/orders/mine")).orders,
-    createPost: async (text) => ({ id: Number((await post("/posts", { text })).id) }),
+    createPost: async (text, tag) => { const r = await post("/posts", { text, tag }); return { id: Number(r.id), status: r.status === "approved" ? "approved" : "pending" }; },
+    deletePost: (id) => done(post(`/posts/${id}/delete`)),
     posts: async () => (await request<{ posts: PublicPost[] }>("GET", "/posts")).posts,
     admin: {
       orders: async (status = "pending") => (await request<{ orders: AdminOrder[] }>("GET", `/admin/orders?status=${status}`)).orders,

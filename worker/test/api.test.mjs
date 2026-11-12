@@ -195,8 +195,8 @@ test('kiểm duyệt bài: pending không hiện; chỉ admin duyệt; giới h�
   assert.equal((await app.call('GET', '/posts', { uid: 'u2' })).json.posts.length, 1);
   assert.equal((await app.call('POST', '/posts', { uid: 'u1', body: { text: 'x'.repeat(2001) } })).status, 400);
   assert.equal((await app.call('POST', '/posts', { uid: 'u1', body: { text: '   ' } })).status, 400);
-  for (let i = 0; i < 9; i++) await app.call('POST', '/posts', { uid: 'u1', body: { text: 'a' } });
-  assert.equal((await app.call('POST', '/posts', { uid: 'u1', body: { text: 'a' } })).status, 429);
+  for (let i = 0; i < 9; i++) await app.call('POST', '/posts', { uid: 'u1', body: { text: 'aaa' } });
+  assert.equal((await app.call('POST', '/posts', { uid: 'u1', body: { text: 'aaa' } })).status, 429);
 });
 
 test('SQL injection trong tham số chỉ là dữ liệu', async () => {
@@ -407,4 +407,24 @@ test('khóa công khai Firebase đổi: gặp kid lạ thì tải lại danh sá
   assert.equal((await verifyFirebaseToken(await a.sign({ sub: 'u' }), opts)).uid, 'u');
   assert.equal((await verifyFirebaseToken(tokenB, { ...opts, now: opts.now + 61000 })).uid, 'u', 'sau khi xoay khóa vẫn xác thực được');
   assert.equal(calls, 2);
+});
+
+test('bài đăng: admin đăng hiện ngay, người dùng chờ duyệt; chỉ chủ bài hoặc admin xóa; bài đã xóa biến mất', async () => {
+  const app = await makeApp();
+  const own = await app.call('POST', '/posts', { uid: 'u1', body: { text: 'Xin chào mọi người', tag: 'Học tập' } });
+  assert.equal(own.json.status, 'pending');
+  const adm = await app.call('POST', '/posts', { uid: 'boss', admin: true, body: { text: 'Thông báo từ BigBoss', tag: 'Tin tức' } });
+  assert.equal(adm.json.status, 'approved');
+  let feed = (await app.call('GET', '/posts', { uid: 'u2' })).json.posts;
+  assert.deepEqual(feed.map((p) => [p.tag, p.admin, p.mine]), [['Tin tức', true, false]]);
+  assert.equal((await app.call('POST', '/posts', { uid: 'u1', body: { text: 'ok ok', tag: 'x'.repeat(21) } })).status, 400);
+  assert.equal((await app.call('POST', '/posts', { uid: 'u1', body: { text: 'ab' } })).status, 400);
+  assert.equal((await app.call('POST', `/admin/posts/${own.json.id}/approve`, { uid: 'boss', admin: true })).status, 200);
+  assert.equal((await app.call('POST', `/posts/${own.json.id}/delete`, { uid: 'u2' })).status, 404, 'người khác không xóa được');
+  feed = (await app.call('GET', '/posts', { uid: 'u1' })).json.posts;
+  assert.equal(feed.find((p) => p.id === own.json.id).mine, true);
+  assert.equal((await app.call('POST', `/posts/${own.json.id}/delete`, { uid: 'u1' })).status, 200);
+  assert.equal((await app.call('POST', `/posts/${adm.json.id}/delete`, { uid: 'u1' })).status, 404);
+  assert.equal((await app.call('POST', `/posts/${adm.json.id}/delete`, { uid: 'boss', admin: true })).status, 200);
+  assert.equal((await app.call('GET', '/posts', { uid: 'u2' })).json.posts.length, 0);
 });
