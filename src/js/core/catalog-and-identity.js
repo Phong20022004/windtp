@@ -378,7 +378,7 @@
       ["TOPIK I", "from-emerald-700 to-lime-400", ["Luyện thi TOPIK I"]],
       ["TOPIK II", "from-violet-700 to-fuchsia-400", ["Luyện thi TOPIK II"]],
       ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Tổng hợp"]],
-      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Ngữ pháp tổng hợp"]]
+      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Quyển 1", "Quyển 2", "Quyển 3", "Quyển 4", "Quyển 5", "Quyển 6"]]
     ],
     ja: [
       ["Nihongo", "from-red-700 to-rose-400", ["Sơ cấp 1", "Sơ cấp 2", "Trung cấp 1", "Trung cấp 2"]],
