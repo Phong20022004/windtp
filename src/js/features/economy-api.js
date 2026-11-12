@@ -369,3 +369,18 @@
     if (typeof orig !== "function") return;
     actions[name] = (el, ev) => { if (!isAdmin()) return; orig(el, ev); econPutTasks(); };
   });
+
+  // ----- Nội dung trả phí: bản đầy đủ chỉ lấy được từ máy chủ khi còn Premium và có khóa học -----
+  var fullVocab = {};
+  async function econEnsureFullVocab(code) {
+    if (fullVocab[code]) return true;
+    if (!econ.me) { await econRefresh(false); if (!econ.me) { toast("Cần kết nối máy chủ để mở bài học này"); return false; } }
+    const ok = await econRun("vocab:" + code, async () => {
+      toast("Đang tải bài học…");
+      const file = await econClient().vocabContent(code);
+      window.WindtpData.setVocab(code, file);
+      fullVocab[code] = true;
+      return true;
+    });
+    return !!ok;
+  }

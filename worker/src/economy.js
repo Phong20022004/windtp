@@ -44,3 +44,4 @@ export const MAX_PENDING_ORDERS = 5;
 export const FB_REWARD = 1000; // thưởng chia sẻ Facebook, mỗi người mỗi kỳ nửa tháng một lần
 export const FB_LINK_RE = /^https:\/\/(?:www\.|m\.|web\.|mbasic\.)?(?:facebook\.com|fb\.com|fb\.watch|fb\.me)\/[^\s]{3,}$/i;
 export const MAX_TASKS = 100;
+export const CONTENT_LANGS = ['en', 'zh', 'ja', 'ko', 'de', 'fr', 'es']; // khớp LANG_CODES của app

@@ -175,3 +175,20 @@ describe("parseManifest", () => {
     assert.throws(() => parseManifest("{"));
   });
 });
+
+describe("setVocab", () => {
+  it("thay bản miễn phí bằng bản đầy đủ và vocabSync trả về bản mới", async () => {
+    const { loader } = make([{ status: 200, body: VOCAB_BODY }]);
+    await loader.vocab("en");
+    const full = { "IELTS|0": [[1, [["a"]]], [2, [["b"]]]], "IELTS|1": [[1, [["c"]]]] };
+    loader.setVocab("en", full);
+    assert.deepEqual(loader.vocabSync("en"), full);
+  });
+
+  it("từ chối dữ liệu sai định dạng và giữ bản cũ", async () => {
+    const { loader } = make([{ status: 200, body: VOCAB_BODY }]);
+    await loader.vocab("en");
+    assert.throws(() => loader.setVocab("en", { "x": "không phải mảng" }), DataLoadError);
+    assert.deepEqual(loader.vocabSync("en"), VOCAB_BODY);
+  });
+});

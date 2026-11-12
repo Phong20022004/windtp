@@ -29,6 +29,8 @@ const BY_SERVER_CODE: Readonly<Record<string, ApiErrorCode>> = {
   "insufficient-or-limit": "insufficient-or-limit",
   duplicate: "duplicate",
   "too-large": "too-large",
+  "premium-required": "premium-required",
+  "course-required": "course-required",
 };
 
 function classify(status: number, serverCode: string): ApiErrorCode {
@@ -55,6 +57,8 @@ export interface ApiClient {
   createOrder(input: OrderInput): Promise<{ id: number }>;
   myOrders(): Promise<Order[]>;
   tasks(): Promise<SpecialTask[]>;
+  /** Từ vựng đầy đủ của một ngôn ngữ; máy chủ chỉ gửi khi còn Premium và có khóa học đó. */
+  vocabContent(lang: string): Promise<unknown>;
   createPost(text: string): Promise<{ id: number }>;
   posts(): Promise<PublicPost[]>;
   admin: {
@@ -125,6 +129,7 @@ export function createApiClient({ baseUrl, getToken, fetchImpl }: ApiClientOptio
     exchangeChips: (xu) => done(post("/chips/exchange", { xu })),
     purchase: async (itemId) => ({ itemId: String((await post("/purchase", { itemId })).itemId ?? itemId) }),
     createOrder: async (input) => ({ id: Number((await post("/orders", input)).id) }),
+    vocabContent: (lang) => request<unknown>("GET", `/content/vocab/${encodeURIComponent(lang)}`),
     tasks: async () => (await request<{ tasks: SpecialTask[] }>("GET", "/tasks")).tasks,
     myOrders: async () => (await request<{ orders: Order[] }>("GET", "/orders/mine")).orders,
     createPost: async (text) => ({ id: Number((await post("/posts", { text })).id) }),

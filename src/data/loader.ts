@@ -23,6 +23,8 @@ export interface DataLoader {
   /** Tải (hoặc lấy từ bộ nhớ) phần bổ sung cho bài ngày của một ngôn ngữ. */
   daily(code: LangCode): Promise<DailyFile>;
   dailySync(code: LangCode): DailyFile | null;
+  /** Thay bản từ vựng miễn phí bằng bản đầy đủ lấy từ máy chủ sau khi xác minh quyền học. Ném lỗi nếu sai định dạng. */
+  setVocab(code: LangCode, file: unknown): void;
   /** Xóa trạng thái "vừa thất bại" để lần gọi sau thử tải lại ngay (dùng khi mạng có lại). */
   resetFailures(): void;
 }
@@ -136,6 +138,10 @@ export function createDataLoader(options: LoaderOptions): DataLoader {
     vocabSync: (code) => (loaded.get(`vocab:${code}`) as VocabFile | undefined) ?? null,
     daily: (code) => load("daily", code, isDailyFile),
     dailySync: (code) => (loaded.get(`daily:${code}`) as DailyFile | undefined) ?? null,
+    setVocab: (code, file) => {
+      if (!isVocabFile(file)) throw new DataLoadError(`vocab:${code}`, null, "sai định dạng");
+      loaded.set(`vocab:${code}`, file);
+    },
     resetFailures: () => failures.clear(),
   };
 }

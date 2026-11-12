@@ -342,3 +342,23 @@ test('nhiệm vụ đặc biệt: admin đăng, người dùng nộp một lần
   assert.equal(w.balance, 700);
   assert.equal(w.chips, 50);
 });
+
+test('nội dung trả phí: cần Premium còn hạn và khóa học của đúng ngôn ngữ; admin xem được; ngôn ngữ lạ 404', async () => {
+  const app = await makeApp();
+  const get = (uid, lang, admin) => app.call('GET', `/content/vocab/${lang}`, { uid, admin });
+  assert.equal((await app.call('GET', '/content/vocab/en')).status, 401);
+  assert.equal((await get('u1', 'en')).status, 403, 'chưa có Premium');
+  assert.equal((await get('u1', '../../x')).status, 404);
+  assert.equal((await get('u1', 'xx')).status, 404);
+  // Admin duyệt đơn: Premium 1 tháng + khóa tiếng Anh
+  const o = (await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'shop', currency: 'VND', amount: 1000 } })).json.id;
+  assert.equal((await app.call('POST', `/admin/orders/${o}/approve`, { uid: 'boss', admin: true, body: { grants: ['access:en'], premiumMonths: 1 } })).status, 200);
+  const ok = await get('u1', 'en');
+  assert.equal(ok.status, 200);
+  assert.equal(ok.json['Sach|0'].length, 2, 'bản đầy đủ có nhiều bài');
+  assert.equal((await get('u1', 'ko')).status, 403, 'Premium nhưng chưa có khóa tiếng Hàn');
+  assert.equal((await get('boss', 'ko', true)).status, 200, 'admin xem được');
+  app.state.t += 40 * 86400000;
+  assert.equal((await get('u1', 'en')).status, 403, 'hết hạn Premium thì ngừng gửi');
+  assert.equal((await get('boss', 'fr', true)).status, 404, 'chưa tải nội dung lên R2');
+});

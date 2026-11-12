@@ -48,7 +48,8 @@ export async function makeApp({ clock } = {}) {
   const db = makeDb();
   const verify = (token) => verifyFirebaseToken(token, { projectId: PROJECT, now: state.t, jwks: [issuer.jwk] });
   const handle = createApi({ verify, now: () => state.t });
-  const env = { DB: db, ALLOWED_ORIGIN: ORIGIN };
+  const objects = new Map([['vocab/en.json', '{"Sach|0":[[1,[["a"]]],[2,[["b"]]]]}'], ['vocab/ko.json', '{"K|0":[[1,[["c"]]]]}']]);
+  const env = { DB: db, ALLOWED_ORIGIN: ORIGIN, CONTENT: { get: async (key) => (objects.has(key) ? { body: objects.get(key) } : null) } };
   const as = (uid, extra = {}) => issuer.sign({ sub: uid, name: uid, ...extra });
   const call = async (method, path, { uid, token, body, admin, origin = ORIGIN } = {}) => {
     const headers = { origin };

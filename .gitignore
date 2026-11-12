@@ -6,3 +6,5 @@ __pycache__/
 # Khóa dịch vụ Firebase Admin: tuyệt đối không commit
 service-account*.json
 *-adminsdk-*.json
+# Nội dung trả phí xuất khi build, chỉ tải lên R2
+premium-content/

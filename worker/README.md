@@ -19,15 +19,17 @@ giá, mức thưởng, hạn mức do máy chủ quyết định (`src/economy.j
 - **Chip thắng trong game** chỉ lưu ở trình duyệt (không quy ra tiền, không đổi lại Xu). Chip do máy chủ cấp (đổi từ Xu, thưởng, gói Premium) vẫn do máy chủ giữ.
 - Thưởng chia sẻ Facebook (1.000 Xu/kỳ nửa tháng, link không dùng lại) và nhiệm vụ đặc biệt (admin đăng bằng `PUT /admin/tasks`) chạy qua đơn `fbshare`/`ctask`: admin xem link/ảnh rồi duyệt, máy chủ tự quyết số thưởng. Tiền thật của nhiệm vụ vẫn do admin chuyển khoản thủ công.
 - **Chưa chuyển sang máy chủ**: hoa hồng giới thiệu (cần ánh xạ ID `WIND-…` sang tài khoản thật), hiện báo "tạm thời chưa dùng được".
-- Nội dung bài học trả phí vẫn nằm trong gói tải về nên chỉ khóa mềm ở giao diện.
+- **Nội dung bài học trả phí nằm ở R2**: bản tải về chỉ có bài 1 miễn phí. `GET /content/vocab/:lang` chỉ gửi khi người dùng còn Premium và có khóa học (`access:<lang>`) của ngôn ngữ đó, admin luôn xem được. Người đã được gửi nội dung thì vẫn chép lại được, máy chủ không ngăn được điều đó; chưa có giới hạn tải theo người (nên bật Rate limiting cho `/content/*`).
+- Khóa phím F12/chuột phải trong app chỉ là lớp cản trở người dùng thường, không phải bảo vệ.
 
 ## Triển khai (một lần, miễn phí, không cần thẻ)
 1. Tạo tài khoản Cloudflare, cài `wrangler`, `wrangler login`.
 2. `wrangler d1 create windtp` rồi dán `database_id` vào `wrangler.toml`.
 3. Sửa `FIREBASE_PROJECT_ID` và `ALLOWED_ORIGIN` (địa chỉ trang WINDTP, không có dấu `/` cuối) trong `wrangler.toml`.
 4. `wrangler d1 execute windtp --remote --file=schema.sql`
-5. `wrangler deploy`
-6. Nạp bảng giá: gọi `PUT /admin/catalog` bằng tài khoản admin với `{ "items": [{ "id", "kind", "name", "price" }] }`.
+5. `wrangler r2 bucket create windtp-content` (R2 cần thêm thẻ thanh toán trong Cloudflare; mức miễn phí 10GB), rồi sau khi `npm run build` chạy `npm run content:upload`
+6. `wrangler deploy`
+7. Nạp bảng giá: gọi `PUT /admin/catalog` bằng tài khoản admin với `{ "items": [{ "id", "kind", "name", "price" }] }`.
 
 ## API
 `GET /me`, `POST /profile/birth`, `POST /claim {taskId}`, `POST /chips/exchange {xu}`, `POST /purchase {itemId}`,

@@ -10,6 +10,7 @@ import { LANG_CODES, type DataManifest, type LangCode, type VocabFile } from "..
 import { contentHash, extractDataUris, type ExtractedAsset } from "./assets";
 import { buildCsp, loadGameHtml } from "./csp";
 import { computeDailyExtras, loadBaseTerms } from "./vocab-data";
+import { freeVocab } from "./vocab-split";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const args = process.argv.slice(2);
@@ -102,11 +103,16 @@ function buildDataFiles(): DataManifest {
   const manifest = { vocab: {}, daily: {} } as { vocab: Partial<Record<LangCode, string>>; daily: Partial<Record<LangCode, string>> };
   for (const code of LANG_CODES) {
     const vocabText = readRaw(`data/vocab/${code}.json`);
-    const vocabPath = `data/vocab.${code}.${contentHash(vocabText)}.json`;
-    dataFiles.set(vocabPath, vocabText);
+    const full = JSON.parse(vocabText) as VocabFile;
+    // Chỉ bản miễn phí đi vào dist/; bản đầy đủ ghi riêng ra premium-content/ để tải lên R2, không bao giờ nằm cạnh trang.
+    const freeText = JSON.stringify(freeVocab(full));
+    const vocabPath = `data/vocab.${code}.${contentHash(freeText)}.json`;
+    dataFiles.set(vocabPath, freeText);
+    fs.mkdirSync(path.join(ROOT, "premium-content/vocab"), { recursive: true });
+    fs.writeFileSync(path.join(ROOT, `premium-content/vocab/${code}.json`), vocabText);
     manifest.vocab[code] = vocabPath;
 
-    const daily = JSON.stringify(computeDailyExtras(code, baseTerms[code], JSON.parse(vocabText) as VocabFile));
+    const daily = JSON.stringify(computeDailyExtras(code, baseTerms[code], full));
     const dailyPath = `data/daily.${code}.${contentHash(daily)}.json`;
     dataFiles.set(dailyPath, daily);
     manifest.daily[code] = dailyPath;

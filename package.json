@@ -15,7 +15,8 @@
     "audit": "npm run build:test && python3 tools/audit/audit.py",
     "admin:grant": "tsx tools/admin/set-admin-claim.ts",
     "import:es": "python3 tools/import/import_es.py",
-    "import:yonsei": "python3 tools/import/import_yonsei.py"
+    "import:yonsei": "python3 tools/import/import_yonsei.py",
+    "content:upload": "bash tools/upload-content.sh"
   },
   "engines": {
     "node": ">=18"

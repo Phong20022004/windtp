@@ -307,6 +307,20 @@ export function createApi({ verify, now = () => Date.now() }) {
     return { ok: true, count: stmts.length };
   });
 
+  // Nội dung trả phí: chỉ gửi khi người dùng còn Premium VÀ sở hữu khóa học của ngôn ngữ đó (hoặc là admin).
+  route('GET', '/content/vocab/:lang', 'user', async ({ db, env, user, t, params }) => {
+    if (!E.CONTENT_LANGS.includes(params.lang)) throw new HttpError(404, 'no-content');
+    if (!user.admin) {
+      const w = await wallet(db, user.uid, t);
+      if (!(w.premiumUntil > t)) throw new HttpError(403, 'premium-required');
+      const own = await q(db, 'SELECT 1 AS x FROM entitlements WHERE uid = ? AND item_id = ?', user.uid, `access:${params.lang}`).first();
+      if (!own) throw new HttpError(403, 'course-required');
+    }
+    const obj = env.CONTENT ? await env.CONTENT.get(`vocab/${params.lang}.json`) : null;
+    if (!obj) throw new HttpError(404, 'no-content');
+    return new Response(obj.body);
+  });
+
   // Danh sách nhiệm vụ đặc biệt: admin ghi đè toàn bộ, mọi người dùng đọc được.
   route('PUT', '/admin/tasks', 'admin', async ({ db, body }) => {
     if (!Array.isArray(body.items) || body.items.length > E.MAX_TASKS) throw bad('bad-items');
@@ -348,7 +362,8 @@ export function createApi({ verify, now = () => Date.now() }) {
       try { user = await verify(auth.startsWith('Bearer ') ? auth.slice(7) : '', env); } catch { throw new HttpError(401, 'unauthenticated'); }
       if (match.r.auth === 'admin' && !user.admin) throw new HttpError(403, 'forbidden');
       const body = request.method === 'GET' ? {} : await readBody(request);
-      const out = await match.r.fn({ db: env.DB, user, t: now(), body, url, params: match.m.groups || {} });
+      const out = await match.r.fn({ db: env.DB, env, user, t: now(), body, url, params: match.m.groups || {} });
+      if (out instanceof Response) return new Response(out.body, { status: out.status, headers }); // nội dung thô (bài học), vẫn kèm CORS/no-store
       return reply(200, out);
     } catch (e) {
       if (e instanceof HttpError) return reply(e.status, { error: e.code });

@@ -46,6 +46,7 @@
         toast("Đang tải bài học…");
         try { await window.WindtpData.vocab(code); } catch (e) { toast("Không tải được bài học, hãy kiểm tra mạng rồi thử lại"); return; }
       }
+      if (!free && DAILY_LANGS.indexOf(code) >= 0 && !(await econEnsureFullVocab(code))) return;
       if ((code === "en" || code === "fr" || code === "zh" || code === "ko") && grp && typeof window.__enOpen === "function" && window.__enHas(grp[0] + "|" + v, v, l, code)) { if (window.__enOpen(grp[0] + "|" + v, v, l, { book: grp[0], vol: grp[2][v], lang: code })) return; }
       if (code === "de" && grp && typeof window.__deOpen === "function" && window.__deHas(grp[0] + "|" + v, v, l)) { if (window.__deOpen(grp[0] + "|" + v, v, l, { book: grp[0], vol: grp[2][v], lang: "de" })) return; }
       if (code === "ja" && grp && typeof window.__jaOpen === "function" && window.__jaHas(grp[0] + "|" + v, v, l)) { if (window.__jaOpen(grp[0] + "|" + v, v, l, { book: grp[0], vol: grp[2][v] })) return; }

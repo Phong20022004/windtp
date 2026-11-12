@@ -130,6 +130,8 @@ export type ApiErrorCode =
   | "not-pending"
   | "too-many"
   | "too-large"
+  | "premium-required"
+  | "course-required"
   | "unavailable"
   | "bad-response"
   | "unknown";
@@ -147,6 +149,8 @@ export const API_MESSAGES: Readonly<Record<ApiErrorCode, string>> = {
   "not-pending": "Mục này đã được xử lý trước đó",
   "too-many": "Bạn thao tác quá nhiều, hãy thử lại sau",
   "too-large": "Nội dung quá lớn",
+  "premium-required": "Bài này cần Premium còn hạn, hãy gia hạn để học tiếp",
+  "course-required": "Bạn chưa sở hữu khóa học của ngôn ngữ này",
   unavailable: "Máy chủ đang bận, hãy thử lại sau giây lát",
   "bad-response": "Máy chủ trả về dữ liệu không hợp lệ",
   unknown: "Có lỗi xảy ra, vui lòng thử lại",

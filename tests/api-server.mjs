@@ -3,6 +3,7 @@
 // KHÔNG BAO GIỜ triển khai file này; production dùng worker/src/index.js với chữ ký Firebase.
 // Dùng: node tests/api-server.mjs <origin-được-phép>   (in ra "PORT=<cổng>" khi sẵn sàng)
 import http from 'node:http';
+import fs from 'node:fs';
 import { createApi } from '../worker/src/api.js';
 import { makeDb } from '../worker/test/helpers.mjs';
 
@@ -18,7 +19,14 @@ const verify = async (token) => {
 };
 
 const handle = createApi({ verify });
-const env = { DB: makeDb(), ALLOWED_ORIGIN: origin };
+// Giả lập R2: đọc bản đầy đủ do build xuất ra premium-content/ (cùng nội dung sẽ được tải lên R2 thật).
+const CONTENT = {
+  get: async (key) => {
+    const file = new URL(`../premium-content/${key}`, import.meta.url);
+    return /^vocab\/[a-z]{2}\.json$/.test(key) && fs.existsSync(file) ? { body: fs.readFileSync(file) } : null;
+  },
+};
+const env = { DB: makeDb(), ALLOWED_ORIGIN: origin, CONTENT };
 
 const server = http.createServer(async (req, res) => {
   const chunks = [];

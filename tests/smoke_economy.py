@@ -178,6 +178,21 @@ with serve_dist() as URL, sync_playwright() as p:
         adm.wait_for_timeout(1500)
         check(me(user_token)['balance'] == bal + 1700, 'E32 nhiệm vụ đặc biệt cộng đúng 700 Xu theo bảng của máy chủ')
 
+        # 9c. Nội dung trả phí: bản tải về chỉ có bài miễn phí, bản đầy đủ chỉ máy chủ gửi cho người có quyền
+        free = usr.evaluate("window.WindtpData.vocab('en').then(v=>Object.entries(v).map(([k,l])=>[k,l.length]))")
+        check(len(free) > 0 and all(k.endswith('|0') and n == 1 for k, n in free), 'E34 bản từ vựng đi kèm trang chỉ có bài 1 miễn phí')
+        r = usr.evaluate("window.WindtpApi.client.vocabContent('en').then(()=>'ok',e=>e.serverCode)")
+        check(r == 'premium-required', 'E35 chưa có Premium thì máy chủ không gửi bài trả phí (%s)' % r)
+        oid = usr.evaluate("window.WindtpApi.client.createOrder({kind:'shop',currency:'VND',amount:1000,summary:'Khoa hoc EN'}).then(r=>r.id)")
+        status, _ = api_call(API, 'POST', '/admin/orders/%d/approve' % oid, admin_token, {'grants': ['access:en'], 'premiumMonths': 1}, ORIGIN)
+        check(status == 200, 'E36 admin cấp Premium và khóa học tiếng Anh theo đơn')
+        r = usr.evaluate("window.WindtpApi.client.vocabContent('ko').then(()=>'ok',e=>e.serverCode)")
+        check(r == 'course-required', 'E37 Premium nhưng chưa có khóa tiếng Hàn thì không lấy được (%s)' % r)
+        full = usr.evaluate("window.WindtpApi.client.vocabContent('en').then(v=>{window.WindtpData.setVocab('en',v);return Object.values(v).reduce((a,l)=>a+l.length,0)})")
+        check(full > sum(n for _, n in free), 'E38 có quyền thì tải được bản đầy đủ (%d bài so với %d bài miễn phí)' % (full, sum(n for _, n in free)))
+        blocked = usr.evaluate("(()=>{const e=new KeyboardEvent('keydown',{key:'F12',cancelable:true,bubbles:true});window.dispatchEvent(e);return e.defaultPrevented})()")
+        check(blocked, 'E39 phím F12 bị chặn trên giao diện')
+
         # 9. Người dùng thấy số dư đúng sau khi làm mới ví
         usr.evaluate('window.WindtpApi.wallet.refresh()')
         usr.reload(wait_until='load', timeout=240000)
@@ -194,6 +209,6 @@ with serve_dist() as URL, sync_playwright() as p:
 
         browser.close()
 
-check(not page_errors, 'E33 không có lỗi JS: %s' % page_errors[:3])
+check(not page_errors, 'E40 không có lỗi JS: %s' % page_errors[:3])
 print('Thất bại: %d' % len(failures))
 sys.exit(1 if failures else 0)
