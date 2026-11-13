@@ -517,12 +517,84 @@ test('phiên: thiết bị thứ 3 bị từ chối không làm mất phiên c�
   assert.equal((await me(app, 'u1', 2)).status, 200);
 });
 
-test('phiên: tài khoản chưa có phiên (cũ) thì yêu cầu đầu tiên giành chỗ, thiết bị khác sau đó bị chặn tới khi đăng nhập', async () => {
+test('phiên: tài khoản chưa có phiên (cũ) hoặc thiếu khóa thì báo no-session (app tự đăng nhập phiên rồi thử lại), không đăng xuất', async () => {
   const app = await makeApp();
+  const first = await me(app, 'u1', 1);
+  assert.deepEqual([first.status, first.json.error], [403, 'no-session']);
+  assert.equal((await claim(app, 'u1', 1)).status, 200);
   assert.equal((await me(app, 'u1', 1)).status, 200);
+  const nokey = await app.call('GET', '/me', { uid: 'u1', device: dev(1), sessionKey: '' });
+  assert.deepEqual([nokey.status, nokey.json.error], [403, 'no-session']);
+  // Thiết bị khác khi máy 1 đang hoạt động thì bị coi là đã bị thay thế, chưa đăng nhập phiên thì không giành được.
   assert.equal((await me(app, 'u1', 2)).json.error, 'session-replaced');
-  assert.equal((await claim(app, 'u1', 2)).status, 200);
-  assert.equal((await me(app, 'u1', 2)).status, 200);
+});
+
+test('phiên: khóa phiên sai bị từ chối; chép mã thiết bị mà không có khóa thì vô dụng', async () => {
+  const app = await makeApp();
+  await claim(app, 'u1', 1);
+  const bad = await app.call('GET', '/me', { uid: 'u1', device: dev(1), sessionKey: 'x'.repeat(32) });
+  assert.deepEqual([bad.status, bad.json.error], [403, 'session-replaced']);
+  const shaped = await app.call('GET', '/me', { uid: 'u1', device: dev(1), sessionKey: 'Abc_-' + 'y'.repeat(27) });
+  assert.equal(shaped.json.error, 'session-replaced');
+  assert.equal((await me(app, 'u1', 1)).status, 200);
+});
+
+test('phiên: khóa phiên đổi sau 5 phút, khóa cũ còn dùng được 20 phút rồi hết hạn', async () => {
+  const app = await makeApp();
+  await claim(app, 'u1', 1);
+  const k0 = app.keys.get('u1|' + dev(1));
+  app.state.t += 4 * 60000;
+  const r0 = await me(app, 'u1', 1);
+  assert.equal(r0.headers.get('x-session-key'), null); // chưa tới hạn đổi
+  app.state.t += 2 * 60000;
+  const r1 = await me(app, 'u1', 1);
+  const k1 = r1.headers.get('x-session-key');
+  assert.match(k1, /^[A-Za-z0-9_-]{32}$/);
+  assert.notEqual(k1, k0);
+  assert.equal(app.keys.get('u1|' + dev(1)), k1);
+  assert.equal((await me(app, 'u1', 1)).headers.get('x-session-key'), null);
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(1), sessionKey: k0 })).status, 200); // trong ân hạn
+  app.state.t += 21 * 60000;
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(1), sessionKey: k0 })).json.error, 'session-replaced');
+  assert.equal((await me(app, 'u1', 1)).status, 200); // khóa hiện tại vẫn dùng tốt (và tiếp tục được đổi)
+});
+
+test('phiên: hai trình duyệt chép chung localStorage chỉ dùng chung được vài phút rồi bên chép bị đăng xuất', async () => {
+  const app = await makeApp();
+  await claim(app, 'u1', 1);
+  const stolen = app.keys.get('u1|' + dev(1)); // bản sao khóa ở máy B
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(1), sessionKey: stolen })).status, 200);
+  app.state.t += 6 * 60000;
+  assert.equal((await me(app, 'u1', 1)).status, 200); // máy A dùng tiếp, khóa đổi
+  const b1 = await app.call('GET', '/me', { uid: 'u1', device: dev(1), sessionKey: stolen });
+  assert.deepEqual([b1.status, b1.headers.get('x-session-key')], [200, null]); // máy B còn trong ân hạn nhưng không nhận khóa mới
+  app.state.t += 25 * 60000;
+  assert.equal((await me(app, 'u1', 1)).status, 200);
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(1), sessionKey: stolen })).json.error, 'session-replaced');
+});
+
+test('phiên: nhiều yêu cầu song song đúng lúc đổi khóa đều thành công và sau đó vẫn dùng được', async () => {
+  const app = await makeApp();
+  await claim(app, 'u1', 1);
+  app.state.t += 6 * 60000;
+  const k0 = app.keys.get('u1|' + dev(1));
+  const rs = await Promise.all([1, 2, 3, 4, 5].map(() => app.call('GET', '/me', { uid: 'u1', device: dev(1), sessionKey: k0 })));
+  assert.deepEqual(rs.map((r) => r.status), [200, 200, 200, 200, 200]);
+  assert.ok(rs.filter((r) => r.headers.get('x-session-key')).length <= 1);
+  const row = app.db.sqlite.prepare('SELECT COUNT(*) AS n FROM user_sessions WHERE uid = ?').get('u1');
+  assert.equal(row.n, 1);
+});
+
+test('thiết bị: admin xem được thiết bị trong tháng và thiết bị đang hoạt động của người dùng; người thường không xem được', async () => {
+  const app = await makeApp();
+  await claim(app, 'u1', 1); await claim(app, 'u1', 2);
+  assert.equal((await app.call('GET', '/admin/devices/u1', { uid: 'u2' })).status, 403);
+  const r = await app.call('GET', '/admin/devices/u1', { uid: 'boss', admin: true });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.month, '2026-11');
+  assert.deepEqual(r.json.devices.map((d) => d.id), [dev(1), dev(2)]);
+  assert.equal(r.json.active.id, dev(2));
+  assert.equal((await app.call('GET', '/admin/devices/nobody', { uid: 'boss', admin: true })).json.active, null);
 });
 
 test('thiết bị: sang tháng mới được làm mới 2 thiết bị', async () => {
@@ -570,7 +642,7 @@ test('thiết bị: thiếu hoặc sai định dạng X-Device-Id bị 400; admi
   assert.equal((await app.call('GET', '/me', { uid: 'boss', admin: true, device: dev(1) })).status, 200);
   assert.equal((await app.call('GET', '/me', { uid: 'boss', admin: true, device: '' })).status, 200);
   assert.equal(app.db.sqlite.prepare('SELECT COUNT(*) AS n FROM device_months WHERE uid = ?').get('boss').n, 0);
-  assert.equal(app.db.sqlite.prepare('SELECT COUNT(*) AS n FROM active_sessions WHERE uid = ?').get('boss').n, 0);
+  assert.equal(app.db.sqlite.prepare('SELECT COUNT(*) AS n FROM user_sessions WHERE uid = ?').get('boss').n, 0);
 });
 
 test('thiết bị: nhiều thiết bị mới đăng nhập song song chỉ có đúng 2 thiết bị được nhận', async () => {

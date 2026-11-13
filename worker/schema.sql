@@ -132,10 +132,16 @@ CREATE TABLE IF NOT EXISTS device_months (
   first_seen INTEGER NOT NULL,
   PRIMARY KEY (uid, month, device_id)
 );
-CREATE TABLE IF NOT EXISTS active_sessions (
+-- Phiên hoạt động (thay bảng active_sessions của bản thử trước): khóa phiên do máy chủ cấp lúc đăng nhập, chỉ lưu băm; khóa đổi định kỳ (key_hash mới, khóa cũ còn hiệu lực tới prev_until)
+-- nên chép nguyên localStorage sang máy khác chỉ dùng chung được trong ít phút.
+CREATE TABLE IF NOT EXISTS user_sessions (
   uid TEXT PRIMARY KEY,
   device_id TEXT NOT NULL,
-  since INTEGER NOT NULL
+  since INTEGER NOT NULL,
+  key_hash TEXT NOT NULL,
+  prev_hash TEXT,
+  key_at INTEGER NOT NULL,
+  prev_until INTEGER NOT NULL DEFAULT 0
 );
 
 -- Mã mời: mỗi tài khoản đúng một mã. Một người chỉ nhập mã của người khác một lần (invitee là khóa chính).

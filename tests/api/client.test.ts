@@ -11,27 +11,28 @@ interface Seen {
   method: string;
   auth: string | null;
   device: string | null;
+  key: string | null;
   body: string | null;
 }
 
 /** fetch giả chạy theo kịch bản; ghi lại từng yêu cầu. */
-function server(steps: Array<{ status: number; body?: unknown; raw?: string } | "network">): { fetchImpl: typeof fetch; seen: Seen[] } {
+function server(steps: Array<{ status: number; body?: unknown; raw?: string; headers?: Record<string, string> } | "network">): { fetchImpl: typeof fetch; seen: Seen[] } {
   const seen: Seen[] = [];
   let index = 0;
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
-    seen.push({ url: String(input), method: init?.method ?? "GET", auth: headers.get("authorization"), device: headers.get("x-device-id"), body: (init?.body as string | undefined) ?? null });
+    seen.push({ url: String(input), method: init?.method ?? "GET", auth: headers.get("authorization"), device: headers.get("x-device-id"), key: headers.get("x-session-key"), body: (init?.body as string | undefined) ?? null });
     const step = steps[Math.min(index, steps.length - 1)];
     index += 1;
     if (step === undefined || step === "network") throw new TypeError("Failed to fetch");
-    return new Response(step.raw ?? JSON.stringify(step.body ?? {}), { status: step.status });
+    return new Response(step.raw ?? JSON.stringify(step.body ?? {}), { status: step.status, headers: step.headers });
   }) as typeof fetch;
   return { fetchImpl, seen };
 }
 
-function make(steps: Parameters<typeof server>[0], token: (force: boolean) => Promise<string | null> = async () => "tok", getDeviceId?: () => string) {
+function make(steps: Parameters<typeof server>[0], token: (force: boolean) => Promise<string | null> = async () => "tok", getDeviceId?: () => string, session?: { get: () => string; set: (k: string) => void }) {
   const { fetchImpl, seen } = server(steps);
-  return { client: createApiClient({ baseUrl: "https://api.windtp.test/", getToken: token, getDeviceId, fetchImpl }), seen };
+  return { client: createApiClient({ baseUrl: "https://api.windtp.test/", getToken: token, getDeviceId, session, fetchImpl }), seen };
 }
 
 async function failure(promise: Promise<unknown>): Promise<ApiError> {
@@ -152,6 +153,37 @@ describe("thiết bị và mã mời", () => {
     assert.match(error.message, /đăng xuất/);
   });
 
+  const K0 = "A".repeat(32), K1 = "B".repeat(32);
+  const store = (init = "") => { const box = { v: init }; return { box, get: () => box.v, set: (k: string) => { box.v = k; } }; };
+
+  it("gửi X-Session-Key đang có và lưu khóa mới do máy chủ đổi", async () => {
+    const s = store(K0);
+    const { client, seen } = make([{ status: 200, body: ME, headers: { "x-session-key": K1 } }, { status: 200, body: ME }], async () => "tok", undefined, s);
+    await client.me();
+    assert.equal(seen[0]?.key, K0);
+    assert.equal(s.box.v, K1);
+    await client.me();
+    assert.equal(seen[1]?.key, K1);
+    const bad = store(K0);
+    await make([{ status: 200, body: ME, headers: { "x-session-key": "ngan" } }], async () => "tok", undefined, bad).client.me();
+    assert.equal(bad.box.v, K0); // khóa sai định dạng bị bỏ qua
+  });
+
+  it("no-session: tự đăng nhập phiên một lần rồi gửi lại, lưu khóa mới", async () => {
+    const s = store();
+    const { client, seen } = make([
+      { status: 403, body: { error: "no-session" } },
+      { status: 200, body: { ok: true, replaced: false, sessionKey: K0 } },
+      { status: 200, body: ME },
+    ], async () => "tok", undefined, s);
+    assert.deepEqual(await client.me(), ME);
+    assert.deepEqual(seen.map((x) => x.url.replace("https://api.windtp.test", "")), ["/me", "/session/claim", "/me"]);
+    assert.equal(seen[2]?.key, K0);
+    const loop = make([{ status: 403, body: { error: "no-session" } }, { status: 200, body: { ok: true, sessionKey: K0 } }, { status: 403, body: { error: "no-session" } }], async () => "tok", undefined, store());
+    await assert.rejects(loop.client.me());
+    assert.equal(loop.seen.length, 3); // chỉ thử lại đúng một lần, không lặp vô hạn
+  });
+
   it("claimSession gọi POST /session/claim và trả replaced", async () => {
     const a = make([{ status: 200, body: { ok: true, replaced: true } }]);
     assert.deepEqual(await a.client.claimSession(), { replaced: true });
@@ -159,6 +191,9 @@ describe("thiết bị và mã mời", () => {
     assert.equal(a.seen[0]?.url, "https://api.windtp.test/session/claim");
     const b = make([{ status: 200, body: { ok: true } }]);
     assert.deepEqual(await b.client.claimSession(), { replaced: false });
+    const s = store();
+    await make([{ status: 200, body: { ok: true, replaced: false, sessionKey: K1 } }], async () => "tok", undefined, s).client.claimSession();
+    assert.equal(s.box.v, K1);
   });
 
   it("đọc mã mời của mình và đúng các lỗi khi nhập mã", async () => {
@@ -189,6 +224,10 @@ describe("thiết bị và mã mời", () => {
     const adm = make([{ status: 200, body: { ok: true, removed: 2 } }]);
     assert.equal(await adm.client.admin.resetDevices("u1"), 2);
     assert.equal(adm.seen[0]?.url, "https://api.windtp.test/admin/devices/reset");
+    const view = { max: 2, month: "2026-11", devices: [{ id: "d1", firstSeen: 1 }], active: null };
+    const v = make([{ status: 200, body: view }]);
+    assert.deepEqual(await v.client.admin.devices("u 1"), view);
+    assert.equal(v.seen[0]?.url, "https://api.windtp.test/admin/devices/u%201");
   });
 });
 

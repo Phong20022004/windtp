@@ -104,7 +104,7 @@
   }
   function econReset() {
     econ.me = null; econ.adminOrders = []; econ.myOrders = []; econ.ordersLoaded = false; econ.birthSent = ""; econ.syncReady = false; window.clearTimeout(econ.syncTimer);
-    if (window.WindtpApi) window.WindtpApi.wallet.clear();
+    if (window.WindtpApi) { window.WindtpApi.wallet.clear(); window.WindtpApi.clearSession(); }
   }
   window.setInterval(() => { if (document.visibilityState === "visible" && state.account) econRefresh(); }, ECON_REFRESH_MS);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && state.account && Date.now() - econ.loadedAt > 5000) econRefresh(); });

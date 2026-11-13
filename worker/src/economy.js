@@ -51,6 +51,8 @@ export const REFERRAL_REWARD = { xu: 10000, chips: 7000 };
 // Giới hạn thiết bị (admin không bị giới hạn): mỗi tháng tối đa MAX_DEVICES thiết bị khác nhau, và chỉ một thiết bị hoạt động cùng lúc.
 export const MAX_DEVICES = 2;
 export const DEVICE_TZ_OFFSET_MS = 7 * 3600000; // tháng tính theo giờ Việt Nam
+export const SESSION_ROTATE_MS = 5 * 60000; // đổi khóa phiên sau mỗi 5 phút hoạt động
+export const SESSION_GRACE_MS = 20 * 60000; // khóa cũ còn dùng được thêm 20 phút (yêu cầu song song, mất phản hồi)
 export const monthKey = (t) => new Date(t + DEVICE_TZ_OFFSET_MS).toISOString().slice(0, 7);
 
 export const MAX_LISTINGS_PER_DAY = 5;

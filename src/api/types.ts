@@ -40,6 +40,13 @@ export interface DeviceInfo {
   active: boolean;
 }
 
+export interface AdminDevices {
+  max: number;
+  month: string;
+  devices: Array<{ id: string; firstSeen: number }>;
+  active: { id: string; since: number } | null;
+}
+
 export interface DeviceList {
   /** Số thiết bị tối đa mỗi tháng. */
   max: number;

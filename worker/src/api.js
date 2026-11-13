@@ -75,22 +75,43 @@ export function createApi({ verify, now = () => Date.now() }) {
       if (!/UNIQUE|PRIMARY KEY/i.test(String(e && e.message))) throw e; // cùng thiết bị gửi hai yêu cầu đầu tiên song song: đã được ghi nhận
     }
   }
-  /** Đăng nhập: thiết bị này trở thành thiết bị hoạt động duy nhất (thiết bị khác sẽ nhận session-replaced). */
+  const KEY_RE = /^[A-Za-z0-9_-]{32}$/;
+  const sha256hex = async (text) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const newSessionKey = () => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(24)))).replace(/\+/g, '-').replace(/\//g, '_');
+  /** Đăng nhập: thiết bị này trở thành thiết bị hoạt động duy nhất (thiết bị khác sẽ nhận session-replaced) và nhận khóa phiên mới. */
   async function claimSession(db, uid, deviceId, t) {
     await registerMonth(db, uid, deviceId, t);
-    const prev = await q(db, 'SELECT device_id AS deviceId FROM active_sessions WHERE uid = ?', uid).first();
-    await q(db, 'INSERT INTO active_sessions (uid, device_id, since) VALUES (?, ?, ?) ON CONFLICT(uid) DO UPDATE SET device_id = excluded.device_id, since = excluded.since', uid, deviceId, t).run();
-    return { replaced: !!prev && prev.deviceId !== deviceId };
+    const prev = await q(db, 'SELECT device_id AS deviceId FROM user_sessions WHERE uid = ?', uid).first();
+    const key = newSessionKey();
+    await q(db, 'INSERT INTO user_sessions (uid, device_id, since, key_hash, prev_hash, key_at, prev_until) VALUES (?, ?, ?, ?, NULL, ?, 0) ON CONFLICT(uid) DO UPDATE SET device_id = excluded.device_id, since = excluded.since, key_hash = excluded.key_hash, prev_hash = NULL, key_at = excluded.key_at, prev_until = 0', uid, deviceId, t, await sha256hex(key), t).run();
+    return { replaced: !!prev && prev.deviceId !== deviceId, key };
   }
-  /** Mỗi yêu cầu: chỉ thiết bị đang hoạt động được dùng; chưa có ai (tài khoản cũ) thì thiết bị này nhận chỗ. */
-  async function checkSession(db, uid, deviceId, t) {
-    const row = await q(db, 'SELECT device_id AS deviceId, since FROM active_sessions WHERE uid = ?', uid).first();
-    if (!row) { await claimSession(db, uid, deviceId, t); return; }
+  /**
+   * Mỗi yêu cầu của người dùng thường: phải đúng thiết bị đang hoạt động VÀ đúng khóa phiên.
+   * Chưa có phiên (tài khoản cũ) hoặc thiếu khóa thì báo no-session để app tự đăng nhập phiên rồi thử lại.
+   * Trả về khóa mới (nếu vừa đổi khóa) để gửi lại qua header X-Session-Key.
+   */
+  async function checkSession(db, uid, deviceId, key, t) {
+    const row = await q(db, 'SELECT device_id AS deviceId, since, key_hash AS keyHash, prev_hash AS prevHash, key_at AS keyAt, prev_until AS prevUntil FROM user_sessions WHERE uid = ?', uid).first();
+    if (!row) throw new HttpError(403, 'no-session');
     if (row.deviceId !== deviceId) throw new HttpError(403, 'session-replaced');
+    if (!KEY_RE.test(key)) throw new HttpError(403, 'no-session');
+    const h = await sha256hex(key);
+    let rotated = null;
+    if (h === row.keyHash) {
+      if (t - row.keyAt > E.SESSION_ROTATE_MS) {
+        const nk = newSessionKey();
+        const r = await q(db, 'UPDATE user_sessions SET prev_hash = key_hash, prev_until = ?, key_hash = ?, key_at = ? WHERE uid = ? AND key_hash = ?', t + E.SESSION_GRACE_MS, await sha256hex(nk), t, uid, h).run();
+        if (r.meta.changes) rotated = nk; // song song: ai đổi trước thì thắng, người sau vẫn dùng được khóa cũ trong thời gian ân hạn
+      }
+    } else if (!(h === row.prevHash && t <= row.prevUntil)) {
+      throw new HttpError(403, 'session-replaced');
+    }
     if (E.monthKey(row.since) !== E.monthKey(t)) { // sang tháng mới: ghi lại thiết bị đang dùng cho tháng này
       await registerMonth(db, uid, deviceId, t);
-      await q(db, 'UPDATE active_sessions SET since = ? WHERE uid = ? AND device_id = ?', t, uid, deviceId).run();
+      await q(db, 'UPDATE user_sessions SET since = ? WHERE uid = ? AND device_id = ?', t, uid, deviceId).run();
     }
+    return rotated;
   }
 
   const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // bỏ I, O, 0, 1 cho dễ đọc; 32 ký tự nên không lệch xác suất
@@ -128,18 +149,24 @@ export function createApi({ verify, now = () => Date.now() }) {
   });
 
   // Đăng nhập xong app gọi một lần để giành quyền "thiết bị hoạt động" (đẩy thiết bị cũ ra); quá giới hạn tháng thì 403 device-limit.
-  route('POST', '/session/claim', 'user', async ({ db, user, deviceId, t }) => user.admin ? { ok: true, replaced: false } : { ok: true, ...(await claimSession(db, user.uid, deviceId, t)) });
+  route('POST', '/session/claim', 'user', async ({ db, user, deviceId, t }) => user.admin ? { ok: true, replaced: false, sessionKey: '' } : await claimSession(db, user.uid, deviceId, t).then((c) => ({ ok: true, replaced: c.replaced, sessionKey: c.key })));
   route('GET', '/devices', 'user', async ({ db, user, deviceId, t }) => {
     const month = E.monthKey(t);
     const used = user.admin ? [] : (await q(db, 'SELECT device_id AS id, first_seen AS firstSeen FROM device_months WHERE uid = ? AND month = ? ORDER BY first_seen', user.uid, month).all()).results;
-    const act = user.admin ? null : await q(db, 'SELECT device_id AS deviceId FROM active_sessions WHERE uid = ?', user.uid).first();
+    const act = user.admin ? null : await q(db, 'SELECT device_id AS deviceId FROM user_sessions WHERE uid = ?', user.uid).first();
     return { max: E.MAX_DEVICES, month, devices: used.map((d) => ({ id: d.id, firstSeen: d.firstSeen, current: d.id === deviceId, active: !!act && act.deviceId === d.id })) };
+  });
+  route('GET', '/admin/devices/:uid', 'admin', async ({ db, params, t }) => {
+    const month = E.monthKey(t);
+    const devices = (await q(db, 'SELECT device_id AS id, first_seen AS firstSeen FROM device_months WHERE uid = ? AND month = ? ORDER BY first_seen', params.uid, month).all()).results;
+    const act = await q(db, 'SELECT device_id AS deviceId, since FROM user_sessions WHERE uid = ?', params.uid).first();
+    return { max: E.MAX_DEVICES, month, devices, active: act ? { id: act.deviceId, since: act.since } : null };
   });
   // Admin làm mới số thiết bị trong tháng cho người dùng bị kẹt (ví dụ mất máy).
   route('POST', '/admin/devices/reset', 'admin', async ({ db, body }) => {
     if (typeof body.uid !== 'string' || !body.uid || body.uid.length > 128) throw bad('bad-uid');
     const r = await q(db, 'DELETE FROM device_months WHERE uid = ?', body.uid).run();
-    await q(db, 'DELETE FROM active_sessions WHERE uid = ?', body.uid).run();
+    await q(db, 'DELETE FROM user_sessions WHERE uid = ?', body.uid).run();
     return { ok: true, removed: r.meta.changes };
   });
 
@@ -571,7 +598,8 @@ export function createApi({ verify, now = () => Date.now() }) {
       'cache-control': 'no-store',
       'x-content-type-options': 'nosniff',
       'access-control-allow-origin': origin,
-      'access-control-allow-headers': 'authorization, content-type, x-device-id',
+      'access-control-allow-headers': 'authorization, content-type, x-device-id, x-session-key',
+      'access-control-expose-headers': 'x-session-key',
       'access-control-allow-methods': 'GET, POST, PUT, OPTIONS',
       vary: 'origin',
     };
@@ -607,13 +635,15 @@ export function createApi({ verify, now = () => Date.now() }) {
       if (match.r.auth === 'admin' && !user.admin) throw new HttpError(403, 'forbidden');
       // Giới hạn thiết bị: mọi yêu cầu của người dùng thường phải kèm X-Device-Id hợp lệ; admin không bị giới hạn.
       const deviceId = request.headers.get('x-device-id') || '';
+      let newKey = null;
       if (!user.admin) {
         if (!DEVICE_RE.test(deviceId)) throw new HttpError(400, 'bad-device');
-        if (url.pathname !== '/session/claim') await checkSession(env.DB, user.uid, deviceId, now());
+        if (url.pathname !== '/session/claim') newKey = await checkSession(env.DB, user.uid, deviceId, request.headers.get('x-session-key') || '', now());
       }
       const body = request.method === 'GET' ? {} : await readBody(request, match.r.max || (match.r.auth === 'admin' ? 65536 : 8192));
       const out = await match.r.fn({ db: env.DB, env, user, t: now(), body, url, deviceId, params: match.m.groups || {} });
-      if (out instanceof Response) return new Response(out.body, { status: out.status, headers }); // nội dung thô (bài học), vẫn kèm CORS/no-store
+      if (out instanceof Response) { if (newKey) headers['x-session-key'] = newKey; return new Response(out.body, { status: out.status, headers }); } // nội dung thô (bài học), vẫn kèm CORS/no-store
+      if (newKey) headers['x-session-key'] = newKey;
       return reply(200, out);
     } catch (e) {
       if (e instanceof HttpError) return reply(e.status, { error: e.code });

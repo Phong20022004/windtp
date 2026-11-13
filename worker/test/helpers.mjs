@@ -51,18 +51,33 @@ export async function makeApp({ clock } = {}) {
   const objects = new Map([['vocab/en.json', '{"Sach|0":[[1,[["a"]]],[2,[["b"]]]]}'], ['vocab/ko.json', '{"K|0":[[1,[["c"]]]]}']]);
   const env = { DB: db, ALLOWED_ORIGIN: ORIGIN, CONTENT: { get: async (key) => (objects.has(key) ? { body: objects.get(key) } : null), put: async (key, bytes) => { objects.set(key, bytes); } } };
   const as = (uid, extra = {}) => issuer.sign({ sub: uid, name: uid, ...extra });
-  // Mỗi uid mặc định dùng đúng một thiết bị cố định ('dev-<uid>'); truyền device để thử nhiều thiết bị.
-  const call = async (method, path, { uid, token, body, raw, admin, origin = ORIGIN, device } = {}) => {
+  // Mỗi uid mặc định dùng đúng một thiết bị cố định ('dev-<uid>') và tự đăng nhập phiên ở lần gọi đầu; truyền device để thử nhiều thiết bị
+  // (khi đó test tự gọi /session/claim). Khóa phiên nhận được (kể cả khóa đổi định kỳ) được giữ lại theo từng (uid, thiết bị) như app thật.
+  const keys = new Map(), pending = new Map();
+  const call = async (method, path, { uid, token, body, raw, admin, origin = ORIGIN, device, sessionKey } = {}) => {
     const headers = { origin };
     const dev = device === undefined ? (uid ? `dev-${uid}`.padEnd(16, '0') : token ? 'dev-token-default-0001' : null) : device;
     if (dev) headers['x-device-id'] = dev;
     const tk = token ?? (uid ? await as(uid, admin ? { admin: true } : {}) : null);
     if (tk) headers.authorization = `Bearer ${tk}`;
+    const slot = (uid || token || '') + '|' + dev;
+    const isClaim = path === '/session/claim';
+    if (device === undefined && tk && !admin && !isClaim && !keys.has(slot) && sessionKey === undefined) {
+      if (!pending.has(slot)) pending.set(slot, call('POST', '/session/claim', { uid, token, body: {} }));
+      await pending.get(slot); // yêu cầu song song cùng chờ một lần đăng nhập phiên
+    }
+    const key = sessionKey !== undefined ? sessionKey : keys.get(slot);
+    if (key) headers['x-session-key'] = key;
     const res = await handle(new Request('https://api.test' + path, { method, headers, body: raw ?? (body === undefined ? undefined : JSON.stringify(body)) }), env);
+    const rotated = res.headers.get('x-session-key');
+    if (rotated && sessionKey === undefined) keys.set(slot, rotated);
     const type = res.headers.get('content-type') || '';
-    if (!type.includes('json')) return { status: res.status, bytes: new Uint8Array(await res.arrayBuffer()), headers: res.headers };
-    return { status: res.status, json: res.status === 204 ? null : await res.json(), headers: res.headers };
+    let out;
+    if (!type.includes('json')) out = { status: res.status, bytes: new Uint8Array(await res.arrayBuffer()), headers: res.headers };
+    else out = { status: res.status, json: res.status === 204 ? null : await res.json(), headers: res.headers };
+    if (isClaim && out.json && out.json.sessionKey && sessionKey === undefined) keys.set(slot, out.json.sessionKey);
+    return out;
   };
   const balance = (uid) => db.sqlite.prepare('SELECT balance, chips, premium_until AS p FROM wallets WHERE uid = ?').get(uid);
-  return { call, db, issuer, state, balance, as, objects };
+  return { call, db, issuer, state, balance, as, objects, keys };
 }

@@ -4,6 +4,7 @@ import {
   type AdminPost,
   type ApprovalExtras,
   type ApiErrorCode,
+  type AdminDevices,
   type DeviceList,
   type Referral,
   type CatalogItem,
@@ -24,6 +25,8 @@ export interface ApiClientOptions {
   getToken: (forceRefresh: boolean) => Promise<string | null>;
   /** Mã thiết bị gửi kèm mọi yêu cầu (header X-Device-Id) để máy chủ giới hạn số thiết bị mỗi tài khoản. */
   getDeviceId?: () => string;
+  /** Khóa phiên do máy chủ cấp lúc đăng nhập (header X-Session-Key); máy chủ đổi khóa định kỳ và gửi khóa mới qua phản hồi. */
+  session?: { get: () => string; set: (key: string) => void };
   fetchImpl?: typeof fetch;
 }
 
@@ -115,10 +118,12 @@ export interface ApiClient {
     grant(input: { uid?: string; email?: string; xu?: number; chips?: number; note?: string }): Promise<void>;
     /** Mở khóa thiết bị cho một người dùng bị kẹt (xóa toàn bộ thiết bị đã ghi nhận). */
     resetDevices(uid: string): Promise<number>;
+    /** Thiết bị đã dùng trong tháng và thiết bị đang hoạt động của một người dùng. */
+    devices(uid: string): Promise<AdminDevices>;
   };
 }
 
-export function createApiClient({ baseUrl, getToken, getDeviceId, fetchImpl }: ApiClientOptions): ApiClient {
+export function createApiClient({ baseUrl, getToken, getDeviceId, session, fetchImpl }: ApiClientOptions): ApiClient {
   const doFetch: typeof fetch = fetchImpl ?? ((input, init) => fetch(input, init));
   const root = baseUrl.replace(/\/+$/, "");
 
@@ -128,6 +133,8 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, fetchImpl }: A
     const headers: Record<string, string> = { authorization: `Bearer ${token}` };
     const deviceId = getDeviceId?.();
     if (deviceId) headers["x-device-id"] = deviceId;
+    const key = session?.get();
+    if (key) headers["x-session-key"] = key;
     const binary = body instanceof Blob;
     if (body !== undefined) headers["content-type"] = binary ? "application/octet-stream" : "application/json";
     try {
@@ -137,10 +144,12 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, fetchImpl }: A
     }
   }
 
-  async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
+  async function request<T>(method: Method, path: string, body?: unknown, retried = false): Promise<T> {
     let response = await send(method, path, body, false);
     // Token có thể vừa hết hạn: làm mới đúng một lần rồi thử lại.
     if (response.status === 401) response = await send(method, path, body, true);
+    const rotated = response.headers.get("x-session-key");
+    if (rotated && /^[A-Za-z0-9_-]{32}$/.test(rotated)) session?.set(rotated);
     let payload: unknown;
     try {
       payload = await response.json();
@@ -149,6 +158,11 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, fetchImpl }: A
     }
     if (!response.ok) {
       const serverCode = typeof (payload as { error?: unknown })?.error === "string" ? (payload as { error: string }).error : "";
+      // Chưa có phiên (tài khoản cũ hoặc vừa nâng cấp app): đăng nhập phiên một lần rồi gửi lại yêu cầu.
+      if (serverCode === "no-session" && !retried && path !== "/session/claim") {
+        await claimSession();
+        return request<T>(method, path, body, true);
+      }
       throw new ApiError(classify(response.status, serverCode), response.status, serverCode);
     }
     if (payload === null || typeof payload !== "object") throw new ApiError("bad-response", response.status);
@@ -156,6 +170,11 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, fetchImpl }: A
   }
 
   const post = (path: string, body: unknown = {}): Promise<Record<string, unknown>> => request("POST", path, body);
+  async function claimSession(): Promise<{ replaced: boolean }> {
+    const r = await post("/session/claim", {});
+    if (typeof r.sessionKey === "string" && /^[A-Za-z0-9_-]{32}$/.test(r.sessionKey)) session?.set(r.sessionKey);
+    return { replaced: r.replaced === true };
+  }
   const done = async (promise: Promise<unknown>): Promise<void> => {
     await promise;
   };
@@ -188,7 +207,7 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, fetchImpl }: A
       if (typeof r.max !== "number" || typeof r.month !== "string" || !Array.isArray(r.devices)) throw new ApiError("bad-response", 200);
       return r;
     },
-    claimSession: async () => ({ replaced: (await post("/session/claim", {})).replaced === true }),
+    claimSession,
     store: async () => { const r = await request<StoreConfig>("GET", "/store"); if (!Array.isArray(r.customProducts) || !Array.isArray(r.hiddenProducts) || !Array.isArray(r.customCats)) throw new ApiError("bad-response", 200); return r; },
     tasks: async () => (await request<{ tasks: SpecialTask[] }>("GET", "/tasks")).tasks,
     myOrders: async () => (await request<{ orders: Order[] }>("GET", "/orders/mine")).orders,
@@ -215,6 +234,11 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, fetchImpl }: A
       approvePost: (id) => done(post(`/admin/posts/${id}/approve`)),
       rejectPost: (id) => done(post(`/admin/posts/${id}/reject`)),
       grant: (input) => done(post("/admin/grant", input)),
+      devices: async (uid) => {
+        const r = await request<AdminDevices>("GET", "/admin/devices/" + encodeURIComponent(uid));
+        if (typeof r.max !== "number" || !Array.isArray(r.devices)) throw new ApiError("bad-response", 200);
+        return r;
+      },
       resetDevices: async (uid) => Number((await post("/admin/devices/reset", { uid })).removed) || 0,
 
       listings: async () => (await request<{ listings: Listing[] }>("GET", "/admin/listings")).listings,

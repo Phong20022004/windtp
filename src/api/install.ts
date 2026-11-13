@@ -6,6 +6,8 @@ export interface WindtpApi {
   baseUrl: string;
   client: ApiClient;
   wallet: WalletStore;
+  /** Quên khóa phiên (gọi khi đăng xuất). */
+  clearSession: () => void;
 }
 
 declare global {
@@ -32,12 +34,33 @@ export function deviceId(win: Window = window): string {
   return memoryDeviceId;
 }
 
+const SESSION_KEY = "windtp-skey";
+let memorySessionKey = "";
+/** Khóa phiên do máy chủ cấp; giữ ở localStorage (dùng chung các tab của cùng trình duyệt), có bản dự phòng trong bộ nhớ. */
+export function sessionStore(win: Window = window): { get: () => string; set: (key: string) => void; clear: () => void } {
+  return {
+    get: () => {
+      try { const saved = win.localStorage.getItem(SESSION_KEY); if (saved) return saved; } catch { /* dùng bộ nhớ */ }
+      return memorySessionKey;
+    },
+    set: (key) => {
+      memorySessionKey = key;
+      try { win.localStorage.setItem(SESSION_KEY, key); } catch { /* không lưu được */ }
+    },
+    clear: () => {
+      memorySessionKey = "";
+      try { win.localStorage.removeItem(SESSION_KEY); } catch { /* không lưu được */ }
+    },
+  };
+}
+
 /** Gắn window.WindtpApi. Cần window.WindtpAuth đã có (bundle xác thực nạp trước). */
 export function installApi(baseUrl: string, win: Window = window): WindtpApi {
   if (!baseUrl) throw new Error("Thiếu địa chỉ máy chủ API (WINDTP_API_URL)");
-  const client = createApiClient({ baseUrl, getToken: (forceRefresh) => win.WindtpAuth.getIdToken(forceRefresh), getDeviceId: () => deviceId(win) });
+  const session = sessionStore(win);
+  const client = createApiClient({ baseUrl, getToken: (forceRefresh) => win.WindtpAuth.getIdToken(forceRefresh), getDeviceId: () => deviceId(win), session });
   const wallet = createWalletStore(client);
-  const api: WindtpApi = { baseUrl: baseUrl.replace(/\/+$/, ""), client, wallet };
+  const api: WindtpApi = { baseUrl: baseUrl.replace(/\/+$/, ""), client, wallet, clearSession: session.clear };
   win.WindtpApi = api;
   return api;
 }
