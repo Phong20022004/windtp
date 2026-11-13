@@ -387,7 +387,7 @@
     </div>
     ${open ? `
     <div class="space-y-2 pt-1">
-      ${p.comments.map((c) => `<div class="flex gap-2">${authorAvatar(c.author, 28)}<div class="bg-slate-100 rounded-2xl px-3 py-1.5 min-w-0"><p class="text-[11px] font-bold text-slate-800">${esc(c.author)} <span class="font-normal text-slate-400">${timeAgo(c.ts)}</span></p><p class="text-xs text-slate-700 break-words">${esc(c.text)}</p></div></div>`).join("")}
+      ${p.comments.map((c) => `<div class="flex gap-2">${authorAvatar(c.author, 28)}<div class="bg-slate-100 rounded-2xl px-3 py-1.5 min-w-0"><p class="text-[11px] font-bold text-slate-800">${esc(c.author)} <span class="font-normal text-slate-400">${timeAgo(c.ts)}</span></p><p class="text-xs text-slate-700 break-words">${esc(c.text)}</p></div>${c.mine || isAdmin() ? `<button data-action="delete-comment" data-id="${c.id}" class="text-[10px] text-slate-400 hover:text-rose-500 self-center" aria-label="Xóa bình luận">Xóa</button>` : ""}</div>`).join("")}
       <div class="flex gap-2"><input id="cmt-${p.id}" type="text" maxlength="300" placeholder="Vi\u1EBFt b\xECnh lu\u1EADn..." class="flex-1 px-3 py-1.5 text-xs rounded-full border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-sky-400">
       <button data-action="send-comment" data-id="${p.id}" class="px-3 py-1.5 bg-sky-600 text-white keep-white rounded-full text-xs font-bold">G\u1EEDi</button></div>
     </div>` : ""}

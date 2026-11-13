@@ -117,6 +117,14 @@ export interface ApprovalExtras {
   premiumMonths?: number;
 }
 
+export interface PublicComment {
+  id: number;
+  author: string;
+  text: string;
+  mine: boolean;
+  at: number;
+}
+
 export interface PublicPost {
   id: number;
   author: string;
@@ -125,6 +133,9 @@ export interface PublicPost {
   admin: boolean;
   mine: boolean;
   at: number;
+  likes: number;
+  liked: boolean;
+  comments: PublicComment[];
 }
 
 export interface AdminPost {

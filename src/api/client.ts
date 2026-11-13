@@ -87,6 +87,10 @@ export interface ApiClient {
   listings(): Promise<Listing[]>;
   createPost(text: string, tag: string): Promise<{ id: number; status: "pending" | "approved" }>;
   deletePost(id: number): Promise<void>;
+  /** Đặt trạng thái thích của mình cho một bài đã duyệt; trả về tổng lượt thích mới. */
+  likePost(id: number, liked: boolean): Promise<{ likes: number; liked: boolean }>;
+  commentPost(id: number, text: string): Promise<{ id: number }>;
+  deleteComment(id: number): Promise<void>;
   posts(): Promise<PublicPost[]>;
   admin: {
     orders(status?: "pending" | "approved" | "rejected"): Promise<AdminOrder[]>;
@@ -188,6 +192,9 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, fetchImpl }: A
     deleteListing: (id) => done(post(`/listings/${id}/delete`)),
     listings: async () => { const r = await request<{ listings: Listing[] }>("GET", "/listings"); if (!Array.isArray(r.listings)) throw new ApiError("bad-response", 200); return r.listings; },
     deletePost: (id) => done(post(`/posts/${id}/delete`)),
+    likePost: async (id, liked) => { const r = await post(`/posts/${id}/like`, { liked }); return { likes: Number(r.likes) || 0, liked: r.liked === true }; },
+    commentPost: async (id, text) => ({ id: Number((await post(`/posts/${id}/comments`, { text })).id) }),
+    deleteComment: (id) => done(post(`/comments/${id}/delete`)),
     posts: async () => (await request<{ posts: PublicPost[] }>("GET", "/posts")).posts,
     admin: {
       orders: async (status = "pending") => (await request<{ orders: AdminOrder[] }>("GET", `/admin/orders?status=${status}`)).orders,

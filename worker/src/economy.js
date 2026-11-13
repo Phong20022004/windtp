@@ -55,3 +55,5 @@ export const DEVICE_TOUCH_MS = 3600000; // chỉ ghi lại lần dùng cuối t�
 
 export const MAX_LISTINGS_PER_DAY = 5;
 export const BUILTIN_LISTING_CATS = ['market', 'jobs', 'housing'];
+export const MAX_COMMENTS_PER_DAY = 30;
+export const MAX_COMMENT_LEN = 300;

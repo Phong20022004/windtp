@@ -376,10 +376,47 @@ export function createApi({ verify, now = () => Date.now() }) {
     const r = await q(db, 'INSERT INTO posts (uid, author, text, tag, is_admin, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)', user.uid, user.name || 'Người dùng', text, tag, adm, adm ? 'approved' : 'pending', t).run();
     return { ok: true, id: r.meta.last_row_id, status: adm ? 'approved' : 'pending' };
   });
-  route('GET', '/posts', 'user', async ({ db, user }) => ({
-    posts: (await q(db, "SELECT id, author, text, tag, is_admin AS admin, created_at AS at, (uid = ?) AS mine FROM posts WHERE status = 'approved' ORDER BY id DESC LIMIT 100", user.uid).all()).results
-      .map((p) => ({ ...p, admin: !!p.admin, mine: !!p.mine })),
-  }));
+  route('GET', '/posts', 'user', async ({ db, user }) => {
+    const rows = (await q(db, "SELECT id, author, text, tag, is_admin AS admin, created_at AS at, (uid = ?) AS mine FROM posts WHERE status = 'approved' ORDER BY id DESC LIMIT 100", user.uid).all()).results;
+    const ids = "(SELECT id FROM (SELECT id FROM posts WHERE status = 'approved' ORDER BY id DESC LIMIT 100))";
+    const likes = new Map((await q(db, `SELECT post_id, COUNT(*) AS n FROM post_likes WHERE post_id IN ${ids} GROUP BY post_id`).all()).results.map((r) => [r.post_id, r.n]));
+    const mineSet = new Set((await q(db, `SELECT post_id FROM post_likes WHERE uid = ? AND post_id IN ${ids}`, user.uid).all()).results.map((r) => r.post_id));
+    const cmts = new Map();
+    for (const c of (await q(db, `SELECT id, post_id, author, text, created_at AS at, (uid = ?) AS mine FROM post_comments WHERE deleted = 0 AND post_id IN ${ids} ORDER BY id LIMIT 2000`, user.uid).all()).results) {
+      if (!cmts.has(c.post_id)) cmts.set(c.post_id, []);
+      cmts.get(c.post_id).push({ id: c.id, author: c.author, text: c.text, at: c.at, mine: !!c.mine });
+    }
+    return { posts: rows.map((p) => ({ ...p, admin: !!p.admin, mine: !!p.mine, likes: likes.get(p.id) || 0, liked: mineSet.has(p.id), comments: cmts.get(p.id) || [] })) };
+  });
+  const approvedPost = async (db, id) => {
+    if (!Number.isInteger(id) || id < 1) throw new HttpError(404, 'not-found');
+    if (!(await q(db, "SELECT 1 AS x FROM posts WHERE id = ? AND status = 'approved'", id).first())) throw new HttpError(404, 'not-found');
+  };
+  route('POST', '/posts/:id/like', 'user', async ({ db, user, t, params, body }) => {
+    const id = +params.id;
+    await approvedPost(db, id);
+    if (typeof body.liked !== 'boolean') throw bad('bad-request');
+    if (body.liked) await q(db, 'INSERT OR IGNORE INTO post_likes (post_id, uid, created_at) VALUES (?, ?, ?)', id, user.uid, t).run();
+    else await q(db, 'DELETE FROM post_likes WHERE post_id = ? AND uid = ?', id, user.uid).run();
+    return { ok: true, likes: (await q(db, 'SELECT COUNT(*) AS n FROM post_likes WHERE post_id = ?', id).first()).n, liked: body.liked };
+  });
+  route('POST', '/posts/:id/comments', 'user', async ({ db, user, t, params, body }) => {
+    const id = +params.id;
+    await approvedPost(db, id);
+    const text = typeof body.text === 'string' ? body.text.trim() : '';
+    if (!text || text.length > E.MAX_COMMENT_LEN) throw bad('bad-text');
+    const n = await q(db, 'SELECT COUNT(*) AS n FROM post_comments WHERE uid = ? AND created_at > ?', user.uid, t - 86400000).first();
+    if (n.n >= E.MAX_COMMENTS_PER_DAY) throw new HttpError(429, 'too-many-comments');
+    const r = await q(db, 'INSERT INTO post_comments (post_id, uid, author, text, created_at) VALUES (?, ?, ?, ?, ?)', id, user.uid, user.name || 'Người dùng', text, t).run();
+    return { ok: true, id: r.meta.last_row_id };
+  });
+  route('POST', '/comments/:id/delete', 'user', async ({ db, user, params }) => {
+    const r = user.admin
+      ? await q(db, 'UPDATE post_comments SET deleted = 1 WHERE id = ? AND deleted = 0', +params.id).run()
+      : await q(db, 'UPDATE post_comments SET deleted = 1 WHERE id = ? AND uid = ? AND deleted = 0', +params.id, user.uid).run();
+    if (!r.meta.changes) throw new HttpError(404, 'not-found');
+    return { ok: true };
+  });
   route('POST', '/posts/:id/delete', 'user', async ({ db, user, params }) => {
     const r = user.admin
       ? await q(db, "UPDATE posts SET status = 'deleted' WHERE id = ? AND status != 'deleted'", +params.id).run()

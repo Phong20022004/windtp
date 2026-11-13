@@ -95,6 +95,26 @@ CREATE TABLE IF NOT EXISTS posts (
 );
 CREATE INDEX IF NOT EXISTS posts_status ON posts (status, id DESC);
 
+-- Lượt thích: mỗi người một lượt cho mỗi bài (khóa chính ghép chặn thích nhiều lần).
+CREATE TABLE IF NOT EXISTS post_likes (
+  post_id INTEGER NOT NULL,
+  uid TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (post_id, uid)
+);
+
+-- Bình luận hiện ngay; chủ bình luận hoặc admin xóa được (xóa mềm để còn dấu vết).
+CREATE TABLE IF NOT EXISTS post_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id INTEGER NOT NULL,
+  uid TEXT NOT NULL,
+  author TEXT NOT NULL,
+  text TEXT NOT NULL,
+  deleted INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS post_comments_post ON post_comments (post_id, id);
+
 -- Cấu hình cửa hàng do admin đăng: một dòng JSON đã làm sạch (xem worker/src/store.js).
 CREATE TABLE IF NOT EXISTS store (
   id INTEGER PRIMARY KEY CHECK (id = 1),

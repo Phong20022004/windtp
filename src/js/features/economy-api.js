@@ -72,9 +72,7 @@
     return Promise.all([api.tasks(), api.myOrders(), api.posts(), isAdmin() ? api.admin.posts() : Promise.resolve([]), api.store(), api.listings(), isAdmin() ? api.admin.listings() : Promise.resolve([])]).then(([tasks, orders, posts, pending, store, listings, pendingListings]) => {
       econApplyStore(store);
       // Bài đăng do máy chủ giữ; lượt thích và bình luận vẫn chỉ lưu trên máy này.
-      const old = new Map((state.posts || []).map((p) => [p.id, p]));
-      const keep = (id) => old.get(id) || {};
-      state.posts = posts.map((p) => ({ id: "s" + p.id, author: p.author, tag: p.tag, text: p.text, ts: p.at, admin: p.admin || undefined, mine: p.mine, status: "approved", likes: keep("s" + p.id).likes || 0, liked: !!keep("s" + p.id).liked, comments: keep("s" + p.id).comments || [] }))
+      state.posts = posts.map((p) => ({ id: "s" + p.id, author: p.author, tag: p.tag, text: p.text, ts: p.at, admin: p.admin || undefined, mine: p.mine, status: "approved", likes: p.likes, liked: p.liked, comments: p.comments.map((c) => ({ id: "s" + c.id, author: c.author, text: c.text, ts: c.at, mine: c.mine })) }))
         .concat(pending.map((p) => ({ id: "s" + p.id, author: p.author, tag: p.tag, text: p.text, ts: p.created_at, status: "pending", likes: 0, liked: false, comments: [] })));
       const me = userId();
       state.customTasks = tasks.map((t) => ({ id: t.id, title: t.title, desc: "", xu: t.xu, chips: t.chips, money: t.money, cur: t.cur, ts: 0 }));
@@ -621,4 +619,26 @@
     if (!ok) return;
     state.saved = state.saved.filter((x) => x !== el.dataset.id);
     toast("Đã xóa tin"); await econSocial(); refreshModal();
+  };
+
+  // ----- Thích và bình luận: lưu ở máy chủ, mỗi người một lượt thích -----
+  actions["like-post"] = async (el) => {
+    const p = state.posts.find((x) => x.id === el.dataset.id);
+    if (!p) return;
+    const res = await econRun("like:" + p.id, async () => econClient().likePost(serverPostId(el), !p.liked));
+    if (!res) return;
+    p.liked = res.liked; p.likes = res.likes;
+    commit(); renderCommunity();
+  };
+  actions["send-comment"] = async (el) => {
+    const id = el.dataset.id || "", text = val("cmt-" + id).trim();
+    if (!text) { toast("Hãy nhập nội dung bình luận"); return; }
+    const ok = await econRun("cmt:" + id, async () => { await econClient().commentPost(serverPostId(el), text); return true; });
+    if (!ok) return;
+    await econSocial(); renderCommunity();
+  };
+  actions["delete-comment"] = async (el) => {
+    const ok = await econRun("delcmt:" + el.dataset.id, async () => { await econClient().deleteComment(serverPostId(el)); return true; });
+    if (!ok) return;
+    await econSocial(); renderCommunity();
   };
