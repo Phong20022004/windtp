@@ -68,6 +68,8 @@ with serve_dist() as URL, sync_playwright() as p:
         browser = p.chromium.launch()
         ctx_admin = browser.new_context(viewport={'width': 420, 'height': 900}, bypass_csp=True)
         ctx_user = browser.new_context(viewport={'width': 420, 'height': 900}, bypass_csp=True)
+        # cùng mã thiết bị với bộ gọi API trực tiếp của test, vì máy chủ chỉ cho một thiết bị hoạt động mỗi tài khoản
+        ctx_user.add_init_script("try{localStorage.setItem('windtp-device','python-test-device-0001')}catch(e){}")
 
         # Admin: uid-0 (được seed đầu tiên); người dùng: uid-3 (seed 3 tài khoản đệm để uid không trùng giữa hai trình duyệt)
         legacy = {'customProducts': [{'id': 'px-old', 'custom': True, 'name': 'Sách cũ của admin', 'desc': 'Từ localStorage', 'price': {'VND': 50000, 'KRW': 2600, 'JPY': 310}, 'cat': 'study', 'sub': 'books', 'emoji': '📚', 'img': PNG_DATA_URL, 'ts': 1, 'rewardXu': 0, 'rewardChips': 0}], 'productEdits': {}, 'hiddenProducts': [], 'customCats': []}
