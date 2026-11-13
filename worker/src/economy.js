@@ -48,6 +48,7 @@ export const CONTENT_LANGS = ['en', 'zh', 'ja', 'ko', 'de', 'fr', 'es']; // kh�
 
 // Mã mời: người mời nhận thưởng MỘT LẦN cho mỗi người được mời, chỉ khi đơn có quyền học khóa (access:<ngôn ngữ>) của người đó được duyệt.
 export const REFERRAL_REWARD = { xu: 10000, chips: 7000 };
+export const REFERRAL_WINDOW_MS = 30 * 86400000; // chỉ nhập mã mời được trong 30 ngày kể từ lúc đăng ký (tạo ví)
 // Giới hạn thiết bị (admin không bị giới hạn): mỗi tháng tối đa MAX_DEVICES thiết bị khác nhau, và chỉ một thiết bị hoạt động cùng lúc.
 export const MAX_DEVICES = 2;
 export const DEVICE_TZ_OFFSET_MS = 7 * 3600000; // tháng tính theo giờ Việt Nam

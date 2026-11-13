@@ -380,7 +380,7 @@
       <button data-action="ref-copy" class="px-3 py-2 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-600 text-white keep-white">Sao chép</button>
     </div>
     <p class="text-[11px] text-slate-500">Đã mời: <b>${fmt(r.invited)}</b> người · Đã nhận thưởng: <b>${fmt(r.rewarded)}</b> lượt</p>
-    ${r.referredBy ? `<p class="text-[11px] text-emerald-600 font-bold">✓ Bạn đã nhập mã mời của người khác.</p>` : `<div class="flex gap-2">
+    ${r.referredBy ? `<p class="text-[11px] text-emerald-600 font-bold">✓ Bạn đã nhập mã mời của người khác.</p>` : Date.now() > r.redeemUntil ? `<p class="text-[11px] text-slate-500">Đã quá 1 tháng kể từ lúc đăng ký nên không thể nhập mã mời của người khác nữa.</p>` : `<p class="text-[11px] text-slate-500">Nhập mã mời của bạn bè trước ngày <b>${new Date(r.redeemUntil).toLocaleDateString("vi-VN")}</b> (1 tháng kể từ lúc đăng ký):</p><div class="flex gap-2">
       <input id="ref-code" maxlength="8" autocomplete="off" placeholder="Nhập mã mời của bạn bè" class="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-200 text-xs uppercase" />
       <button data-action="ref-redeem" class="px-3 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white keep-white">Nhập mã</button>
     </div>`}
@@ -418,7 +418,7 @@
       if (!quiet) toast("Đã nhập mã mời. Người mời sẽ nhận thưởng khi bạn mua khóa học.");
       return true;
     } catch (e) {
-      if (e && (e.code === "bad-code" || e.code === "self-referral" || e.code === "already-purchased" || e.code === "conflict")) { try { localStorage.removeItem("windtp-refcode"); } catch (_) { } }
+      if (e && (e.code === "bad-code" || e.code === "self-referral" || e.code === "already-purchased" || e.code === "code-expired" || e.code === "conflict")) { try { localStorage.removeItem("windtp-refcode"); } catch (_) { } }
       if (!quiet) throw e;
       return false;
     }

@@ -852,3 +852,20 @@ test('đồng bộ dữ liệu cá nhân: mỗi tài khoản một bản, chỉ 
   assert.equal(big.status, 200, 'dữ liệu học cỡ vài chục KB vẫn qua được giới hạn thân yêu cầu 128KB');
   assert.equal((await app.call('PUT', '/me/state', { uid: 'A', body: { state: {} }, raw: undefined })).status, 200);
 });
+
+test('mã mời: chỉ nhập được trong 1 tháng kể từ lúc đăng ký; GET /referral báo hạn cuối', async () => {
+  const app = await makeApp();
+  const owner = (await app.call('GET', '/referral', { uid: 'inv' })).json.code;
+  const t0 = app.state.t;
+  const early = await app.call('GET', '/referral', { uid: 'late' });
+  await app.call('GET', '/referral', { uid: 'okuser' });
+  assert.equal(early.json.redeemUntil, t0 + 30 * DAY);
+  app.state.t = t0 + 29 * DAY;
+  assert.equal((await app.call('POST', '/referral/redeem', { uid: 'okuser', body: { code: owner } })).status, 200); // đăng ký từ ngày 0, nhập ở ngày 29: còn hạn
+  app.state.t = t0 + 31 * DAY;
+  const r = await app.call('POST', '/referral/redeem', { uid: 'late', body: { code: owner } });
+  assert.deepEqual([r.status, r.json.error], [403, 'code-expired']);
+  assert.equal((await app.call('GET', '/referral', { uid: 'late' })).json.referredBy, false);
+  // Người mới đăng ký sau đó vẫn nhập được, hạn tính riêng theo từng người.
+  assert.equal((await app.call('POST', '/referral/redeem', { uid: 'fresh', body: { code: owner } })).status, 200);
+});

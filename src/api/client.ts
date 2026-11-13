@@ -47,6 +47,7 @@ const BY_SERVER_CODE: Readonly<Record<string, ApiErrorCode>> = {
   "no-code": "no-code",
   "self-referral": "self-referral",
   "already-purchased": "already-purchased",
+  "code-expired": "code-expired",
 };
 
 function classify(status: number, serverCode: string): ApiErrorCode {
@@ -199,7 +200,7 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, session, fetch
     referral: async () => {
       const r = await request<Referral>("GET", "/referral");
       if (typeof r.code !== "string" || !r.reward || typeof r.reward.xu !== "number" || typeof r.reward.chips !== "number") throw new ApiError("bad-response", 200);
-      return { code: r.code, reward: { xu: r.reward.xu, chips: r.reward.chips }, invited: Number(r.invited) || 0, rewarded: Number(r.rewarded) || 0, referredBy: r.referredBy === true };
+      return { code: r.code, reward: { xu: r.reward.xu, chips: r.reward.chips }, invited: Number(r.invited) || 0, rewarded: Number(r.rewarded) || 0, referredBy: r.referredBy === true, redeemUntil: Number(r.redeemUntil) || 0 };
     },
     redeemReferral: (code) => done(post("/referral/redeem", { code })),
     devices: async () => {

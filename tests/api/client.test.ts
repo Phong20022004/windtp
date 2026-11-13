@@ -197,7 +197,7 @@ describe("thiết bị và mã mời", () => {
   });
 
   it("đọc mã mời của mình và đúng các lỗi khi nhập mã", async () => {
-    const info = { code: "ABCD2345", reward: { xu: 10000, chips: 7000 }, invited: 2, rewarded: 1, referredBy: false };
+    const info = { code: "ABCD2345", reward: { xu: 10000, chips: 7000 }, invited: 2, rewarded: 1, referredBy: false, redeemUntil: 1700000000000 };
     const a = make([{ status: 200, body: info }]);
     assert.deepEqual(await a.client.referral(), info);
     assert.equal(a.seen[0]?.url, "https://api.windtp.test/referral");

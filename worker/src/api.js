@@ -175,10 +175,11 @@ export function createApi({ verify, now = () => Date.now() }) {
     const code = await refCode(db, user.uid, t);
     const stats = await q(db, 'SELECT COUNT(*) AS invited, COUNT(rewarded_at) AS rewarded FROM referrals WHERE inviter = ?', user.uid).first();
     const mine = await q(db, 'SELECT 1 AS x FROM referrals WHERE invitee = ?', user.uid).first();
-    return { code, reward: E.REFERRAL_REWARD, invited: stats.invited, rewarded: stats.rewarded, referredBy: !!mine };
+    const reg = await q(db, 'SELECT created_at AS at FROM wallets WHERE uid = ?', user.uid).first();
+    return { code, reward: E.REFERRAL_REWARD, invited: stats.invited, rewarded: stats.rewarded, referredBy: !!mine, redeemUntil: reg.at + E.REFERRAL_WINDOW_MS };
   });
 
-  // Nhập mã mời của người khác: một lần duy nhất, không dùng mã của mình, và chỉ trước khi tự mình mua khóa học.
+  // Nhập mã mời của người khác: một lần duy nhất, không dùng mã của mình, trong 1 tháng kể từ lúc đăng ký và chỉ trước khi tự mình mua khóa học.
   route('POST', '/referral/redeem', 'user', async ({ db, user, t, body }) => {
     const code = String(body.code ?? '').toUpperCase().replace(/[\s-]/g, '');
     if (!/^[A-Z2-9]{8}$/.test(code)) throw bad('bad-code');
@@ -188,6 +189,8 @@ export function createApi({ verify, now = () => Date.now() }) {
     const bought = await q(db, "SELECT 1 AS x FROM entitlements WHERE uid = ? AND item_id LIKE 'access:%'", user.uid).first();
     if (bought) throw new HttpError(409, 'already-purchased');
     await wallet(db, user.uid, t);
+    const reg = await q(db, 'SELECT created_at AS at FROM wallets WHERE uid = ?', user.uid).first();
+    if (t > reg.at + E.REFERRAL_WINDOW_MS) throw new HttpError(403, 'code-expired'); // quá 1 tháng kể từ lúc đăng ký
     await atomic(db, [q(db, 'INSERT INTO referrals (invitee, inviter, code, created_at) VALUES (?, ?, ?, ?)', user.uid, owner.uid, code, t)]);
     return { ok: true };
   });

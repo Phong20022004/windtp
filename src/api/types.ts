@@ -29,6 +29,8 @@ export interface Referral {
   rewarded: number;
   /** Đã nhập mã mời của người khác (chỉ được nhập một lần). */
   referredBy: boolean;
+  /** Hạn cuối nhập mã mời của người khác (1 tháng kể từ lúc đăng ký), mili giây. */
+  redeemUntil: number;
 }
 
 export interface DeviceInfo {
@@ -187,6 +189,7 @@ export type ApiErrorCode =
   | "no-code"
   | "self-referral"
   | "already-purchased"
+  | "code-expired"
   | "unavailable"
   | "bad-response"
   | "unknown";
@@ -212,6 +215,7 @@ export const API_MESSAGES: Readonly<Record<ApiErrorCode, string>> = {
   "no-code": "Không tìm thấy mã mời này",
   "self-referral": "Bạn không thể dùng mã mời của chính mình",
   "already-purchased": "Bạn đã mua khóa học nên không thể nhập mã mời nữa",
+  "code-expired": "Đã quá 1 tháng kể từ lúc đăng ký nên không thể nhập mã mời nữa",
   unavailable: "Máy chủ đang bận, hãy thử lại sau giây lát",
   "bad-response": "Máy chủ trả về dữ liệu không hợp lệ",
   unknown: "Có lỗi xảy ra, vui lòng thử lại",
