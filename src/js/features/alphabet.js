@@ -230,7 +230,7 @@
   function alphaRenderPicker(cfg, lang) {
     return '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' + ALPHA_MODES.map(function (m, i) {
       return '<button data-action="alpha-mode" data-m="' + m.id + '" class="text-left glass-card rounded-3xl p-4 border-0 shadow hover:shadow-lg transition-all"><div class="flex items-center gap-3"><span class="text-3xl">' + m.icon + '</span><div><p class="text-sm font-black text-teal-700">' + (i + 1) + '. ' + esc(m.title) + '</p><p class="text-[11px] text-slate-600 mt-0.5">' + esc(m.desc) + '</p></div></div></button>';
-    }).join("") + '<button data-action="alpha-mode" data-m="duel" class="text-left rounded-3xl p-4 shadow hover:shadow-lg transition-all sm:col-span-2 text-white keep-white" style="background:linear-gradient(120deg,#e11d48,#7c3aed)"><div class="flex items-center gap-3"><span class="text-3xl">⚔️</span><div><p class="text-sm font-black">Thách đấu bạn bè</p><p class="text-[11px] opacity-90 mt-0.5">Cả hai thi cùng một đề về ' + (cfg.kind === "radicals" ? "bộ thủ" : "chữ cái") + ', tính điểm theo độ đúng, tốc độ và chuỗi đúng. Cần Premium.</p></div></div></button></div>';
+    }).join("") + '<button data-action="alpha-everest" class="text-left rounded-3xl p-4 shadow hover:shadow-lg transition-all sm:col-span-2 text-white keep-white" style="background:linear-gradient(120deg,#0ea5e9,#6366f1)"><div class="flex items-center gap-3"><span class="text-3xl">🏔️</span><div><p class="text-sm font-black">Leo núi giải cứu</p><p class="text-[11px] opacity-90 mt-0.5">Giúp hoàng tử leo đỉnh Everest cứu công chúa: trả lời đúng lên 1 bậc, sai lùi 3 bậc. Giống màn chơi của các giáo trình.</p></div></div></button>' + '<button data-action="alpha-mode" data-m="duel" class="text-left rounded-3xl p-4 shadow hover:shadow-lg transition-all sm:col-span-2 text-white keep-white" style="background:linear-gradient(120deg,#e11d48,#7c3aed)"><div class="flex items-center gap-3"><span class="text-3xl">⚔️</span><div><p class="text-sm font-black">Thách đấu bạn bè</p><p class="text-[11px] opacity-90 mt-0.5">Cả hai thi cùng một đề về ' + (cfg.kind === "radicals" ? "bộ thủ" : "chữ cái") + ', tính điểm theo độ đúng, tốc độ và chuỗi đúng. Cần Premium.</p></div></div></button></div>';
   }
 
   function renderAlphabet(el, lang) {
@@ -281,6 +281,11 @@
       var A = alphaState();
       if (A.mode) { alphaResetRun(A); A.mode = null; alphaRerender(); }
       else { alphaStopSpeak(); ui.learnStage = "menu"; renderLearn(); }
+    },
+    "alpha-everest": function () {
+      var c = alphaCurrent(); if (!c) return;
+      alphaResetRun(c.A);
+      alphaEverestOpen(c.lang, c.cfg, function () { alphaRerender(); });
     },
     "alpha-mode": function (el) { var A = alphaState(); alphaResetRun(A); A.mode = el.dataset.m; alphaRerender(); },
     "alpha-group": function (el) { var A = alphaState(); alphaResetRun(A); A.group = el.dataset.g === "all" ? "all" : Number(el.dataset.g); alphaRerender(); },

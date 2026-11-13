@@ -23,6 +23,7 @@ with serve_dist() as URL, sync_playwright() as p, serve_api('%s://%s' % (urlpars
     browser = p.chromium.launch()
     ctx = browser.new_context(viewport={'width': 420, 'height': 900}, bypass_csp=True)
     ctx.add_init_script('window.__WINDTP_API_URL__ = %s' % json.dumps(API))
+    ctx.add_init_script('window.__S1A_TEST = true')
     pg = ctx.new_page()
     errors = []
     pg.on('pageerror', lambda e: errors.append(str(e)[:160]))
@@ -168,6 +169,35 @@ with serve_dist() as URL, sync_playwright() as p, serve_api('%s://%s' % (urlpars
         check('Bạn' in txt() and 'hạng' in txt().lower() or 'vô địch' in txt(), 'duel nhóm: có bảng xếp hạng sau khi thi')
     else:
         print('SKIP duel nhóm (không đủ bạn online)')
+
+    # ===== Leo núi giải cứu =====
+    open_alpha('ko')
+    check(pg.locator('[data-action="alpha-everest"]').count() == 1, 'everest: thẻ Leo núi giải cứu có trong menu chữ cái')
+    act(pg, 'alpha-everest')
+    pg.wait_for_function("document.getElementById('windtp-alpha-everest-host')", timeout=10000)
+    sh = lambda js: pg.evaluate("(js)=>{const r=document.getElementById('windtp-alpha-everest-host').shadowRoot;return eval(js)}", js)
+    pg.wait_for_function("document.getElementById('windtp-alpha-everest-host').shadowRoot.querySelector('#fg image')", timeout=10000)
+    check(sh("!!r.querySelector('#fg') && r.querySelectorAll('#fg image').length >= 3 && [...r.querySelectorAll('#fg image')].every(i=>i.getAttribute('href'))"), 'everest: có cảnh núi, công chúa và hoàng tử')
+    check('Bậc 0/17' in sh("r.querySelector('#st').textContent"), 'everest: bắt đầu ở chân núi, 17 bậc')
+    pg.wait_for_function("document.getElementById('windtp-alpha-everest-host').shadowRoot.querySelectorAll('.opt, #in').length>0", timeout=5000)
+    # trả lời một câu: đúng thì lên 1 bậc, sai thì về 0 (đang ở chân núi)
+    if sh("!!r.querySelector('.opt')"):
+        sh("r.querySelector('.opt').click()")
+    else:
+        sh("(r.querySelector('#in').value='zzzz', r.querySelector('#ck').click())")
+    pg.wait_for_timeout(2500)
+    st = sh("r.querySelector('#st').textContent")
+    check('Bậc 1/17' in st or 'Bậc 0/17' in st, 'everest: trả lời xong cập nhật bậc (%s)' % st[:20])
+    # đi tới đỉnh bằng móc kiểm thử rồi xem màn kết thúc
+    pg.evaluate("window.__s1aT && window.__s1aT.win()")
+    pg.wait_for_function("document.getElementById('windtp-alpha-everest-host').shadowRoot.querySelector('#bx .card')", timeout=30000)
+    check('chinh phục' in sh("r.querySelector('#bx').textContent"), 'everest: lên tới đỉnh thì hiện màn chiến thắng')
+    sh("r.querySelector('#bx .btn').click()")
+    pg.wait_for_function("document.getElementById('windtp-alpha-everest-host').shadowRoot.querySelector('#st').textContent.includes('Bậc 0/17')", timeout=10000)
+    check(True, 'everest: Leo lại bắt đầu từ chân núi')
+    sh("r.querySelector('#x').click()")
+    pg.wait_for_function("!document.getElementById('windtp-alpha-everest-host')", timeout=5000)
+    check('Leo núi giải cứu' in txt(), 'everest: thoát về menu chữ cái')
 
     check(not errors, 'không có lỗi JS (%s)' % errors[:2])
     browser.close()

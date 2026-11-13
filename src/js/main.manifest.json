@@ -24,6 +24,7 @@
   "src/js/features/content-lock-premium.js",
   "src/js/features/alphabet-data.js",
   "src/js/features/alphabet.js",
+  "src/js/features/alphabet-everest.js",
   "src/js/features/economy-api.js",
   "src/js/games/card-game-quan-hung.js"
 ]
