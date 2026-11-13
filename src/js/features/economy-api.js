@@ -653,7 +653,7 @@
   };
 
   // ----- Đồng bộ dữ liệu cá nhân giữa các thiết bị (bản ghi sau cùng thắng; tiền, quyền sở hữu, bài đăng không nằm trong đó) -----
-  const SYNC_TYPES = { lang: "stringnull", known: "object", saved: "array", reminders: "array", notices: "array", settings: "object", streak: "number", lastCheckIn: "string", loginStreak: "number", lastLogin: "string", cultivationLevel: "number", cultivationLastPenalty: "string", streakRewardsClaimed: "array", avatarId: "string", frameId: "string", ownedAvatars: "array", ownedFrames: "array", social: "object", cart: "object" };
+  const SYNC_TYPES = { lang: "stringnull", known: "object", saved: "array", reminders: "array", notices: "array", settings: "object", streak: "number", lastCheckIn: "string", loginStreak: "number", lastLogin: "string", cultivationLevel: "number", cultivationLastPenalty: "string", streakRewardsClaimed: "array", avatarId: "string", frameId: "string", ownedAvatars: "array", ownedFrames: "array", social: "object", cart: "object", alpha: "object" };
   const syncOk = (t, v) => t === "array" ? Array.isArray(v) : t === "object" ? !!v && typeof v === "object" && !Array.isArray(v) : t === "stringnull" ? v === null || typeof v === "string" : typeof v === t;
   function syncSnapshot() {
     const o = {};

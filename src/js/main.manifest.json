@@ -22,6 +22,8 @@
   "src/js/features/social-layer-friends.js",
   "src/js/features/shared-player-data-chat.js",
   "src/js/features/content-lock-premium.js",
+  "src/js/features/alphabet-data.js",
+  "src/js/features/alphabet.js",
   "src/js/features/economy-api.js",
   "src/js/games/card-game-quan-hung.js"
 ]
