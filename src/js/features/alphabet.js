@@ -230,13 +230,14 @@
   function alphaRenderPicker(cfg, lang) {
     return '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' + ALPHA_MODES.map(function (m, i) {
       return '<button data-action="alpha-mode" data-m="' + m.id + '" class="text-left glass-card rounded-3xl p-4 border-0 shadow hover:shadow-lg transition-all"><div class="flex items-center gap-3"><span class="text-3xl">' + m.icon + '</span><div><p class="text-sm font-black text-teal-700">' + (i + 1) + '. ' + esc(m.title) + '</p><p class="text-[11px] text-slate-600 mt-0.5">' + esc(m.desc) + '</p></div></div></button>';
-    }).join("") + '</div>';
+    }).join("") + '<button data-action="alpha-mode" data-m="duel" class="text-left rounded-3xl p-4 shadow hover:shadow-lg transition-all sm:col-span-2 text-white keep-white" style="background:linear-gradient(120deg,#e11d48,#7c3aed)"><div class="flex items-center gap-3"><span class="text-3xl">⚔️</span><div><p class="text-sm font-black">Thách đấu bạn bè</p><p class="text-[11px] opacity-90 mt-0.5">Cả hai thi cùng một đề về ' + (cfg.kind === "radicals" ? "bộ thủ" : "chữ cái") + ', tính điểm theo độ đúng, tốc độ và chuỗi đúng. Cần Premium.</p></div></div></button></div>';
   }
 
   function renderAlphabet(el, lang) {
     var cfg = alphaCfg(lang), A = alphaState();
     var body;
     if (!A.mode) body = alphaRenderPicker(cfg, lang);
+    else if (A.mode === "duel") body = '<p class="text-sm font-black text-slate-800">⚔️ Thách đấu bạn bè</p>' + alphaDuelView(cfg, lang, A);
     else {
       var def = ALPHA_MODES.filter(function (m) { return m.id === A.mode; })[0];
       var needChips = A.mode !== "weak";
@@ -272,7 +273,7 @@
   // ----- Hành động -----
   function alphaRerender() { var lang = state.lang ? langByCode(state.lang) : null, el = $("#tab-learn"); if (lang && el && ui.learnStage === "alphabet") renderAlphabet(el, lang); }
   function alphaCurrent() { var lang = state.lang ? langByCode(state.lang) : null; return lang ? { lang: lang, cfg: alphaCfg(lang), A: alphaState() } : null; }
-  function alphaResetRun(A) { A.deck = null; A.di = 0; A.flip = false; A.q = null; A.m = null; A.sel = null; A.wi = 0; A.drawn = false; A.freeze = false; A.playing = false; alphaStopSpeak(); }
+  function alphaResetRun(A) { A.deck = null; A.di = 0; A.flip = false; A.q = null; A.m = null; A.sel = null; A.wi = 0; A.drawn = false; A.freeze = false; A.playing = false; A.duel = null; window.clearInterval(alphaDuelTimer); alphaStopSpeak(); }
 
   Object.assign(actions, {
     "open-alphabet": function () { ui.alpha = null; alphaState(); ui.learnStage = "alphabet"; renderLearn(); window.scrollTo({ top: 0, behavior: "smooth" }); },
@@ -374,3 +375,177 @@
       if (stroke) stroke.insertAdjacentHTML("beforebegin", card); else grid.insertAdjacentHTML("beforeend", card);
     }
   };
+
+  /* ===== Thách đấu bạn bè về bảng chữ cái / bộ thủ (dùng chung hệ thống bạn bè và Premium với thách đấu từ vựng) ===== */
+  var alphaDuelTimer = 0;
+  function alphaDuelState(A) { if (!A.duel) A.duel = { view: "lobby", sels: [], n: 10, play: null, result: null }; return A.duel; }
+  // Đề thi sinh từ hạt giống của lời thách đấu: cùng seed thì cùng đề, không có chữ trùng cách đọc.
+  function alphaDuelExam(cfg, seed, n) {
+    var rng = mulberry(seed >>> 0), flat = alphaFlat(cfg), idx = flat.map(function (f, i) { return i; });
+    for (var i = idx.length - 1; i > 0; i--) { var j = Math.floor(rng() * (i + 1)); var t = idx[i]; idx[i] = idx[j]; idx[j] = t; }
+    var seen = {}, qs = [];
+    idx.forEach(function (qi) {
+      var k = alphaKey(cfg, flat[qi].it);
+      if (qs.length >= n || seen[k]) return;
+      seen[k] = 1; qs.push(qi);
+    });
+    return qs.map(function (qi) {
+      var used = {}, opts = [qi]; used[alphaKey(cfg, flat[qi].it)] = 1;
+      var order = idx.slice();
+      for (var a = order.length - 1; a > 0; a--) { var b = Math.floor(rng() * (a + 1)); var tmp = order[a]; order[a] = order[b]; order[b] = tmp; }
+      order.forEach(function (oi) { var k = alphaKey(cfg, flat[oi].it); if (opts.length < 4 && !used[k]) { used[k] = 1; opts.push(oi); } });
+      for (var c = opts.length - 1; c > 0; c--) { var d = Math.floor(rng() * (c + 1)); var u = opts[c]; opts[c] = opts[d]; opts[d] = u; }
+      return { qi: qi, opts: opts, hear: rng() < 0.35 };
+    });
+  }
+  function alphaDuelPoolSize(cfg) { var seen = {}, n = 0; alphaFlat(cfg).forEach(function (f) { var k = alphaKey(cfg, f.it); if (!seen[k]) { seen[k] = 1; n++; } }); return n; }
+  function alphaFmtT(ms) { var s = Math.round(ms / 1000); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+  function alphaDuelLobby(cfg, lang, A, D) {
+    var wd = window.WINDTP;
+    if (!wd) return alphaEmpty("Không kết nối được hệ thống bạn bè.");
+    if (!wd.premium()) return '<div class="glass-card rounded-3xl p-6 text-center space-y-3"><div class="text-4xl">👑</div><p class="font-extrabold text-slate-800">Thách đấu bạn bè là tính năng Premium</p><p class="text-xs text-slate-600 leading-relaxed">⚔️ Mời bạn bè online, họ chấp nhận hoặc từ chối<br>📝 Hai người thi cùng một đề<br>🏆 Đúng +100, nhanh tối đa +50, chuỗi đúng +10/câu (tối đa +50)</p><button data-action="open-courses" class="px-4 py-2 rounded-xl bg-amber-500 text-white keep-white text-xs font-bold">Xem các gói khóa học</button></div>';
+    var L = wd.ch.listAlpha(lang.code), nm = function (id) { return (wd.friend(id) || { name: "?" }).name; };
+    var inc = L.filter(function (c) { return c.dir === "in" && c.status === "pending"; });
+    var ready = L.filter(function (c) { return c.status === "accepted" && !c.gid; });
+    var wait = L.filter(function (c) { return c.dir === "out" && c.status === "pending" && !c.gid; });
+    var gm = {}; L.filter(function (c) { return c.gid && c.dir === "out" && (c.status === "pending" || c.status === "accepted"); }).forEach(function (c) { (gm[c.gid] = gm[c.gid] || []).push(c); });
+    var hist = L.filter(function (c) { return ["done", "declined", "expired"].indexOf(c.status) >= 0; }).slice(0, 8);
+    var fr = wd.friends().sort(function (a, b) { return Number(b.online) - Number(a.online); });
+    D.sels = D.sels.filter(function (id) { return fr.some(function (f) { return f.id === id && f.online; }); });
+    var pool = alphaDuelPoolSize(cfg), counts = [10, 15, 20, 30].filter(function (n) { return n <= pool; });
+    if (!counts.length) counts = [pool];
+    if (counts.indexOf(D.n) < 0) D.n = counts[0];
+    var row = function (h) { return '<div class="flex items-center justify-between gap-2 bg-white rounded-2xl border border-slate-200 px-3 py-2 text-xs">' + h + '</div>'; };
+    var btn = function (act, label, extra, cls) { return '<button data-action="' + act + '" ' + (extra || "") + ' class="px-3 py-1.5 rounded-xl text-[11px] font-bold ' + (cls || "bg-white border border-slate-200 text-slate-700") + '">' + label + '</button>'; };
+    var pri = "bg-sky-600 text-white keep-white";
+    var out = "";
+    if (inc.length) out += '<p class="text-xs font-extrabold text-slate-700">Lời mời đến</p>' + inc.map(function (c) { return row('<span><b>' + esc(nm(c.fid)) + '</b> thách đấu · ' + c.n + ' câu</span><span class="flex gap-1">' + btn("alpha-d-ac", "Chấp nhận", 'data-id="' + c.id + '"', pri) + btn("alpha-d-dc", "Từ chối", 'data-id="' + c.id + '"') + btn("alpha-d-rm", "🗑", 'data-id="' + c.id + '" aria-label="Xóa thông báo"') + '</span>'); }).join("");
+    if (ready.length) out += '<p class="text-xs font-extrabold text-slate-700">Sẵn sàng thi</p>' + ready.map(function (c) { return row('<span>✅ <b>' + esc(nm(c.fid)) + '</b> đã đồng ý · ' + c.n + ' câu</span><span class="flex gap-1">' + btn("alpha-d-pl", "Vào thi", 'data-id="' + c.id + '"', pri) + btn("alpha-d-rm", "🗑", 'data-id="' + c.id + '" aria-label="Xóa thông báo"') + '</span>'); }).join("");
+    Object.keys(gm).forEach(function (gid) {
+      var list = gm[gid], acc = list.filter(function (c) { return c.status === "accepted"; }).length, pen = list.filter(function (c) { return c.status === "pending"; }).length;
+      out += '<p class="text-xs font-extrabold text-slate-700">🏁 Phòng thách đấu nhóm · ' + list[0].n + ' câu</p>' + row('<span>' + list.map(function (c) { return '<div><b>' + esc(nm(c.fid)) + '</b> <small>' + (c.status === "accepted" ? "✅ Đã đồng ý" : "⏳ Đang chờ") + '</small></div>'; }).join("") + '</span>' + btn("alpha-d-gp", pen ? "Vào thi ngay (" + acc + " bạn sẵn sàng)" : "Vào thi (" + acc + " bạn)", 'data-id="' + gid + '"' + (acc ? "" : " disabled"), pri));
+    });
+    if (wait.length) out += '<p class="text-xs font-extrabold text-slate-700">Đang chờ trả lời</p>' + wait.map(function (c) { return row('<span>⏳ Đang chờ <b>' + esc(nm(c.fid)) + '</b> phản hồi…</span>'); }).join("");
+    var nSel = D.sels.length;
+    out += '<p class="text-xs font-extrabold text-slate-700">Gửi thách đấu mới</p><div class="flex flex-wrap gap-2">' + counts.map(function (n) { return btn("alpha-d-n", n + " câu", 'data-n="' + n + '"', D.n === n ? pri : ""); }).join("") + '</div>' +
+      '<div class="flex items-center justify-between text-[11px] text-slate-600"><span>Chọn bạn đang online · <b>' + nSel + '</b> đã chọn</span><span class="flex gap-1">' + btn("alpha-d-all", "Chọn tất cả online") + btn("alpha-d-none", "Bỏ chọn", nSel ? "" : "disabled") + '</span></div>' +
+      fr.map(function (f) { return row('<span><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + (f.online ? "#22c55e" : "#94a3b8") + '"></i> <b>' + esc(f.name) + '</b> <small class="text-slate-500">' + (f.online ? "Online" : "Offline") + ' · ' + esc(f.rank) + (f.record ? ' · ' + f.record.w + 'T-' + f.record.l + 'B-' + f.record.d + 'H' : "") + '</small></span><span class="flex gap-1">' + btn("alpha-d-poke", "👉 Chọc", 'data-id="' + esc(f.id) + '"') + btn("alpha-d-sel", f.online ? (D.sels.indexOf(f.id) >= 0 ? "✓ Đã chọn" : "Chọn") : "Offline", 'data-id="' + esc(f.id) + '"' + (f.online ? "" : " disabled"), f.online && D.sels.indexOf(f.id) >= 0 ? pri : "") + '</span>'); }).join("") +
+      '<button data-action="alpha-d-send" ' + (nSel ? "" : "disabled ") + 'class="w-full py-3 rounded-2xl text-white keep-white font-extrabold bg-gradient-to-r from-rose-600 to-violet-600 disabled:opacity-50">' + (nSel ? "⚔️ Gửi thách đấu (" + nSel + " bạn · " + D.n + " câu)" : "⚔️ Chọn bạn để gửi thách đấu") + '</button>';
+    if (hist.length) out += '<p class="text-xs font-extrabold text-slate-700">Gần đây</p>' + hist.map(function (c) {
+      if (c.status !== "done") return row('<span>' + (c.status === "declined" ? "🚫 Bị từ chối / đã từ chối" : "⌛ Hết hạn") + ' · <b>' + esc(nm(c.fid)) + '</b></span>');
+      var head = c.grp ? "Hạng " + c.grp.rank + "/" + c.grp.size + " · " : (c.my.score > c.their.score ? "✅ Thắng " : c.my.score < c.their.score ? "❌ Thua " : "🤝 Hòa ");
+      return row('<span>' + head + '<b>' + esc(nm(c.fid)) + '</b> · ' + c.my.score + ' - ' + c.their.score + '</span>');
+    }).join("");
+    return '<div class="space-y-2">' + out + '</div>';
+  }
+  function alphaDuelPlayView(cfg, lang, A, D) {
+    var P = D.play, flat = alphaFlat(cfg), q = P.exam[P.i], it = flat[q.qi].it, hear = q.hear && ("speechSynthesis" in window);
+    var lim = window.WINDTP.ch.limits.choice;
+    var prompt = hear
+      ? '<button data-action="alpha-say" data-i="' + q.qi + '" class="px-6 py-4 rounded-2xl bg-sky-600 text-white keep-white text-2xl font-black" aria-label="Nghe lại">🔊</button><p class="text-xs text-slate-500 mt-2">Nghe và chọn chữ đúng</p>'
+      : '<div class="text-slate-800 font-black">' + alphaBig(it, 96) + '</div><p class="text-xs text-slate-500 mt-2">Chọn cách đọc đúng</p>';
+    var opts = q.opts.map(function (oi) {
+      var o = flat[oi].it, st = "border-slate-200 bg-white";
+      if (P.picked != null) st = oi === q.qi ? "border-emerald-500 bg-emerald-50" : (oi === P.picked ? "border-rose-400 bg-rose-50" : "border-slate-200 bg-white opacity-70");
+      return '<button data-action="alpha-d-ans" data-i="' + oi + '"' + (P.picked != null ? " disabled" : "") + ' class="rounded-2xl border p-3 ' + st + ' text-slate-800 ' + (hear ? "font-black" : "text-sm font-bold") + '">' + (hear ? alphaBig(o, 34) : esc(alphaShort(o))) + '</button>';
+    }).join("");
+    var left = P.picked != null ? 0 : Math.max(0, Math.ceil((P.deadline - Date.now()) / 1000));
+    return '<p class="text-xs text-slate-600 text-center">⚔️ vs ' + esc(P.vs) + ' · Câu ' + (P.i + 1) + '/' + P.exam.length + ' · Điểm <b>' + P.score + '</b> · Chuỗi ' + P.streak + ' · ⏱ <b id="alpha-d-time">' + left + '</b>s/' + lim + 's</p>' +
+      '<div class="h-2 rounded-full bg-slate-200 overflow-hidden"><div class="h-full bg-sky-500" style="width:' + (P.i / P.exam.length * 100) + '%"></div></div>' +
+      '<div class="glass-card rounded-3xl p-6 text-center">' + prompt + '</div><div class="grid grid-cols-2 gap-2">' + opts + '</div>';
+  }
+  function alphaDuelResultView(D) {
+    var r = D.result;
+    if (r.board) {
+      var med = ["🥇", "🥈", "🥉"], mine = r.board.filter(function (p) { return p.me; })[0];
+      return '<div class="glass-card rounded-3xl p-5 text-center space-y-3"><div class="text-5xl">' + (mine.rank <= 3 ? med[mine.rank - 1] : "🏁") + '</div><p class="font-extrabold text-slate-800">' + (mine.rank === 1 ? "Bạn vô địch!" : "Bạn đứng hạng " + mine.rank + "/" + r.size) + '</p><p class="text-[11px] text-slate-500">' + r.size + ' người cùng thi một đề ' + r.n + ' câu · bằng điểm thì ai nhanh hơn xếp trên</p><div class="space-y-1 text-left">' +
+        r.board.map(function (p) { return '<div class="flex justify-between text-xs rounded-xl px-3 py-2 ' + (p.me ? "bg-sky-100 font-bold" : "bg-white") + '"><span>' + p.rank + '. ' + (p.me ? "Bạn" : esc(p.name)) + ' <small class="text-slate-500">' + p.correct + '/' + p.total + ' đúng · ' + alphaFmtT(p.ms) + '</small></span><b>' + p.score + 'đ</b></div>'; }).join("") +
+        '</div><button data-action="alpha-d-lobby" class="px-4 py-2 rounded-xl bg-sky-600 text-white keep-white text-xs font-bold">Về sảnh thách đấu</button></div>';
+    }
+    var a = r.my, b = r.their, w = a.score > b.score, d = a.score === b.score, nm = esc((window.WINDTP.friend(r.fid) || { name: "Bạn bè" }).name);
+    return '<div class="glass-card rounded-3xl p-5 text-center space-y-3"><div class="text-5xl">' + (w ? "🏆" : d ? "🤝" : "💔") + '</div><p class="font-extrabold text-slate-800">' + (w ? "Bạn thắng!" : d ? "Hòa nhau!" : nm + " thắng") + '</p>' +
+      '<div class="flex items-center justify-around"><div><p class="text-xs text-slate-500">Bạn</p><p class="text-3xl font-black text-sky-700">' + a.score + '</p><p class="text-[11px] text-slate-500">' + a.correct + '/' + a.total + ' đúng · ' + alphaFmtT(a.ms) + '</p></div><span class="font-black text-slate-400">VS</span><div><p class="text-xs text-slate-500">' + nm + '</p><p class="text-3xl font-black text-rose-600">' + b.score + '</p><p class="text-[11px] text-slate-500">' + b.correct + '/' + b.total + ' đúng · ' + alphaFmtT(b.ms) + '</p></div></div>' +
+      '<p class="text-[11px] text-slate-500">Cả hai thi cùng một đề ' + a.total + ' câu · đúng +100, nhanh tối đa +50, chuỗi đúng +10/câu</p><button data-action="alpha-d-lobby" class="px-4 py-2 rounded-xl bg-sky-600 text-white keep-white text-xs font-bold">Về sảnh thách đấu</button></div>';
+  }
+  function alphaDuelView(cfg, lang, A) {
+    var D = alphaDuelState(A);
+    if (D.view === "play" && D.play) return alphaDuelPlayView(cfg, lang, A, D);
+    if (D.view === "result" && D.result) return alphaDuelResultView(D);
+    D.view = "lobby";
+    return alphaDuelLobby(cfg, lang, A, D);
+  }
+  function alphaDuelStartQ(c) {
+    var D = alphaDuelState(c.A), P = D.play;
+    P.picked = null; P.deadline = Date.now() + window.WINDTP.ch.limits.choice * 1000; P.qStart = Date.now();
+    window.clearInterval(alphaDuelTimer);
+    var gen = ++P.gen;
+    alphaDuelTimer = window.setInterval(function () {
+      if (!ui.alpha || !ui.alpha.duel || ui.alpha.duel.play !== P || P.gen !== gen || P.picked != null) { window.clearInterval(alphaDuelTimer); return; }
+      var left = Math.max(0, Math.ceil((P.deadline - Date.now()) / 1000)), el = $("#alpha-d-time");
+      if (el) el.textContent = String(left);
+      if (Date.now() >= P.deadline) alphaDuelAnswer(c.cfg, null);
+    }, 250);
+    var q = P.exam[P.i];
+    if (q.hear && "speechSynthesis" in window) alphaSpeak(c.cfg, alphaFlat(c.cfg)[q.qi].it.t);
+  }
+  function alphaDuelBegin(c, exam, vs, finish) {
+    var D = alphaDuelState(c.A);
+    D.view = "play"; D.play = { exam: exam, i: 0, score: 0, correct: 0, streak: 0, ms: 0, picked: null, vs: vs, finish: finish, gen: 0, deadline: 0 };
+    alphaDuelStartQ(c); alphaRerender();
+  }
+  function alphaDuelAnswer(cfg, pick) {
+    var A = alphaState(), D = A.duel, P = D && D.play;
+    if (!P || P.picked != null) return;
+    var wd = window.WINDTP, q = P.exam[P.i], lim = wd.ch.limits.choice;
+    var ok = pick === q.qi, t = pick == null ? lim : Math.min(lim, (Date.now() - P.qStart) / 1000);
+    P.picked = pick == null ? -1 : pick;
+    window.clearInterval(alphaDuelTimer);
+    P.score += wd.ch.scoreQ(ok, t, lim, P.streak); P.streak = ok ? P.streak + 1 : 0; if (ok) P.correct++; P.ms += Math.round(t * 1000);
+    alphaRerender();
+    var gen = P.gen;
+    window.setTimeout(function () {
+      if (!ui.alpha || !ui.alpha.duel || ui.alpha.duel.play !== P || P.gen !== gen) return;
+      P.i++;
+      if (P.i >= P.exam.length) {
+        var fin = P.finish, mine = { score: P.score, correct: P.correct, total: P.exam.length, ms: P.ms }, kinds = P.exam.map(function () { return "mc"; });
+        D.play = null; D.view = "lobby"; // trước khi ghi kết quả, vì ghi sẽ làm giao diện vẽ lại ngay
+        var res = fin(mine, kinds);
+        if (res) { D.result = res; D.view = "result"; } else D.view = "lobby";
+        alphaRerender();
+      } else { var c = alphaCurrent(); if (c) alphaDuelStartQ(c); alphaRerender(); }
+    }, 900);
+  }
+
+  Object.assign(actions, {
+    "alpha-d-lobby": function () { var A = alphaState(), D = alphaDuelState(A); D.view = "lobby"; D.play = null; D.result = null; window.clearInterval(alphaDuelTimer); alphaRerender(); },
+    "alpha-d-n": function (el) { var D = alphaDuelState(alphaState()); D.n = Number(el.dataset.n); alphaRerender(); },
+    "alpha-d-sel": function (el) { var D = alphaDuelState(alphaState()), id = el.dataset.id; D.sels = D.sels.indexOf(id) >= 0 ? D.sels.filter(function (x) { return x !== id; }) : D.sels.concat([id]); alphaRerender(); },
+    "alpha-d-all": function () { var D = alphaDuelState(alphaState()); D.sels = window.WINDTP.friends().filter(function (f) { return f.online; }).map(function (f) { return f.id; }); alphaRerender(); },
+    "alpha-d-none": function () { alphaDuelState(alphaState()).sels = []; alphaRerender(); },
+    "alpha-d-poke": function (el) { var wd = window.WINDTP; if (wd.poke(el.dataset.id) && wd.pokeFx) wd.pokeFx(el); },
+    "alpha-d-send": function () {
+      var c = alphaCurrent(); if (!c) return;
+      var wd = window.WINDTP, D = alphaDuelState(c.A), lesson = "alpha:" + c.lang.code;
+      if (!wd.premium() || !D.sels.length) return;
+      var made = D.sels.length === 1 ? [wd.ch.create(D.sels[0], D.n, lesson)].filter(Boolean) : wd.ch.createGroup(D.sels.slice(), D.n, lesson);
+      if (made.length) { wd.toast("⚔️ Đã gửi lời thách đấu đến " + made.length + " bạn, chờ phản hồi…"); D.sels = []; alphaRerender(); }
+    },
+    "alpha-d-ac": function (el) { window.WINDTP.ch.respond(el.dataset.id, true); alphaRerender(); },
+    "alpha-d-dc": function (el) { window.WINDTP.ch.respond(el.dataset.id, false); alphaRerender(); },
+    "alpha-d-rm": function (el) { window.WINDTP.ch.remove(el.dataset.id); alphaRerender(); },
+    "alpha-d-pl": function (el) {
+      var c = alphaCurrent(); if (!c) return;
+      var wd = window.WINDTP, ch = wd.ch.get(el.dataset.id);
+      if (!ch || ch.status !== "accepted" || ch.lesson !== "alpha:" + c.lang.code) { alphaRerender(); return; }
+      var id = ch.id;
+      alphaDuelBegin(c, alphaDuelExam(c.cfg, ch.seed, ch.n), (wd.friend(ch.fid) || { name: "Bạn bè" }).name, function (my, kinds) { var done = wd.ch.finish(id, my, kinds); return done ? { fid: done.fid, my: done.my, their: done.their } : null; });
+    },
+    "alpha-d-gp": function (el) {
+      var c = alphaCurrent(); if (!c) return;
+      var wd = window.WINDTP, gid = el.dataset.id, mem = wd.ch.listAlpha(c.lang.code).filter(function (x) { return x.gid === gid && x.status === "accepted"; });
+      if (!mem.length) { alphaRerender(); return; }
+      var names = mem.map(function (x) { return (wd.friend(x.fid) || { name: "?" }).name; }).join(", ");
+      alphaDuelBegin(c, alphaDuelExam(c.cfg, mem[0].seed, mem[0].n), mem.length + " bạn (" + names + ")", function (my, kinds) { return wd.ch.finishGroup(gid, my, kinds); });
+    },
+    "alpha-d-ans": function (el) { var c = alphaCurrent(); if (c) alphaDuelAnswer(c.cfg, Number(el.dataset.i)); }
+  });

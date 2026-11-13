@@ -3,7 +3,7 @@ Chạy: npm run build:test && python3 tests/smoke_alphabet.py"""
 import json, sys
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright
-from support import serve_dist, serve_api
+from support import serve_dist, serve_api, api_token, api_call
 
 failures = []
 
@@ -48,8 +48,8 @@ with serve_dist() as URL, sync_playwright() as p, serve_api('%s://%s' % (urlpars
 
     for code, title in [('ko', 'Hangul'), ('ja', 'Hiragana'), ('zh', '214 bộ thủ'), ('en', 'tiếng Anh'), ('de', 'tiếng Đức'), ('fr', 'tiếng Pháp'), ('es', 'Tây Ban Nha')]:
         open_alpha(code)
-        n = pg.locator('[data-action="alpha-mode"]').count()
-        check(n == 9 and title in txt(), '%s: có đúng 9 cách học và tiêu đề %s (%d)' % (code, title, n))
+        n = pg.locator('[data-action="alpha-mode"]:not([data-m="duel"])').count()
+        check(n == 9 and pg.locator('[data-m="duel"]').count() == 1 and title in txt(), '%s: có đúng 9 cách học, thêm thách đấu bạn bè, tiêu đề %s (%d)' % (code, title, n))
 
     # tiếng Trung: 214 thẻ bộ thủ
     open_alpha('zh')
@@ -97,6 +97,77 @@ with serve_dist() as URL, sync_playwright() as p, serve_api('%s://%s' % (urlpars
     act(pg, 'alpha-back')
     act(pg, 'alpha-mode', m='weak')
     check('Chưa có chữ hay sai' in txt() or pg.locator('[data-action="alpha-ans"]').count() == 4, 'ko: ôn chữ hay sai hiển thị đúng trạng thái')
+
+    # ===== Thách đấu bạn bè về chữ cái =====
+    ORIGIN = '%s://%s' % (urlparse(URL).scheme, urlparse(URL).netloc)
+    user_token = pg.evaluate('window.WindtpAuth.getIdToken()')
+    admin_token = api_token('admin-1', 'Admin', 'admin@wind.vn', True)
+    open_alpha('ko')
+    act(pg, 'alpha-mode', m='duel')
+    check('Premium' in txt() and pg.locator('[data-action="alpha-d-send"]').count() == 0, 'duel: chưa có Premium thì bị chặn và dẫn tới gói khóa học')
+    oid = pg.evaluate("window.WindtpApi.client.createOrder({kind:'shop',currency:'VND',amount:1000,summary:'Premium'}).then(r=>r.id)")
+    status, _ = api_call(API, 'POST', '/admin/orders/%d/approve' % oid, admin_token, {'grants': ['access:ko'], 'premiumMonths': 1}, ORIGIN)
+    check(status == 200, 'duel: admin cấp Premium theo đơn')
+    pg.evaluate("window.dispatchEvent(new Event('online'))")
+    for _ in range(40):
+        if pg.evaluate("window.WINDTP.premium()"):
+            break
+        pg.wait_for_timeout(300)
+    # ép bạn bè online và luôn chấp nhận để test ổn định
+    pg.evaluate("""()=>{const fs=window.WINDTP.friends();window.__onl=fs.filter(f=>f.online).map(f=>f.id)}""")
+    act(pg, 'alpha-back'); open_alpha('ko'); act(pg, 'alpha-mode', m='duel')
+    pg.wait_for_selector('[data-action="alpha-d-sel"]:not([disabled])', timeout=10000)
+    check(pg.locator('[data-action="alpha-d-n"]').count() >= 1, 'duel: có chọn số câu')
+    act(pg, 'alpha-d-n', n=10)
+    pg.locator('[data-action="alpha-d-sel"]:not([disabled])').first.evaluate('b=>b.click()')
+    pg.locator('[data-action="alpha-d-send"]').evaluate('b=>b.click()')
+    ch = pg.evaluate("window.WINDTP.ch.listAlpha('ko')")
+    check(len(ch) == 1 and ch[0]['lesson'] == 'alpha:ko' and ch[0]['n'] == 10, 'duel: lời thách được tạo với loại alpha:ko')
+    check(pg.evaluate("window.WINDTP.ch.list().length") == 0, 'duel: sảnh thách đấu từ vựng không thấy lời thách chữ cái')
+    pg.evaluate("window.WINDTP.ch.get(%s).replyAt = 0" % json.dumps(ch[0]['id']))
+    pg.evaluate("(id)=>{const c=window.WINDTP.ch.get(id);c.status='accepted';}", ch[0]['id'])
+    pg.evaluate("window.dispatchEvent(new Event('online'))")
+    act(pg, 'alpha-back'); open_alpha('ko'); act(pg, 'alpha-mode', m='duel')
+    pg.wait_for_selector('[data-action="alpha-d-pl"]', timeout=10000)
+    act(pg, 'alpha-d-pl', id=ch[0]['id'])
+    pg.wait_for_selector('[data-action="alpha-d-ans"]', timeout=5000)
+    # trả lời 10 câu: bấm đáp án đầu tiên mỗi câu
+    for i in range(10):
+        pg.wait_for_selector('[data-action="alpha-d-ans"]:not([disabled])', timeout=8000)
+        pg.locator('[data-action="alpha-d-ans"]').first.evaluate('b=>b.click()')
+        pg.wait_for_timeout(1100)
+    try:
+        pg.wait_for_selector('[data-action="alpha-d-lobby"]', timeout=8000)
+    except Exception:
+        print('DEBUG', txt()[:400], errors)
+        raise
+    done = pg.evaluate("window.WINDTP.ch.listAlpha('ko')[0]")
+    check(done['status'] == 'done' and done['my']['total'] == 10 and done['their']['total'] == 10, 'duel: thi xong có kết quả hai bên cùng 10 câu')
+    check('VS' in txt(), 'duel: màn kết quả hiển thị so điểm hai người')
+    act(pg, 'alpha-d-lobby')
+    check('Gần đây' in txt(), 'duel: lịch sử trận đấu hiện ở sảnh')
+
+    # thách đấu nhóm: 2 bạn cùng thi một đề, xếp hạng
+    act(pg, 'alpha-d-n', n=10)
+    sel = pg.locator('[data-action="alpha-d-sel"]:not([disabled])')
+    if sel.count() >= 3:
+        # bạn đầu đã có trận xong nên chọn hai bạn tiếp theo
+        sel.nth(1).evaluate('b=>b.click()'); pg.locator('[data-action="alpha-d-sel"]:not([disabled])').nth(2).evaluate('b=>b.click()')
+        pg.locator('[data-action="alpha-d-send"]').evaluate('b=>b.click()')
+        grp = [c for c in pg.evaluate("window.WINDTP.ch.listAlpha('ko')") if c.get('gid')]
+        check(len(grp) == 2, 'duel nhóm: tạo lời thách cho 2 bạn (%d)' % len(grp))
+        pg.evaluate("(gid)=>{window.WINDTP.ch.listAlpha('ko').filter(c=>c.gid===gid).forEach(c=>{c.status='accepted'})}", grp[0]['gid'])
+        pg.evaluate("window.dispatchEvent(new Event('online'))")
+        act(pg, 'alpha-back'); open_alpha('ko'); act(pg, 'alpha-mode', m='duel')
+        act(pg, 'alpha-d-gp', id=grp[0]['gid'])
+        for i in range(10):
+            pg.wait_for_selector('[data-action="alpha-d-ans"]:not([disabled])', timeout=8000)
+            pg.locator('[data-action="alpha-d-ans"]').first.evaluate('b=>b.click()')
+            pg.wait_for_timeout(1100)
+        pg.wait_for_selector('[data-action="alpha-d-lobby"]', timeout=8000)
+        check('Bạn' in txt() and 'hạng' in txt().lower() or 'vô địch' in txt(), 'duel nhóm: có bảng xếp hạng sau khi thi')
+    else:
+        print('SKIP duel nhóm (không đủ bạn online)')
 
     check(not errors, 'không có lỗi JS (%s)' % errors[:2])
     browser.close()
