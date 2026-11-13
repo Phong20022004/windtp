@@ -10,6 +10,7 @@ interface Seen {
   url: string;
   method: string;
   auth: string | null;
+  device: string | null;
   body: string | null;
 }
 
@@ -19,7 +20,7 @@ function server(steps: Array<{ status: number; body?: unknown; raw?: string } | 
   let index = 0;
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
-    seen.push({ url: String(input), method: init?.method ?? "GET", auth: headers.get("authorization"), body: (init?.body as string | undefined) ?? null });
+    seen.push({ url: String(input), method: init?.method ?? "GET", auth: headers.get("authorization"), device: headers.get("x-device-id"), body: (init?.body as string | undefined) ?? null });
     const step = steps[Math.min(index, steps.length - 1)];
     index += 1;
     if (step === undefined || step === "network") throw new TypeError("Failed to fetch");
@@ -28,9 +29,9 @@ function server(steps: Array<{ status: number; body?: unknown; raw?: string } | 
   return { fetchImpl, seen };
 }
 
-function make(steps: Parameters<typeof server>[0], token: (force: boolean) => Promise<string | null> = async () => "tok") {
+function make(steps: Parameters<typeof server>[0], token: (force: boolean) => Promise<string | null> = async () => "tok", getDeviceId?: () => string) {
   const { fetchImpl, seen } = server(steps);
-  return { client: createApiClient({ baseUrl: "https://api.windtp.test/", getToken: token, fetchImpl }), seen };
+  return { client: createApiClient({ baseUrl: "https://api.windtp.test/", getToken: token, getDeviceId, fetchImpl }), seen };
 }
 
 async function failure(promise: Promise<unknown>): Promise<ApiError> {
@@ -124,6 +125,58 @@ describe("admin", () => {
     await client.admin.approveOrder(7);
     assert.equal(seen[0]?.url, "https://api.windtp.test/admin/orders?status=approved");
     assert.equal(seen[1]?.url, "https://api.windtp.test/admin/orders/7/approve");
+  });
+});
+
+describe("thiết bị và mã mời", () => {
+  it("gửi X-Device-Id trong mọi yêu cầu khi có mã thiết bị, và không gửi khi không có", async () => {
+    const a = make([{ status: 200, body: ME }], async () => "tok", () => "device-abc-1234567");
+    await a.client.me();
+    assert.equal(a.seen[0]?.device, "device-abc-1234567");
+    const b = make([{ status: 200, body: ME }]);
+    await b.client.me();
+    assert.equal(b.seen[0]?.device, null);
+  });
+
+  it("vượt 2 thiết bị thì báo device-limit bằng tiếng Việt", async () => {
+    const { client } = make([{ status: 403, body: { error: "device-limit" } }]);
+    const error = await failure(client.me());
+    assert.equal(error.code, "device-limit");
+    assert.match(error.message, /2 thiết bị/);
+  });
+
+  it("đọc mã mời của mình và đúng các lỗi khi nhập mã", async () => {
+    const info = { code: "ABCD2345", reward: { xu: 10000, chips: 7000 }, invited: 2, rewarded: 1, referredBy: false };
+    const a = make([{ status: 200, body: info }]);
+    assert.deepEqual(await a.client.referral(), info);
+    assert.equal(a.seen[0]?.url, "https://api.windtp.test/referral");
+    const bad = make([{ status: 200, body: { code: 5 } }]);
+    assert.equal((await failure(bad.client.referral())).code, "bad-response");
+    const cases: Array<[number, string, string]> = [[404, "no-code", "no-code"], [400, "self-referral", "self-referral"], [409, "already-purchased", "already-purchased"], [409, "duplicate", "duplicate"], [400, "bad-code", "bad-code"]];
+    for (const [status, server, code] of cases) {
+      const r = make([{ status, body: { error: server } }]);
+      assert.equal((await failure(r.client.redeemReferral("ABCD2345"))).code, code);
+    }
+    const ok = make([{ status: 200, body: { ok: true } }]);
+    await ok.client.redeemReferral("ABCD2345");
+    assert.equal(ok.seen[0]?.method, "POST");
+    assert.equal(ok.seen[0]?.url, "https://api.windtp.test/referral/redeem");
+    assert.deepEqual(JSON.parse(ok.seen[0]?.body ?? "{}"), { code: "ABCD2345" });
+  });
+
+  it("liệt kê, gỡ thiết bị và admin mở khóa", async () => {
+    const list = { max: 2, devices: [{ id: "device-a-123456789", firstSeen: 1, lastSeen: 2, current: true }] };
+    const a = make([{ status: 200, body: list }]);
+    assert.deepEqual(await a.client.devices(), list);
+    const bad = make([{ status: 200, body: { max: "2" } }]);
+    assert.equal((await failure(bad.client.devices())).code, "bad-response");
+    const r = make([{ status: 200, body: { ok: true } }]);
+    await r.client.removeDevice("device-b-123456789");
+    assert.equal(r.seen[0]?.url, "https://api.windtp.test/devices/remove");
+    assert.deepEqual(JSON.parse(r.seen[0]?.body ?? "{}"), { deviceId: "device-b-123456789" });
+    const adm = make([{ status: 200, body: { ok: true, removed: 2 } }]);
+    assert.equal(await adm.client.admin.resetDevices("u1"), 2);
+    assert.equal(adm.seen[0]?.url, "https://api.windtp.test/admin/devices/reset");
   });
 });
 

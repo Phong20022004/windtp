@@ -474,6 +474,7 @@ function renderWallet() {
     <div class="glass-card p-3.5 rounded-2xl"><p class="text-[11px] text-slate-500">Thu 30 ng\xE0y qua</p><p class="text-base font-extrabold text-emerald-600">+${fmt(totalIn)} Xu</p></div>
     <div class="glass-card p-3.5 rounded-2xl"><p class="text-[11px] text-slate-500">Chi 30 ng\xE0y qua</p><p class="text-base font-extrabold text-rose-500">-${fmt(totalOut)} Xu</p></div>
   </div>
+  ${typeof inviteCard === "function" ? inviteCard() : ""}
   ${state.orders.length ? `<div class="glass-card p-4 rounded-2xl">
     <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2 mb-3"><span>\u{1F9FE}</span> \u0110\u01A1n H\xE0ng & N\u1EA1p Xu</h3>
     <div class="space-y-3">${state.orders.slice(0, 10).map((o) => `

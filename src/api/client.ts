@@ -4,6 +4,8 @@ import {
   type AdminPost,
   type ApprovalExtras,
   type ApiErrorCode,
+  type DeviceList,
+  type Referral,
   type CatalogItem,
   type SpecialTask,
   type StoreConfig,
@@ -18,6 +20,8 @@ export interface ApiClientOptions {
   baseUrl: string;
   /** Lấy ID token; `forceRefresh` bắt buộc làm mới (gọi khi máy chủ trả 401). */
   getToken: (forceRefresh: boolean) => Promise<string | null>;
+  /** Mã thiết bị gửi kèm mọi yêu cầu (header X-Device-Id) để máy chủ giới hạn số thiết bị mỗi tài khoản. */
+  getDeviceId?: () => string;
   fetchImpl?: typeof fetch;
 }
 
@@ -32,6 +36,11 @@ const BY_SERVER_CODE: Readonly<Record<string, ApiErrorCode>> = {
   "too-large": "too-large",
   "premium-required": "premium-required",
   "course-required": "course-required",
+  "device-limit": "device-limit",
+  "bad-code": "bad-code",
+  "no-code": "no-code",
+  "self-referral": "self-referral",
+  "already-purchased": "already-purchased",
 };
 
 function classify(status: number, serverCode: string): ApiErrorCode {
@@ -62,6 +71,14 @@ export interface ApiClient {
   store(): Promise<StoreConfig>;
   /** Từ vựng đầy đủ của một ngôn ngữ; máy chủ chỉ gửi khi còn Premium và có khóa học đó. */
   vocabContent(lang: string): Promise<unknown>;
+  /** Mã mời của mình (máy chủ tạo lần đầu gọi) cùng số người đã mời/đã được thưởng. */
+  referral(): Promise<Referral>;
+  /** Nhập mã mời của người khác (một lần, trước khi tự mua khóa học). */
+  redeemReferral(code: string): Promise<void>;
+  /** Các thiết bị đang được tính cho tài khoản (tối đa `max`). */
+  devices(): Promise<DeviceList>;
+  /** Gỡ một thiết bị khác để nhường chỗ. */
+  removeDevice(deviceId: string): Promise<void>;
   createPost(text: string, tag: string): Promise<{ id: number; status: "pending" | "approved" }>;
   deletePost(id: number): Promise<void>;
   posts(): Promise<PublicPost[]>;
@@ -78,10 +95,12 @@ export interface ApiClient {
     /** Tải ảnh (JPEG/PNG/WebP, tối đa 250KB) lên R2; trả về khóa dạng img/<hash>.jpg. */
     uploadImage(image: Blob): Promise<string>;
     grant(input: { uid?: string; email?: string; xu?: number; chips?: number; note?: string }): Promise<void>;
+    /** Mở khóa thiết bị cho một người dùng bị kẹt (xóa toàn bộ thiết bị đã ghi nhận). */
+    resetDevices(uid: string): Promise<number>;
   };
 }
 
-export function createApiClient({ baseUrl, getToken, fetchImpl }: ApiClientOptions): ApiClient {
+export function createApiClient({ baseUrl, getToken, getDeviceId, fetchImpl }: ApiClientOptions): ApiClient {
   const doFetch: typeof fetch = fetchImpl ?? ((input, init) => fetch(input, init));
   const root = baseUrl.replace(/\/+$/, "");
 
@@ -89,6 +108,8 @@ export function createApiClient({ baseUrl, getToken, fetchImpl }: ApiClientOptio
     const token = await getToken(forceRefresh);
     if (!token) throw new ApiError("unauthenticated", 401, "no-token");
     const headers: Record<string, string> = { authorization: `Bearer ${token}` };
+    const deviceId = getDeviceId?.();
+    if (deviceId) headers["x-device-id"] = deviceId;
     const binary = body instanceof Blob;
     if (body !== undefined) headers["content-type"] = binary ? "application/octet-stream" : "application/json";
     try {
@@ -138,6 +159,18 @@ export function createApiClient({ baseUrl, getToken, fetchImpl }: ApiClientOptio
     purchase: async (itemId) => ({ itemId: String((await post("/purchase", { itemId })).itemId ?? itemId) }),
     createOrder: async (input) => ({ id: Number((await post("/orders", input)).id) }),
     vocabContent: (lang) => request<unknown>("GET", `/content/vocab/${encodeURIComponent(lang)}`),
+    referral: async () => {
+      const r = await request<Referral>("GET", "/referral");
+      if (typeof r.code !== "string" || !r.reward || typeof r.reward.xu !== "number" || typeof r.reward.chips !== "number") throw new ApiError("bad-response", 200);
+      return { code: r.code, reward: { xu: r.reward.xu, chips: r.reward.chips }, invited: Number(r.invited) || 0, rewarded: Number(r.rewarded) || 0, referredBy: r.referredBy === true };
+    },
+    redeemReferral: (code) => done(post("/referral/redeem", { code })),
+    devices: async () => {
+      const r = await request<DeviceList>("GET", "/devices");
+      if (typeof r.max !== "number" || !Array.isArray(r.devices)) throw new ApiError("bad-response", 200);
+      return r;
+    },
+    removeDevice: (deviceId) => done(post("/devices/remove", { deviceId })),
     store: async () => { const r = await request<StoreConfig>("GET", "/store"); if (!Array.isArray(r.customProducts) || !Array.isArray(r.hiddenProducts) || !Array.isArray(r.customCats)) throw new ApiError("bad-response", 200); return r; },
     tasks: async () => (await request<{ tasks: SpecialTask[] }>("GET", "/tasks")).tasks,
     myOrders: async () => (await request<{ orders: Order[] }>("GET", "/orders/mine")).orders,
@@ -152,6 +185,7 @@ export function createApiClient({ baseUrl, getToken, fetchImpl }: ApiClientOptio
       approvePost: (id) => done(post(`/admin/posts/${id}/approve`)),
       rejectPost: (id) => done(post(`/admin/posts/${id}/reject`)),
       grant: (input) => done(post("/admin/grant", input)),
+      resetDevices: async (uid) => Number((await post("/admin/devices/reset", { uid })).removed) || 0,
       putStore: (store) => done(request("PUT", "/admin/store", store)),
       uploadImage: async (image) => String((await request<{ key: string }>("PUT", "/admin/image", image)).key),
       putTasks: async (items) => Number((await request<{ count: number }>("PUT", "/admin/tasks", { items })).count),

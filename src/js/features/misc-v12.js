@@ -3,11 +3,9 @@
     return `<div class="lg-brand" role="img" aria-label="WINDTP">${windLogo(84)}<div class="lg-word" aria-hidden="true">${"WINDTP".split("").map((c, i) => `<span style="--i:${i}">${c}</span>`).join("")}</div><div class="lg-tag">Một nền tảng · Nhiều tiện ích</div></div>`;
   }
   function startSession(acct) {
-    const isNew = !localStorage.getItem(ukey(acct.email));
     startSession_(acct);
-    if (isNew && !acct.admin) { const r = localStorage.getItem("windtp-ref"); if (r && r !== userId() && !state.referredBy) { state.referredBy = r; commit(); } }
   }
-  try { const r = new URLSearchParams(location.search).get("ref"); if (r && /^WIND-[A-Za-z0-9._+-]{1,40}$/.test(r)) localStorage.setItem("windtp-ref", r); } catch (e) { }
+  try { const r = new URLSearchParams(location.search).get("ref"); if (r && /^[A-Za-z2-9]{8}$/.test(r)) localStorage.setItem("windtp-refcode", r.toUpperCase()); } catch (e) { }
   function adminTrash(act, id, label) { return `<button data-action="${act}" data-id="${id}" class="absolute top-2 right-2 z-10 px-2 py-1 rounded-lg bg-rose-600 text-white keep-white text-[11px] font-bold shadow" aria-label="${label}">🗑 Xóa</button>`; }
   function postCard(p) { const h = postCard_(p); return isAdmin() ? `<div class="relative">${h}${adminTrash("admin-del-post", p.id, "Xóa bài đăng")}</div>` : h; }
   function listingCard(l) { const h = listingCard_(l); return isAdmin() ? `<div class="relative">${h}${adminTrash("admin-del-listing", l.id, "Xóa tin đăng")}</div>` : h; }

@@ -45,3 +45,10 @@ export const FB_REWARD = 1000; // thưởng chia sẻ Facebook, mỗi người m
 export const FB_LINK_RE = /^https:\/\/(?:www\.|m\.|web\.|mbasic\.)?(?:facebook\.com|fb\.com|fb\.watch|fb\.me)\/[^\s]{3,}$/i;
 export const MAX_TASKS = 100;
 export const CONTENT_LANGS = ['en', 'zh', 'ja', 'ko', 'de', 'fr', 'es']; // khớp LANG_CODES của app
+
+// Mã mời: người mời nhận thưởng MỘT LẦN cho mỗi người được mời, chỉ khi đơn có quyền học khóa (access:<ngôn ngữ>) của người đó được duyệt.
+export const REFERRAL_REWARD = { xu: 10000, chips: 7000 };
+// Giới hạn thiết bị cho mỗi tài khoản (admin không bị giới hạn). Thiết bị không dùng quá DEVICE_IDLE_MS thì nhường chỗ.
+export const MAX_DEVICES = 2;
+export const DEVICE_IDLE_MS = 30 * 86400000;
+export const DEVICE_TOUCH_MS = 3600000; // chỉ ghi lại lần dùng cuối tối đa mỗi giờ một lần

@@ -55,7 +55,7 @@
   /** Lấy lại ví từ máy chủ. Lỗi mạng thì giữ số liệu đang hiển thị. */
   function econRefresh(quiet) {
     if (!state.account || !window.WindtpApi) return Promise.resolve(false);
-    return window.WindtpApi.wallet.refresh().then((me) => { econApplyWallet(me); econSyncBirth(me); econSocial(); return true; }, (e) => { econFail(e, quiet !== false); return false; });
+    return window.WindtpApi.wallet.refresh().then((me) => { econApplyWallet(me); econSyncBirth(me); econSocial(); econAutoRedeem(); return true; }, (e) => { econFail(e, quiet !== false); return false; });
   }
 
   /** Ngày sinh đã khai trong Cài đặt được gửi một lần; sau đó máy chủ giữ và không cho đổi. */
@@ -336,6 +336,98 @@
   // Hoa hồng giới thiệu cần ánh xạ ID WIND-… sang tài khoản thật nên tạm tắt (xem worker/README.md).
   function econUnavailable() { toast("Tính năng này đang được chuyển sang máy chủ, tạm thời chưa dùng được."); }
   actions["claim-referral-commission"] = econUnavailable;
+
+  // ----- Mã mời bạn bè và thiết bị đăng nhập: máy chủ giữ mã, thưởng và giới hạn 2 thiết bị -----
+  function econLoadInvite(force) {
+    if (!state.account || !window.WindtpApi || userId() === "WIND-guest") return Promise.resolve(false);
+    if (econ.inviteLoading || (!force && Date.now() - (econ.inviteTried || 0) < 30000)) return Promise.resolve(false);
+    econ.inviteLoading = true; econ.inviteTried = Date.now();
+    return Promise.all([econClient().referral(), econClient().devices()]).then(([r, d]) => {
+      econ.ref = r; econ.devs = d; return true;
+    }, (e) => { econFail(e, true); return false; }).then((ok) => {
+      econ.inviteLoading = false;
+      if (ok && $("#tab-wallet") && typeof renderWallet === "function") renderWallet();
+      return ok;
+    });
+  }
+
+  function inviteCard() {
+    if (!state.account || userId() === "WIND-guest") return "";
+    if (!econ.ref && !econ.inviteLoading) econLoadInvite();
+    const r = econ.ref;
+    if (!r) return `<div class="glass-card p-4 rounded-2xl"><p class="text-xs text-slate-500">Đang tải mã mời…</p></div>`;
+    const devs = econ.devs;
+    const rw = "🪙 " + fmt(r.reward.xu) + " Xu + 🎰 " + fmt(r.reward.chips) + " chip";
+    return `<div class="glass-card p-4 rounded-2xl space-y-3">
+    <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2"><span>🎁</span> Mời bạn bè</h3>
+    <p class="text-xs text-slate-600">Mỗi người có một mã mời. Bạn nhận <b>${rw}</b> khi người được mời <b>mua khóa học</b> (admin duyệt đơn).</p>
+    <div class="flex items-center gap-2">
+      <div class="flex-1 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-center font-black tracking-widest text-amber-800 select-all">${esc(r.code)}</div>
+      <button data-action="ref-copy" class="px-3 py-2 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-600 text-white keep-white">Sao chép</button>
+    </div>
+    <p class="text-[11px] text-slate-500">Đã mời: <b>${fmt(r.invited)}</b> người · Đã nhận thưởng: <b>${fmt(r.rewarded)}</b> lượt</p>
+    ${r.referredBy ? `<p class="text-[11px] text-emerald-600 font-bold">✓ Bạn đã nhập mã mời của người khác.</p>` : `<div class="flex gap-2">
+      <input id="ref-code" maxlength="8" autocomplete="off" placeholder="Nhập mã mời của bạn bè" class="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-200 text-xs uppercase" />
+      <button data-action="ref-redeem" class="px-3 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white keep-white">Nhập mã</button>
+    </div>`}
+    ${devs ? `<div class="pt-3 border-t border-slate-100"><p class="text-xs font-bold text-slate-800 mb-2">📱 Thiết bị đăng nhập (${devs.devices.length}/${devs.max})</p>
+      <div class="space-y-2">${devs.devices.map((d, i) => `<div class="flex items-center justify-between gap-2 text-xs">
+        <div class="min-w-0"><p class="font-bold text-slate-700 truncate">Thiết bị ${i + 1}${d.current ? " (máy này)" : ""}</p><p class="text-[10px] text-slate-400">Dùng lần cuối ${fmtDateTime(d.lastSeen)}</p></div>
+        ${d.current ? "" : `<button data-action="device-remove" data-id="${esc(d.id)}" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-50 text-rose-600 hover:bg-rose-100">Gỡ</button>`}
+      </div>`).join("")}</div></div>` : ""}
+  </div>`;
+  }
+
+  function refLink() {
+    let base = "";
+    try { base = window.WINDTP && window.WINDTP.appUrl ? window.WINDTP.appUrl() : ""; } catch (e) { }
+    if (!base) base = location.href;
+    return base.split(/[?#]/)[0] + "?ref=" + encodeURIComponent(econ.ref ? econ.ref.code : "");
+  }
+  async function refCopy() {
+    if (!econ.ref) { await econLoadInvite(true); if (!econ.ref) return; }
+    const link = refLink(), text = "Học cùng mình trên WINDTP nhé! Mã mời: " + econ.ref.code + " " + link;
+    let copied = false;
+    try { await navigator.clipboard.writeText(text); copied = true; } catch (e) { }
+    if (copied) toast("Đã sao chép mã mời và liên kết.");
+    else if (navigator.share) { try { await navigator.share({ title: "WINDTP", text: "Học cùng mình trên WINDTP nhé! Mã mời: " + econ.ref.code, url: link }); } catch (e) { } }
+    else window.prompt("Sao chép mã mời:", text);
+  }
+  actions["ref-copy"] = refCopy;
+  actions["referral-link"] = refCopy;
+
+  async function redeemCode(code, quiet) {
+    try {
+      await econClient().redeemReferral(code);
+      try { localStorage.removeItem("windtp-refcode"); } catch (e) { }
+      if (!quiet) toast("Đã nhập mã mời. Người mời sẽ nhận thưởng khi bạn mua khóa học.");
+      return true;
+    } catch (e) {
+      if (e && (e.code === "bad-code" || e.code === "self-referral" || e.code === "already-purchased" || e.code === "conflict")) { try { localStorage.removeItem("windtp-refcode"); } catch (_) { } }
+      if (!quiet) throw e;
+      return false;
+    }
+  }
+  actions["ref-redeem"] = async () => {
+    const code = (val("ref-code") || "").toUpperCase();
+    if (!/^[A-Z2-9]{8}$/.test(code)) { toast("Mã mời gồm 8 ký tự"); return; }
+    const ok = await econRun("ref-redeem", () => redeemCode(code, false));
+    if (ok) await econLoadInvite(true);
+  };
+  actions["device-remove"] = async (el) => {
+    const id = el.dataset.id;
+    if (!id || !confirm("Gỡ thiết bị này khỏi tài khoản?")) return;
+    const ok = await econRun("device-remove", async () => { await econClient().removeDevice(id); return true; });
+    if (ok) { toast("Đã gỡ thiết bị."); await econLoadInvite(true); }
+  };
+  // Mã mời lấy từ liên kết ?ref= được nhập tự động ở lần đăng nhập đầu tiên.
+  function econAutoRedeem() {
+    let code = "";
+    try { code = localStorage.getItem("windtp-refcode") || ""; } catch (e) { }
+    if (!/^[A-Z2-9]{8}$/.test(code) || econ.autoRedeemed) return;
+    econ.autoRedeemed = true;
+    redeemCode(code, true).then((ok) => { if (ok) econLoadInvite(true); });
+  }
   function creditTo() { econUnavailable(); return false; }
 
   // ----- Chia sẻ Facebook và nhiệm vụ đặc biệt: gửi lên máy chủ, admin duyệt, máy chủ tự quyết số thưởng -----

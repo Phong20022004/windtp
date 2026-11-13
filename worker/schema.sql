@@ -101,3 +101,27 @@ CREATE TABLE IF NOT EXISTS store (
   json TEXT NOT NULL,
   updated_at INTEGER NOT NULL
 );
+
+-- Thiết bị đã đăng nhập của mỗi tài khoản (tối đa MAX_DEVICES, xem economy.js). device_id do app tạo và gửi qua header X-Device-Id.
+CREATE TABLE IF NOT EXISTS devices (
+  uid TEXT NOT NULL,
+  device_id TEXT NOT NULL,
+  first_seen INTEGER NOT NULL,
+  last_seen INTEGER NOT NULL,
+  PRIMARY KEY (uid, device_id)
+);
+
+-- Mã mời: mỗi tài khoản đúng một mã. Một người chỉ nhập mã của người khác một lần (invitee là khóa chính).
+CREATE TABLE IF NOT EXISTS ref_codes (
+  uid TEXT PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS referrals (
+  invitee TEXT PRIMARY KEY,
+  inviter TEXT NOT NULL,
+  code TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  rewarded_at INTEGER -- NULL cho tới khi người được mời mua khóa học và đơn được duyệt
+);
+CREATE INDEX IF NOT EXISTS referrals_inviter ON referrals (inviter);

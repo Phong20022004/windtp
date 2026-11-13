@@ -474,3 +474,173 @@ test('cấu hình cửa hàng: admin ghi, mọi người đọc; dữ liệu sai
   assert.equal((await bad({ customCats: Array.from({ length: 9 }, (_, i) => ({ id: 'c' + i, name: 'Danh mục', emoji: '📌' })) })).status, 400);
   assert.equal((await app.call('GET', '/store', { uid: 'u2' })).json.productEdits['sp-1'].name, 'Tên mới', 'gói sai không ghi đè dữ liệu cũ');
 });
+
+// ===== Giới hạn thiết bị =====
+const dev = (n) => `device-${n}`.padEnd(16, 'x');
+
+test('thiết bị: tối đa 2 thiết bị mỗi tài khoản, thiết bị thứ 3 bị từ chối, 2 thiết bị cũ vẫn dùng bình thường', async () => {
+  const app = await makeApp();
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(1) })).status, 200);
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(2) })).status, 200);
+  const third = await app.call('GET', '/me', { uid: 'u1', device: dev(3) });
+  assert.equal(third.status, 403);
+  assert.equal(third.json.error, 'device-limit');
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(1) })).status, 200);
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(2) })).status, 200);
+  // Tài khoản khác không bị ảnh hưởng, kể cả khi dùng lại cùng mã thiết bị.
+  assert.equal((await app.call('GET', '/me', { uid: 'u2', device: dev(3) })).status, 200);
+});
+
+test('thiết bị: thiếu hoặc sai định dạng X-Device-Id bị 400; admin không bị giới hạn', async () => {
+  const app = await makeApp();
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: '' })).status, 400);
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: 'ngan' })).status, 400);
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: 'co dau cach va ky tu la !!!' })).status, 400);
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: 'x'.repeat(65) })).status, 400);
+  for (let i = 1; i <= 4; i++) assert.equal((await app.call('GET', '/me', { uid: 'boss', admin: true, device: dev(i) })).status, 200);
+  assert.equal((await app.call('GET', '/me', { uid: 'boss', admin: true, device: '' })).status, 200);
+  const none = app.db.sqlite.prepare('SELECT COUNT(*) AS n FROM devices WHERE uid = ?').get('u1');
+  assert.equal(none.n, 0);
+});
+
+test('thiết bị: nhiều thiết bị mới gửi song song chỉ có đúng 2 thiết bị được nhận; cùng một thiết bị song song đều qua', async () => {
+  const app = await makeApp();
+  const rs = await Promise.all([1, 2, 3, 4, 5, 6].map((i) => app.call('GET', '/me', { uid: 'u1', device: dev(i) })));
+  assert.equal(rs.filter((r) => r.status === 200).length, 2);
+  assert.equal(rs.filter((r) => r.status === 403).length, 4);
+  assert.equal(app.db.sqlite.prepare('SELECT COUNT(*) AS n FROM devices WHERE uid = ?').get('u1').n, 2);
+  const same = await Promise.all([1, 2, 3, 4].map(() => app.call('GET', '/me', { uid: 'u9', device: dev(7) })));
+  assert.deepEqual(same.map((r) => r.status), [200, 200, 200, 200]);
+});
+
+test('thiết bị: xem danh sách, gỡ thiết bị khác để nhường chỗ, không gỡ được thiết bị đang dùng', async () => {
+  const app = await makeApp();
+  await app.call('GET', '/me', { uid: 'u1', device: dev(1) });
+  await app.call('GET', '/me', { uid: 'u1', device: dev(2) });
+  const list = await app.call('GET', '/devices', { uid: 'u1', device: dev(1) });
+  assert.equal(list.json.max, 2);
+  assert.deepEqual(list.json.devices.map((d) => [d.id, d.current]), [[dev(1), true], [dev(2), false]]);
+  assert.equal((await app.call('POST', '/devices/remove', { uid: 'u1', device: dev(1), body: { deviceId: dev(1) } })).status, 400);
+  assert.equal((await app.call('POST', '/devices/remove', { uid: 'u1', device: dev(1), body: { deviceId: dev(9) } })).status, 404);
+  assert.equal((await app.call('POST', '/devices/remove', { uid: 'u1', device: dev(1), body: { deviceId: 'khong hop le' } })).status, 400);
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(3) })).status, 403);
+  assert.equal((await app.call('POST', '/devices/remove', { uid: 'u1', device: dev(1), body: { deviceId: dev(2) } })).status, 200);
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(3) })).status, 200);
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(2) })).status, 403); // thiết bị đã gỡ không còn chỗ
+  // Người khác không gỡ được thiết bị của mình.
+  await app.call('GET', '/me', { uid: 'u2', device: dev(5) });
+  assert.equal((await app.call('POST', '/devices/remove', { uid: 'u2', device: dev(5), body: { deviceId: dev(1) } })).status, 404);
+});
+
+test('thiết bị: admin mở khóa cho người dùng; người thường không gọi được', async () => {
+  const app = await makeApp();
+  await app.call('GET', '/me', { uid: 'u1', device: dev(1) });
+  await app.call('GET', '/me', { uid: 'u1', device: dev(2) });
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(3) })).status, 403);
+  assert.equal((await app.call('POST', '/admin/devices/reset', { uid: 'u1', body: { uid: 'u1' } })).status, 403);
+  const r = await app.call('POST', '/admin/devices/reset', { uid: 'boss', admin: true, body: { uid: 'u1' } });
+  assert.deepEqual([r.status, r.json.removed], [200, 2]);
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(3) })).status, 200);
+});
+
+test('thiết bị: thiết bị không dùng quá 30 ngày nhường chỗ cho thiết bị mới', async () => {
+  const app = await makeApp();
+  await app.call('GET', '/me', { uid: 'u1', device: dev(1) });
+  app.state.t += 20 * DAY;
+  await app.call('GET', '/me', { uid: 'u1', device: dev(2) });
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(3) })).status, 403);
+  app.state.t += 11 * DAY; // thiết bị 1 đã 31 ngày không dùng, thiết bị 2 mới 11 ngày
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(3) })).status, 200);
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(2) })).status, 200);
+  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(1) })).status, 403);
+});
+
+// ===== Mã mời =====
+const course = async (app, uid, grants = ['access:en']) => {
+  const o = await app.call('POST', '/orders', { uid, body: { kind: 'shop', currency: 'VND', amount: 500000 } });
+  assert.equal(o.status, 200);
+  return app.call('POST', `/admin/orders/${o.json.id}/approve`, { uid: 'boss', admin: true, body: { grants } });
+};
+
+test('mã mời: mỗi người đúng một mã 8 ký tự, ổn định, khác nhau giữa các người; tạo song song vẫn một mã', async () => {
+  const app = await makeApp();
+  const [a1, a2, a3] = await Promise.all([1, 2, 3].map(() => app.call('GET', '/referral', { uid: 'A' })));
+  assert.match(a1.json.code, /^[A-HJ-NP-Z2-9]{8}$/);
+  assert.deepEqual([a2.json.code, a3.json.code], [a1.json.code, a1.json.code]);
+  assert.equal((await app.call('GET', '/referral', { uid: 'A' })).json.code, a1.json.code);
+  const b = await app.call('GET', '/referral', { uid: 'B' });
+  assert.notEqual(b.json.code, a1.json.code);
+  assert.deepEqual(a1.json.reward, { xu: 10000, chips: 7000 });
+  assert.equal(app.db.sqlite.prepare('SELECT COUNT(*) AS n FROM ref_codes WHERE uid = ?').get('A').n, 1);
+  assert.equal((await app.call('GET', '/referral')).status, 401);
+});
+
+test('mã mời: nhập mã đúng một lần; không dùng mã của mình, mã lạ, mã sai định dạng; không phân biệt hoa thường/khoảng trắng', async () => {
+  const app = await makeApp();
+  const codeA = (await app.call('GET', '/referral', { uid: 'A' })).json.code;
+  await app.call('GET', '/referral', { uid: 'C' });
+  assert.equal((await app.call('POST', '/referral/redeem', { uid: 'A', body: { code: codeA } })).json.error, 'self-referral');
+  assert.equal((await app.call('POST', '/referral/redeem', { uid: 'B', body: { code: 'ABCDEFGH' } })).json.error, 'no-code');
+  for (const bad of ['', 'abc', 'ABCDEFGHI', 'ABCD-0I1O', null, 123, {}]) assert.equal((await app.call('POST', '/referral/redeem', { uid: 'B', body: { code: bad } })).status, 400);
+  assert.equal((await app.call('POST', '/referral/redeem', { uid: 'B', body: { code: ` ${codeA.slice(0, 4).toLowerCase()}-${codeA.slice(4).toLowerCase()} ` } })).status, 200);
+  assert.equal((await app.call('POST', '/referral/redeem', { uid: 'B', body: { code: codeA } })).status, 409);
+  const codeC = (await app.call('GET', '/referral', { uid: 'C' })).json.code;
+  assert.equal((await app.call('POST', '/referral/redeem', { uid: 'B', body: { code: codeC } })).status, 409); // không đổi người mời được
+  const ref = await app.call('GET', '/referral', { uid: 'B' });
+  assert.equal(ref.json.referredBy, true);
+  assert.equal((await app.call('GET', '/referral', { uid: 'A' })).json.invited, 1);
+});
+
+test('mã mời: người mời chỉ nhận 10.000 Xu + 7.000 chip SAU KHI người được mời mua khóa học, và chỉ một lần', async () => {
+  const app = await makeApp();
+  const codeA = (await app.call('GET', '/referral', { uid: 'A' })).json.code;
+  await app.call('POST', '/referral/redeem', { uid: 'B', body: { code: codeA } });
+  assert.deepEqual([app.balance('A').balance, app.balance('A').chips], [0, 0]); // nhập mã chưa có thưởng
+  await topup(app, 'B'); // nạp tiền không phải mua khóa học
+  const shopNoCourse = await course(app, 'B', []);
+  assert.equal(shopNoCourse.json.referralRewarded, false);
+  assert.equal(app.balance('A').balance, 0);
+  const first = await course(app, 'B', ['access:en']);
+  assert.equal(first.json.referralRewarded, true);
+  assert.deepEqual([app.balance('A').balance, app.balance('A').chips], [10000, 7000]);
+  const tx = app.db.sqlite.prepare("SELECT kind, delta, chips_delta AS chips, title FROM tx WHERE uid = 'A' AND kind = 'referral'").all();
+  assert.deepEqual(tx.map((x) => [x.delta, x.chips]), [[10000, 7000]]);
+  const second = await course(app, 'B', ['access:ko']); // mua thêm khóa khác không thưởng thêm
+  assert.equal(second.json.referralRewarded, false);
+  assert.deepEqual([app.balance('A').balance, app.balance('A').chips], [10000, 7000]);
+  const ref = await app.call('GET', '/referral', { uid: 'A' });
+  assert.deepEqual([ref.json.invited, ref.json.rewarded], [1, 1]);
+});
+
+test('mã mời: hai đơn khóa học của người được mời duyệt song song vẫn chỉ thưởng một lần', async () => {
+  const app = await makeApp();
+  const codeA = (await app.call('GET', '/referral', { uid: 'A' })).json.code;
+  await app.call('POST', '/referral/redeem', { uid: 'B', body: { code: codeA } });
+  const ids = [];
+  for (let i = 0; i < 2; i++) ids.push((await app.call('POST', '/orders', { uid: 'B', body: { kind: 'shop', currency: 'VND', amount: 500000 } })).json.id);
+  await Promise.all(ids.map((id) => app.call('POST', `/admin/orders/${id}/approve`, { uid: 'boss', admin: true, body: { grants: ['access:en'] } })));
+  assert.deepEqual([app.balance('A').balance, app.balance('A').chips], [10000, 7000]);
+});
+
+test('mã mời: không nhập mã thì không có thưởng; nhập mã sau khi đã mua khóa học bị từ chối; mỗi người được mời cho người mời một khoản riêng', async () => {
+  const app = await makeApp();
+  const codeA = (await app.call('GET', '/referral', { uid: 'A' })).json.code;
+  await course(app, 'X', ['access:en']);
+  assert.deepEqual([app.balance('A')?.balance ?? 0], [0]);
+  assert.equal((await app.call('POST', '/referral/redeem', { uid: 'X', body: { code: codeA } })).json.error, 'already-purchased');
+  for (const uid of ['B', 'C']) {
+    assert.equal((await app.call('POST', '/referral/redeem', { uid, body: { code: codeA } })).status, 200);
+    await course(app, uid, ['access:ja']);
+  }
+  assert.deepEqual([app.balance('A').balance, app.balance('A').chips], [20000, 14000]);
+});
+
+test('mã mời: đơn bị từ chối không thưởng; người thường không tự đặt quyền học khóa', async () => {
+  const app = await makeApp();
+  const codeA = (await app.call('GET', '/referral', { uid: 'A' })).json.code;
+  await app.call('POST', '/referral/redeem', { uid: 'B', body: { code: codeA } });
+  const o = await app.call('POST', '/orders', { uid: 'B', body: { kind: 'shop', currency: 'VND', amount: 500000 } });
+  await app.call('POST', `/admin/orders/${o.json.id}/reject`, { uid: 'boss', admin: true });
+  assert.equal((await app.call('POST', `/admin/orders/${o.json.id}/approve`, { uid: 'B', body: { grants: ['access:en'] } })).status, 403);
+  assert.equal(app.db.sqlite.prepare("SELECT COUNT(*) AS n FROM tx WHERE kind = 'referral'").get().n, 0);
+});

@@ -21,6 +21,29 @@ export interface Me {
   serverTime: number;
 }
 
+/** Mã mời của chính mình và tình trạng thưởng (máy chủ tạo mã; thưởng chỉ khi người được mời mua khóa học). */
+export interface Referral {
+  code: string;
+  reward: { xu: number; chips: number };
+  invited: number;
+  rewarded: number;
+  /** Đã nhập mã mời của người khác (chỉ được nhập một lần). */
+  referredBy: boolean;
+}
+
+export interface DeviceInfo {
+  id: string;
+  firstSeen: number;
+  lastSeen: number;
+  /** Đúng thiết bị đang gửi yêu cầu. */
+  current: boolean;
+}
+
+export interface DeviceList {
+  max: number;
+  devices: DeviceInfo[];
+}
+
 export type OrderKind = "topup" | "plan" | "shop" | "fbshare" | "ctask";
 export type OrderStatus = "pending" | "approved" | "rejected";
 export type Currency = "VND" | "KRW" | "JPY";
@@ -136,6 +159,11 @@ export type ApiErrorCode =
   | "too-large"
   | "premium-required"
   | "course-required"
+  | "device-limit"
+  | "bad-code"
+  | "no-code"
+  | "self-referral"
+  | "already-purchased"
   | "unavailable"
   | "bad-response"
   | "unknown";
@@ -155,6 +183,11 @@ export const API_MESSAGES: Readonly<Record<ApiErrorCode, string>> = {
   "too-large": "Nội dung quá lớn",
   "premium-required": "Bài này cần Premium còn hạn, hãy gia hạn để học tiếp",
   "course-required": "Bạn chưa sở hữu khóa học của ngôn ngữ này",
+  "device-limit": "Tài khoản đã đăng nhập trên 2 thiết bị. Hãy gỡ một thiết bị cũ (ở mục Mời bạn bè) rồi thử lại",
+  "bad-code": "Mã mời gồm 8 ký tự chữ và số",
+  "no-code": "Không tìm thấy mã mời này",
+  "self-referral": "Bạn không thể dùng mã mời của chính mình",
+  "already-purchased": "Bạn đã mua khóa học nên không thể nhập mã mời nữa",
   unavailable: "Máy chủ đang bận, hãy thử lại sau giây lát",
   "bad-response": "Máy chủ trả về dữ liệu không hợp lệ",
   unknown: "Có lỗi xảy ra, vui lòng thử lại",

@@ -63,6 +63,38 @@ export function createApi({ verify, now = () => Date.now() }) {
     if (email) await q(db, 'UPDATE wallets SET email = ? WHERE uid = ? AND (email IS NULL OR email != ?)', email.toLowerCase(), uid, email.toLowerCase()).run();
     return q(db, 'SELECT balance, chips, premium_until AS premiumUntil, birth FROM wallets WHERE uid = ?', uid).first();
   }
+  const DEVICE_RE = /^[A-Za-z0-9_-]{16,64}$/;
+  /** Ghi nhận thiết bị của tài khoản; thiết bị thứ MAX_DEVICES+1 bị từ chối (một câu lệnh nguyên tử nên song song cũng không vượt). */
+  async function registerDevice(db, uid, deviceId, t) {
+    const row = await q(db, 'SELECT last_seen AS lastSeen FROM devices WHERE uid = ? AND device_id = ?', uid, deviceId).first();
+    if (row) {
+      if (t - row.lastSeen > E.DEVICE_TOUCH_MS) await q(db, 'UPDATE devices SET last_seen = ? WHERE uid = ? AND device_id = ?', t, uid, deviceId).run();
+      return;
+    }
+    await q(db, 'DELETE FROM devices WHERE uid = ? AND last_seen < ?', uid, t - E.DEVICE_IDLE_MS).run();
+    try {
+      const r = await q(db, 'INSERT INTO devices (uid, device_id, first_seen, last_seen) SELECT ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM devices WHERE uid = ?) < ?', uid, deviceId, t, t, uid, E.MAX_DEVICES).run();
+      if (!r.meta.changes) throw new HttpError(403, 'device-limit');
+    } catch (e) {
+      if (e instanceof HttpError) throw e;
+      if (!/UNIQUE|PRIMARY KEY/i.test(String(e && e.message))) throw e; // cùng thiết bị gửi hai yêu cầu đầu tiên song song: đã được ghi nhận
+    }
+  }
+
+  const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // bỏ I, O, 0, 1 cho dễ đọc; 32 ký tự nên không lệch xác suất
+  const newCode = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => CODE_ALPHABET[b % 32]).join('');
+  /** Mỗi tài khoản đúng một mã mời, tạo khi cần. */
+  async function refCode(db, uid, t) {
+    for (let i = 0; i < 6; i++) {
+      const have = await q(db, 'SELECT code FROM ref_codes WHERE uid = ?', uid).first();
+      if (have) return have.code;
+      try { await q(db, 'INSERT INTO ref_codes (uid, code, created_at) VALUES (?, ?, ?)', uid, newCode(), t).run(); } catch (e) {
+        if (!/UNIQUE|PRIMARY KEY/i.test(String(e && e.message))) throw e; // trùng mã (hiếm) hoặc tạo song song: đọc lại/thử lại
+      }
+    }
+    throw new HttpError(503, 'unavailable');
+  }
+
   const credit = (db, uid, xu, chips) => q(db, 'UPDATE wallets SET balance = balance + ?, chips = chips + ? WHERE uid = ?', xu, chips, uid);
 
   async function readBody(request, max = 8192) {
@@ -81,6 +113,47 @@ export function createApi({ verify, now = () => Date.now() }) {
     const rows = await q(db, 'SELECT id, kind, delta, chips_delta AS chips, title, created_at AS at FROM tx WHERE uid = ? ORDER BY id DESC LIMIT 50', user.uid).all();
     const own = await q(db, 'SELECT item_id AS id FROM entitlements WHERE uid = ?', user.uid).all();
     return { uid: user.uid, admin: user.admin, balance: w.balance, chips: w.chips, premiumUntil: w.premiumUntil, birth: w.birth, history: rows.results, owned: own.results.map((r) => r.id), serverTime: t };
+  });
+
+  route('GET', '/devices', 'user', async ({ db, user, deviceId }) => ({
+    max: E.MAX_DEVICES,
+    devices: user.admin ? [] : (await q(db, 'SELECT device_id AS id, first_seen AS firstSeen, last_seen AS lastSeen FROM devices WHERE uid = ? ORDER BY first_seen', user.uid).all()).results.map((d) => ({ ...d, current: d.id === deviceId })),
+  }));
+  // Gỡ một thiết bị khác để nhường chỗ (không gỡ được thiết bị đang dùng).
+  route('POST', '/devices/remove', 'user', async ({ db, user, deviceId, body }) => {
+    if (typeof body.deviceId !== 'string' || !DEVICE_RE.test(body.deviceId)) throw bad('bad-device');
+    if (body.deviceId === deviceId) throw bad('current-device');
+    const r = await q(db, 'DELETE FROM devices WHERE uid = ? AND device_id = ?', user.uid, body.deviceId).run();
+    if (!r.meta.changes) throw new HttpError(404, 'not-found');
+    return { ok: true };
+  });
+  // Admin mở khóa cho người dùng bị kẹt thiết bị (ví dụ mất máy cũ).
+  route('POST', '/admin/devices/reset', 'admin', async ({ db, body }) => {
+    if (typeof body.uid !== 'string' || !body.uid || body.uid.length > 128) throw bad('bad-uid');
+    const r = await q(db, 'DELETE FROM devices WHERE uid = ?', body.uid).run();
+    return { ok: true, removed: r.meta.changes };
+  });
+
+  route('GET', '/referral', 'user', async ({ db, user, t }) => {
+    await wallet(db, user.uid, t);
+    const code = await refCode(db, user.uid, t);
+    const stats = await q(db, 'SELECT COUNT(*) AS invited, COUNT(rewarded_at) AS rewarded FROM referrals WHERE inviter = ?', user.uid).first();
+    const mine = await q(db, 'SELECT 1 AS x FROM referrals WHERE invitee = ?', user.uid).first();
+    return { code, reward: E.REFERRAL_REWARD, invited: stats.invited, rewarded: stats.rewarded, referredBy: !!mine };
+  });
+
+  // Nhập mã mời của người khác: một lần duy nhất, không dùng mã của mình, và chỉ trước khi tự mình mua khóa học.
+  route('POST', '/referral/redeem', 'user', async ({ db, user, t, body }) => {
+    const code = String(body.code ?? '').toUpperCase().replace(/[\s-]/g, '');
+    if (!/^[A-Z2-9]{8}$/.test(code)) throw bad('bad-code');
+    const owner = await q(db, 'SELECT uid FROM ref_codes WHERE code = ?', code).first();
+    if (!owner) throw new HttpError(404, 'no-code');
+    if (owner.uid === user.uid) throw bad('self-referral');
+    const bought = await q(db, "SELECT 1 AS x FROM entitlements WHERE uid = ? AND item_id LIKE 'access:%'", user.uid).first();
+    if (bought) throw new HttpError(409, 'already-purchased');
+    await wallet(db, user.uid, t);
+    await atomic(db, [q(db, 'INSERT INTO referrals (invitee, inviter, code, created_at) VALUES (?, ?, ?, ?)', user.uid, owner.uid, code, t)]);
+    return { ok: true };
   });
 
   route('POST', '/profile/birth', 'user', async ({ db, user, t, body }) => {
@@ -243,8 +316,24 @@ export function createApi({ verify, now = () => Date.now() }) {
     }
     // Admin (đã đối chiếu thanh toán) có thể kèm danh sách quyền lợi theo đơn: mỗi mã phải có trong catalog.
     for (const itemId of grantItems) stmts.push(q(db, 'INSERT OR IGNORE INTO entitlements (uid, item_id, created_at) VALUES (?, ?, ?)', order.uid, itemId, t));
+    // Mã mời: đơn có quyền học khóa (access:<ngôn ngữ>) được duyệt => người mời nhận thưởng đúng một lần cho người được mời này.
+    let referralRewarded = false;
+    if (grantItems.some((id) => /^access:[a-z]{2}$/.test(id))) {
+      const ref = await q(db, 'SELECT inviter FROM referrals WHERE invitee = ? AND rewarded_at IS NULL', order.uid).first();
+      if (ref && ref.inviter !== order.uid) {
+        const rw = E.REFERRAL_REWARD;
+        stmts.push(
+          q(db, 'INSERT INTO claims (uid, key, created_at) VALUES (?, ?, ?)', 'ref', `ref-reward:${order.uid}`, t), // chống thưởng trùng
+          q(db, 'UPDATE referrals SET rewarded_at = ? WHERE invitee = ? AND rewarded_at IS NULL', t, order.uid),
+          q(db, 'INSERT OR IGNORE INTO wallets (uid, created_at) VALUES (?, ?)', ref.inviter, t),
+          credit(db, ref.inviter, rw.xu, rw.chips),
+          txStmt(db, ref.inviter, 'referral', rw.xu, rw.chips, 'Thưởng mời bạn mua khóa học', String(order.id), t),
+        );
+        referralRewarded = true;
+      }
+    }
     await atomic(db, stmts);
-    return { ok: true };
+    return { ok: true, referralRewarded };
   });
 
   route('POST', '/admin/orders/:id/reject', 'admin', async ({ db, user, t, params }) => {
@@ -376,7 +465,7 @@ export function createApi({ verify, now = () => Date.now() }) {
       'cache-control': 'no-store',
       'x-content-type-options': 'nosniff',
       'access-control-allow-origin': origin,
-      'access-control-allow-headers': 'authorization, content-type',
+      'access-control-allow-headers': 'authorization, content-type, x-device-id',
       'access-control-allow-methods': 'GET, POST, PUT, OPTIONS',
       vary: 'origin',
     };
@@ -410,8 +499,14 @@ export function createApi({ verify, now = () => Date.now() }) {
       if (!match) throw new HttpError(404, 'not-found');
       const user = await authenticate(request, env);
       if (match.r.auth === 'admin' && !user.admin) throw new HttpError(403, 'forbidden');
+      // Giới hạn thiết bị: mọi yêu cầu của người dùng thường phải kèm X-Device-Id hợp lệ; admin không bị giới hạn.
+      const deviceId = request.headers.get('x-device-id') || '';
+      if (!user.admin) {
+        if (!DEVICE_RE.test(deviceId)) throw new HttpError(400, 'bad-device');
+        await registerDevice(env.DB, user.uid, deviceId, now());
+      }
       const body = request.method === 'GET' ? {} : await readBody(request, match.r.auth === 'admin' ? 65536 : 8192);
-      const out = await match.r.fn({ db: env.DB, env, user, t: now(), body, url, params: match.m.groups || {} });
+      const out = await match.r.fn({ db: env.DB, env, user, t: now(), body, url, deviceId, params: match.m.groups || {} });
       if (out instanceof Response) return new Response(out.body, { status: out.status, headers }); // nội dung thô (bài học), vẫn kèm CORS/no-store
       return reply(200, out);
     } catch (e) {

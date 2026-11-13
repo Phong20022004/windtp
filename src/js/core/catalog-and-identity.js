@@ -412,8 +412,7 @@
       ["Boya Chinese", "from-indigo-700 to-violet-400", ["1-1", "1-2", "2-1", "2-2", "3-1", "3-2", "4-1", "4-2", "4-3"]],
       ["Develop Chinese", "from-sky-700 to-blue-400", ["1-1", "1-2", "2-1", "2-2", "3-1", "3-2"]],
       ["Từ vựng theo chủ đề", "from-amber-500 to-orange-300", ["Tổng hợp"]],
-      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Quyển 1", "Quyển 2", "Quyển 3", "Quyển 4", "Quyển 5", "Quyển 6"]],
-      ["HSK Cũ", "from-red-700 to-orange-400", ["HSK 1", "HSK 2", "HSK 3", "HSK 4", "HSK 5", "HSK 6"]]
+      ["Cấu trúc ngữ pháp", "from-slate-700 to-slate-500", ["Quyển 1", "Quyển 2", "Quyển 3", "Quyển 4", "Quyển 5", "Quyển 6"]]
     ],
     de: [
       ["Menschen", "from-orange-600 to-amber-300", ["A1", "A2", "B1"]],

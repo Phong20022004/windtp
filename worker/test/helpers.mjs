@@ -51,8 +51,11 @@ export async function makeApp({ clock } = {}) {
   const objects = new Map([['vocab/en.json', '{"Sach|0":[[1,[["a"]]],[2,[["b"]]]]}'], ['vocab/ko.json', '{"K|0":[[1,[["c"]]]]}']]);
   const env = { DB: db, ALLOWED_ORIGIN: ORIGIN, CONTENT: { get: async (key) => (objects.has(key) ? { body: objects.get(key) } : null), put: async (key, bytes) => { objects.set(key, bytes); } } };
   const as = (uid, extra = {}) => issuer.sign({ sub: uid, name: uid, ...extra });
-  const call = async (method, path, { uid, token, body, raw, admin, origin = ORIGIN } = {}) => {
+  // Mỗi uid mặc định dùng đúng một thiết bị cố định ('dev-<uid>'); truyền device để thử nhiều thiết bị.
+  const call = async (method, path, { uid, token, body, raw, admin, origin = ORIGIN, device } = {}) => {
     const headers = { origin };
+    const dev = device === undefined ? (uid ? `dev-${uid}`.padEnd(16, '0') : token ? 'dev-token-default-0001' : null) : device;
+    if (dev) headers['x-device-id'] = dev;
     const tk = token ?? (uid ? await as(uid, admin ? { admin: true } : {}) : null);
     if (tk) headers.authorization = `Bearer ${tk}`;
     const res = await handle(new Request('https://api.test' + path, { method, headers, body: raw ?? (body === undefined ? undefined : JSON.stringify(body)) }), env);

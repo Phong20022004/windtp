@@ -21,7 +21,8 @@ giá, mức thưởng, hạn mức do máy chủ quyết định (`src/economy.j
 - Email chỉ được ghi vào ví (để admin cộng thưởng theo email) khi Firebase xác nhận `email_verified`.
 - **Chip thắng trong game** chỉ lưu ở trình duyệt (không quy ra tiền, không đổi lại Xu). Chip do máy chủ cấp (đổi từ Xu, thưởng, gói Premium) vẫn do máy chủ giữ.
 - Thưởng chia sẻ Facebook (1.000 Xu/kỳ nửa tháng, link không dùng lại) và nhiệm vụ đặc biệt (admin đăng bằng `PUT /admin/tasks`) chạy qua đơn `fbshare`/`ctask`: admin xem link/ảnh rồi duyệt, máy chủ tự quyết số thưởng. Tiền thật của nhiệm vụ vẫn do admin chuyển khoản thủ công.
-- **Chưa chuyển sang máy chủ**: hoa hồng giới thiệu (cần ánh xạ ID `WIND-…` sang tài khoản thật), hiện báo "tạm thời chưa dùng được".
+- **Mã mời**: mỗi tài khoản có 1 mã 8 ký tự (`GET /referral`). Người mới nhập mã một lần (`POST /referral/redeem {code}`, không tự mời mình, không nhập sau khi đã mua khóa học). Khi admin duyệt đơn có `access:<lang>` đầu tiên của người được mời, máy chủ cộng cho người mời **10.000 Xu + 7.000 chip** đúng một lần (khóa `ref-reward:<người được mời>`, nguyên tử, có dòng sổ loại `referral`). Hoa hồng giới thiệu kiểu cũ (`WIND-…`) đã bỏ.
+- **Giới hạn 2 thiết bị/tài khoản**: app gửi `X-Device-Id` (lưu ở localStorage); máy chủ chỉ cho 2 thiết bị, thiết bị thứ 3 nhận lỗi `device-limit` (403) cho tới khi gỡ một máy (`GET /devices`, `POST /devices/remove {id}`) hoặc máy cũ im quá 30 ngày; admin gỡ hộ bằng `POST /admin/devices/reset {uid}`. Admin không bị giới hạn. Giới hạn áp dụng ở lớp API của máy chủ này, không chặn được bước đăng nhập Firebase; xóa dữ liệu trình duyệt sẽ tạo mã thiết bị mới (chiếm một chỗ cho tới khi gỡ).
 - **Nội dung bài học trả phí nằm ở R2**: bản tải về chỉ có bài 1 miễn phí. `GET /content/vocab/:lang` chỉ gửi khi người dùng còn Premium và có khóa học (`access:<lang>`) của ngôn ngữ đó, admin luôn xem được. Người đã được gửi nội dung thì vẫn chép lại được, máy chủ không ngăn được điều đó; chưa có giới hạn tải theo người (nên bật Rate limiting cho `/content/*`).
 - Khóa phím F12/chuột phải trong app chỉ là lớp cản trở người dùng thường, không phải bảo vệ.
 
@@ -37,11 +38,12 @@ giá, mức thưởng, hạn mức do máy chủ quyết định (`src/economy.j
 ## API
 `GET /me`, `POST /profile/birth`, `POST /claim {taskId}`, `POST /chips/exchange {xu}`, `POST /purchase {itemId}`,
 `POST /orders {kind: topup|plan|shop, currency, amount, planId, code}`, `GET /orders/mine`, `POST /posts {text}`, `GET /posts`;
-admin: `GET /admin/orders`, `POST /admin/orders/:id/approve|reject`, `GET /admin/posts`, `POST /admin/posts/:id/approve|reject`, `PUT /admin/catalog`, `PUT /admin/tasks`, `GET /tasks`, `POST /admin/grant {email, xu, chips, note}`.
+admin: `GET /admin/orders`, `POST /admin/orders/:id/approve|reject`, `GET /admin/posts`, `POST /admin/posts/:id/approve|reject`, `PUT /admin/catalog`, `PUT /admin/tasks`, `GET /tasks`, `POST /admin/grant {email, xu, chips, note}`, `POST /admin/devices/reset {uid}`.
+Người dùng: `GET /referral`, `POST /referral/redeem {code}`, `GET /devices`, `POST /devices/remove {id}`. Mọi yêu cầu của người dùng (không phải admin) phải có header `X-Device-Id` (16–64 ký tự `A-Za-z0-9_-`).
 Đơn `shop` nhận thêm `lines [{id, qty}]` và `contact`; duyệt đơn nhận `grants`, `xu`, `chips`, `premiumMonths` (có trần).
 
 ## Nối với app
 Build production cần địa chỉ máy chủ (https): đặt biến môi trường `WINDTP_API_URL` hoặc tạo `api.config.json` dạng `{"url": "https://windtp.<tên>.workers.dev"}`.
-Địa chỉ được nhúng vào trang và vào `connect-src` của CSP. Sau khi triển khai nhớ: đặt `ALLOWED_ORIGIN` đúng địa chỉ trang, gán claim `admin` cho tài khoản chủ,
+Địa chỉ được nhúng vào trang và vào `connect-src` của CSP. Khi nâng cấp bản cũ nhớ chạy lại `schema.sql` trên D1 (thêm bảng `devices`, `ref_codes`, `referrals`) và triển khai máy chủ cùng lúc với bản app mới. Sau khi triển khai nhớ: đặt `ALLOWED_ORIGIN` đúng địa chỉ trang, gán claim `admin` cho tài khoản chủ,
 và gửi header `Content-Security-Policy: frame-ancestors 'none'` ở nơi host trang (thẻ meta không đặt được `frame-ancestors`).
 Test: `python3 tests/smoke_economy.py` chạy app thật với máy chủ này (SQLite), gồm cả kịch bản sửa localStorage.
