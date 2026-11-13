@@ -10,6 +10,7 @@ ALLOWED_ORIGIN = "https://THAY-BANG-TRANG-WINDTP"
 binding = "DB"
 database_name = "windtp"
 database_id = "THAY-BANG-ID-SAU-KHI-TAO-D1"
+migrations_dir = "migrations"
 
 # Kho chứa nội dung trả phí (bản đầy đủ của từ vựng). Tạo bằng: wrangler r2 bucket create windtp-content
 [[r2_buckets]]

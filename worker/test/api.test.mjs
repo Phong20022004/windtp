@@ -824,7 +824,9 @@ test('thích và bình luận: chỉ trên bài đã duyệt, mỗi người m�
   const c3 = (await comment('C', 'Sẽ bị admin xóa')).json.id;
   assert.equal((await app.call('POST', `/comments/${c3}/delete`, { uid: 'boss', admin: true })).status, 200);
   assert.deepEqual((await app.call('GET', '/posts', { uid: 'B' })).json.posts[0].comments.map((c) => c.text), ['Cảm ơn bạn']);
-  for (let i = 0; i < 30; i++) assert.equal((await comment('D', 'bình luận ' + i)).status, 200);
+  for (let i = 0; i < 10; i++) assert.equal((await comment('D', 'liên tục ' + i)).status, 200);
+  assert.equal((await comment('D', 'quá nhanh')).status, 429, 'quá 10 bình luận mỗi phút bị chặn');
+  for (let i = 10; i < 30; i++) { if (i % 10 === 0) app.state.t += 61000; assert.equal((await comment('D', 'bình luận ' + i)).status, 200); }
   assert.equal((await comment('D', 'quá nhiều')).status, 429, 'quá 30 bình luận mỗi ngày bị chặn');
   await app.call('POST', `/posts/${id}/delete`, { uid: 'boss', admin: true });
   assert.equal((await comment('B', 'bài đã xóa')).status, 404);
@@ -934,4 +936,50 @@ test('nhắn tin: người ngoài cuộc không đọc/gửi được, không nh
   let last;
   for (let i = 0; i < 45; i++) last = await app.call('POST', `/threads/${th}/send`, { uid: 'buyer', body: { text: 'tin ' + i } });
   assert.equal(last.status, 429);
+});
+
+test('báo cáo nội dung: mỗi người một báo cáo/nội dung, admin gỡ hoặc bỏ qua; tên giả admin bị chặn', async () => {
+  const app = await makeApp();
+  const post = (await app.call('POST', '/posts', { uid: 'boss', admin: true, body: { text: 'Bài chính thức' } })).json.id;
+  assert.equal((await app.call('POST', '/reports', { uid: 'A', body: { kind: 'post', id: post, reason: 'x' } })).status, 400, 'lý do quá ngắn');
+  assert.equal((await app.call('POST', '/reports', { uid: 'A', body: { kind: 'constructor', id: post, reason: 'spam' } })).status, 400);
+  assert.equal((await app.call('POST', '/reports', { uid: 'A', body: { kind: 'post', id: 9999, reason: 'spam' } })).status, 404);
+  assert.equal((await app.call('POST', '/reports', { uid: 'A', body: { kind: 'post', id: post, reason: 'spam' } })).status, 200);
+  assert.equal((await app.call('POST', '/reports', { uid: 'A', body: { kind: 'post', id: post, reason: 'spam lại' } })).status, 200, 'gửi lại không lỗi nhưng không nhân đôi');
+  assert.equal((await app.call('GET', '/admin/reports', { uid: 'A' })).status, 403);
+  const list = (await app.call('GET', '/admin/reports', { uid: 'boss', admin: true })).json.reports;
+  assert.equal(list.length, 1);
+  assert.equal(list[0].text, 'Bài chính thức');
+  assert.equal((await app.call('POST', `/admin/reports/${list[0].id}/resolve`, { uid: 'A', body: { remove: true } })).status, 403);
+  assert.equal((await app.call('POST', `/admin/reports/${list[0].id}/resolve`, { uid: 'boss', admin: true, body: { remove: true } })).status, 200);
+  assert.equal((await app.call('GET', '/posts', { uid: 'A' })).json.posts.length, 0, 'bài bị gỡ khỏi bảng tin');
+  assert.equal((await app.call('GET', '/admin/reports', { uid: 'boss', admin: true })).json.reports.length, 0);
+});
+
+test('chống giả mạo tên admin; PUT /me/state kiểm tra kiểu từng khóa; giới hạn số lần ghi', async () => {
+  const app = await makeApp();
+  const bad = await app.call('PUT', '/me/state', { uid: 'A', body: { state: { alpha: 'không phải object' }, rev: 0 } });
+  assert.equal(bad.status, 400);
+  const posts = [];
+  for (const name of ['Admin', 'WINDTP Support', 'Quản trị viên']) {
+    const r = await app.call('POST', '/posts', { uid: 'N', name, body: { text: 'xin chào ' + name } });
+    if (r.status === 200) posts.push(name);
+  }
+  const boss = await app.call('POST', '/posts', { uid: 'boss', name: 'Admin', admin: true, body: { text: 'tôi là admin thật' } });
+  assert.equal(boss.status, 200);
+  const feed = (await app.call('GET', '/posts', { uid: 'boss', admin: true })).json.posts;
+  assert.ok(!feed.some((p) => !p.admin && /admin|windtp|quản trị/i.test(p.author)), 'tên người thường không chứa từ dành riêng');
+});
+
+test('migrations 0001..0003 cho cùng cấu trúc bảng với schema.sql', async () => {
+  const { DatabaseSync } = await import('node:sqlite');
+  const { readFileSync } = await import('node:fs');
+  const cols = (sqls) => {
+    const d = new DatabaseSync(':memory:');
+    for (const f of sqls) d.exec(readFileSync(new URL(f, import.meta.url), 'utf8'));
+    const out = {};
+    for (const { name } of d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()) out[name] = d.prepare(`PRAGMA table_info(${name})`).all().map((c) => `${c.name}:${c.type}:${c.notnull}`).sort();
+    return out;
+  };
+  assert.deepEqual(cols(['../migrations/0001_init.sql', '../migrations/0002_hardening.sql', '../migrations/0003_contacts_threads.sql']), cols(['../schema.sql']));
 });

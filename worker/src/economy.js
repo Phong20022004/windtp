@@ -65,3 +65,24 @@ export const MAX_COMMENT_LEN = 300;
 // Dữ liệu cá nhân đồng bộ giữa thiết bị (khớp danh sách ở economy-api.js). Không có tiền, chip, quyền sở hữu, Premium, bài đăng.
 export const PROFILE_KEYS = ['lang', 'known', 'saved', 'reminders', 'notices', 'settings', 'streak', 'lastCheckIn', 'loginStreak', 'lastLogin', 'cultivationLevel', 'cultivationLastPenalty', 'streakRewardsClaimed', 'avatarId', 'frameId', 'ownedAvatars', 'ownedFrames', 'social', 'cart', 'alpha'];
 export const MAX_PROFILE_BYTES = 120000;
+// Kiểu dữ liệu từng khóa hồ sơ đồng bộ; sai kiểu thì từ chối cả bản ghi.
+export const PROFILE_TYPES = { lang: 'stringnull', known: 'object', saved: 'array', reminders: 'array', notices: 'array', settings: 'object', streak: 'number', lastCheckIn: 'string', loginStreak: 'number', lastLogin: 'string', cultivationLevel: 'number', cultivationLastPenalty: 'string', streakRewardsClaimed: 'array', avatarId: 'string', frameId: 'string', ownedAvatars: 'array', ownedFrames: 'array', social: 'object', cart: 'object', alpha: 'object' };
+export function profileValueOk(type, v) {
+  if (type === 'array') return Array.isArray(v);
+  if (type === 'object') return !!v && typeof v === 'object' && !Array.isArray(v);
+  if (type === 'stringnull') return v === null || (typeof v === 'string' && v.length <= 40);
+  if (type === 'number') return typeof v === 'number' && Number.isFinite(v);
+  return typeof v === 'string' && v.length <= 200;
+}
+// Tên hiển thị tự đặt: chặn tên giả danh quản trị / hỗ trợ (không áp dụng cho admin thật).
+const RESERVED = ['admin', 'bigboss', 'quantri', 'administrator', 'moderator', 'hotro', 'support', 'windtp'];
+export function displayName(user) {
+  const raw = (user.name || '').trim();
+  if (!raw) return 'Người dùng';
+  if (user.admin) return raw;
+  const flat = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return RESERVED.some((w) => flat.includes(w)) ? 'Người dùng' : raw;
+}
+export const REPORT_REASON_MAX = 200;
+export const MAX_REPORTS_PER_DAY = 20;
+export const FEED_COMMENTS_PER_POST = 30;

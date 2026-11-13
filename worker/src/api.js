@@ -10,7 +10,15 @@ const bad = (code = 'bad-request') => new HttpError(400, code);
 const dayKey = (now) => new Date(now + E.VN_OFFSET_MS).toISOString().slice(0, 10);
 /** Tra bảng chỉ theo khóa riêng của đối tượng: chặn "constructor", "__proto__"... đi vào Object.prototype. */
 const own = (table, key) => (typeof key === 'string' && Object.hasOwn(table, key) ? table[key] : undefined);
+const q = (db, sql, ...args) => db.prepare(sql).bind(...args);
 const isInt = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
+
+/** Giới hạn tần suất theo người dùng (cửa sổ cố định, lưu ở D1). Giới hạn theo IP vẫn cần luật Rate limiting của Cloudflare. */
+async function rate(db, user, t, bucket, max, windowMs) {
+  if (user.admin) return;
+  const r = await q(db, 'INSERT INTO rate_limits (uid, bucket, window_start, n) VALUES (?, ?, ?, 1) ON CONFLICT (uid, bucket) DO UPDATE SET n = CASE WHEN window_start + ? <= ? THEN 1 ELSE n + 1 END, window_start = CASE WHEN window_start + ? <= ? THEN ? ELSE window_start END RETURNING n', user.uid, bucket, t, windowMs, t, windowMs, t, t).first();
+  if (r.n > max) throw new HttpError(429, 'rate-limited');
+}
 
 /** Giữ tối đa MAX_ORDER_LINES dòng {id, qty}; id là chuỗi ngắn, qty nguyên 1..99. Trả JSON hoặc null. */
 function cleanLines(value) {
@@ -45,7 +53,6 @@ function ageFromBirth(birth, now) {
 }
 
 export function createApi({ verify, now = () => Date.now() }) {
-  const q = (db, sql, ...args) => db.prepare(sql).bind(...args);
   const txStmt = (db, uid, kind, delta, chips, title, ref, t) =>
     q(db, 'INSERT INTO tx (uid, kind, delta, chips_delta, title, ref, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)', uid, kind, delta, chips, title, ref ?? null, t);
 
@@ -204,6 +211,7 @@ export function createApi({ verify, now = () => Date.now() }) {
   });
 
   route('POST', '/claim', 'user', async ({ db, user, t, body }) => {
+    await rate(db, user, t, 'claim', 60, 60000);
     const task = own(E.DAILY_TASKS, body.taskId);
     if (!task) throw bad('unknown-task');
     await wallet(db, user.uid, t);
@@ -242,6 +250,7 @@ export function createApi({ verify, now = () => Date.now() }) {
   });
 
   route('POST', '/orders', 'user', async ({ db, user, t, body }) => {
+    await rate(db, user, t, 'order', 20, 3600000);
     const { kind } = body;
     let currency = body.currency, amount = body.amount, xu = 0, planId = null;
     if (kind === 'topup') {
@@ -409,10 +418,15 @@ export function createApi({ verify, now = () => Date.now() }) {
     return r ? { rev: r.rev, at: r.updated_at, state: JSON.parse(r.data) } : { rev: 0, at: 0, state: null };
   });
   route('PUT', '/me/state', 'user', async ({ db, user, t, body }) => {
+    await rate(db, user, t, 'profile', 30, 600000);
     const src = body.state;
     if (!src || typeof src !== 'object' || Array.isArray(src)) throw bad('bad-state');
     const clean = {};
-    for (const k of E.PROFILE_KEYS) if (Object.prototype.hasOwnProperty.call(src, k) && src[k] !== undefined) clean[k] = src[k];
+    for (const k of E.PROFILE_KEYS) {
+      if (!Object.prototype.hasOwnProperty.call(src, k) || src[k] === undefined) continue;
+      if (!E.profileValueOk(E.PROFILE_TYPES[k], src[k])) throw bad('bad-state');
+      clean[k] = src[k];
+    }
     const data = JSON.stringify(clean);
     if (data.length > E.MAX_PROFILE_BYTES) throw new HttpError(413, 'too-large');
     await q(db, 'INSERT INTO profiles (uid, data, rev, updated_at) VALUES (?, ?, 1, ?) ON CONFLICT (uid) DO UPDATE SET data = excluded.data, rev = rev + 1, updated_at = excluded.updated_at', user.uid, data, t).run();
@@ -429,7 +443,7 @@ export function createApi({ verify, now = () => Date.now() }) {
     if (n.n >= E.MAX_POSTS_PER_DAY) throw new HttpError(429, 'too-many-posts');
     // Bài của admin hiện ngay; bài của người dùng phải chờ admin duyệt (kiểm duyệt do máy chủ giữ, không phải trình duyệt).
     const adm = user.admin ? 1 : 0;
-    const r = await q(db, 'INSERT INTO posts (uid, author, text, tag, is_admin, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)', user.uid, user.name || 'Người dùng', text, tag, adm, adm ? 'approved' : 'pending', t).run();
+    const r = await q(db, 'INSERT INTO posts (uid, author, text, tag, is_admin, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)', user.uid, E.displayName(user), text, tag, adm, adm ? 'approved' : 'pending', t).run();
     return { ok: true, id: r.meta.last_row_id, status: adm ? 'approved' : 'pending' };
   });
   route('GET', '/posts', 'user', async ({ db, user }) => {
@@ -437,12 +451,13 @@ export function createApi({ verify, now = () => Date.now() }) {
     const ids = "(SELECT id FROM (SELECT id FROM posts WHERE status = 'approved' ORDER BY id DESC LIMIT 100))";
     const likes = new Map((await q(db, `SELECT post_id, COUNT(*) AS n FROM post_likes WHERE post_id IN ${ids} GROUP BY post_id`).all()).results.map((r) => [r.post_id, r.n]));
     const mineSet = new Set((await q(db, `SELECT post_id FROM post_likes WHERE uid = ? AND post_id IN ${ids}`, user.uid).all()).results.map((r) => r.post_id));
-    const cmts = new Map();
-    for (const c of (await q(db, `SELECT id, post_id, author, text, created_at AS at, (uid = ?) AS mine FROM post_comments WHERE deleted = 0 AND post_id IN ${ids} ORDER BY id LIMIT 2000`, user.uid).all()).results) {
+    const cmts = new Map(), totals = new Map((await q(db, `SELECT post_id, COUNT(*) AS n FROM post_comments WHERE deleted = 0 AND post_id IN ${ids} GROUP BY post_id`).all()).results.map((r) => [r.post_id, r.n]));
+    // Mỗi bài chỉ gửi E.FEED_COMMENTS_PER_POST bình luận mới nhất để bảng tin không phình theo số bình luận.
+    for (const c of (await q(db, `SELECT id, post_id, author, text, at, mine, admin FROM (SELECT id, post_id, author, text, created_at AS at, (uid = ?) AS mine, is_admin AS admin, ROW_NUMBER() OVER (PARTITION BY post_id ORDER BY id DESC) AS rn FROM post_comments WHERE deleted = 0 AND post_id IN ${ids}) WHERE rn <= ? ORDER BY id`, user.uid, E.FEED_COMMENTS_PER_POST).all()).results) {
       if (!cmts.has(c.post_id)) cmts.set(c.post_id, []);
-      cmts.get(c.post_id).push({ id: c.id, author: c.author, text: c.text, at: c.at, mine: !!c.mine });
+      cmts.get(c.post_id).push({ id: c.id, author: c.author, text: c.text, at: c.at, mine: !!c.mine, admin: !!c.admin });
     }
-    return { posts: rows.map((p) => ({ ...p, admin: !!p.admin, mine: !!p.mine, likes: likes.get(p.id) || 0, liked: mineSet.has(p.id), comments: cmts.get(p.id) || [] })) };
+    return { posts: rows.map((p) => ({ ...p, admin: !!p.admin, mine: !!p.mine, likes: likes.get(p.id) || 0, liked: mineSet.has(p.id), comments: cmts.get(p.id) || [], commentsTotal: totals.get(p.id) || 0 })) };
   });
   const approvedPost = async (db, id) => {
     if (!Number.isInteger(id) || id < 1) throw new HttpError(404, 'not-found');
@@ -452,6 +467,7 @@ export function createApi({ verify, now = () => Date.now() }) {
     const id = +params.id;
     await approvedPost(db, id);
     if (typeof body.liked !== 'boolean') throw bad('bad-request');
+    await rate(db, user, t, 'like', 120, 60000);
     if (body.liked) await q(db, 'INSERT OR IGNORE INTO post_likes (post_id, uid, created_at) VALUES (?, ?, ?)', id, user.uid, t).run();
     else await q(db, 'DELETE FROM post_likes WHERE post_id = ? AND uid = ?', id, user.uid).run();
     return { ok: true, likes: (await q(db, 'SELECT COUNT(*) AS n FROM post_likes WHERE post_id = ?', id).first()).n, liked: body.liked };
@@ -463,8 +479,51 @@ export function createApi({ verify, now = () => Date.now() }) {
     if (!text || text.length > E.MAX_COMMENT_LEN) throw bad('bad-text');
     const n = await q(db, 'SELECT COUNT(*) AS n FROM post_comments WHERE uid = ? AND created_at > ?', user.uid, t - 86400000).first();
     if (n.n >= E.MAX_COMMENTS_PER_DAY) throw new HttpError(429, 'too-many-comments');
-    const r = await q(db, 'INSERT INTO post_comments (post_id, uid, author, text, created_at) VALUES (?, ?, ?, ?, ?)', id, user.uid, user.name || 'Người dùng', text, t).run();
+    await rate(db, user, t, 'comment-burst', 10, 60000);
+    const r = await q(db, 'INSERT INTO post_comments (post_id, uid, author, text, created_at, is_admin) VALUES (?, ?, ?, ?, ?, ?)', id, user.uid, E.displayName(user), text, t, user.admin ? 1 : 0).run();
     return { ok: true, id: r.meta.last_row_id };
+  });
+  // Báo cáo nội dung vi phạm: ai cũng gửi được (mỗi người một báo cáo cho mỗi nội dung); admin xem và gỡ.
+  const REPORT_TARGETS = {
+    post: { table: 'posts', live: "status = 'approved'", remove: "status = 'deleted'" },
+    comment: { table: 'post_comments', live: 'deleted = 0', remove: 'deleted = 1' },
+    listing: { table: 'listings', live: "status = 'approved'", remove: "status = 'deleted'" },
+  };
+  route('POST', '/reports', 'user', async ({ db, user, t, body }) => {
+    const target = own(REPORT_TARGETS, body.kind);
+    const id = Number(body.id);
+    const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
+    if (!target || !Number.isInteger(id) || id < 1 || reason.length < 2 || reason.length > E.REPORT_REASON_MAX) throw bad('bad-report');
+    if (!(await q(db, `SELECT 1 AS x FROM ${target.table} WHERE id = ? AND ${target.live}`, id).first())) throw new HttpError(404, 'not-found');
+    const n = await q(db, 'SELECT COUNT(*) AS n FROM reports WHERE uid = ? AND created_at > ?', user.uid, t - 86400000).first();
+    if (n.n >= E.MAX_REPORTS_PER_DAY) throw new HttpError(429, 'too-many-reports');
+    await q(db, 'INSERT OR IGNORE INTO reports (kind, target_id, uid, reason, created_at) VALUES (?, ?, ?, ?, ?)', body.kind, id, user.uid, reason, t).run();
+    return { ok: true };
+  });
+  route('GET', '/admin/reports', 'admin', async ({ db }) => {
+    const rows = (await q(db, "SELECT id, kind, target_id AS targetId, reason, created_at AS at FROM reports WHERE status = 'open' ORDER BY id LIMIT 100").all()).results;
+    const out = [];
+    for (const r of rows) {
+      const tg = REPORT_TARGETS[r.kind];
+      const col = r.kind === 'listing' ? 'title' : 'text';
+      const who = r.kind === 'listing' ? 'seller' : 'author';
+      const t = await q(db, `SELECT ${col} AS text, ${who} AS author FROM ${tg.table} WHERE id = ? AND ${tg.live}`, r.targetId).first();
+      out.push({ ...r, text: t ? String(t.text).slice(0, 200) : '', author: t ? t.author : '', alive: !!t });
+    }
+    return { reports: out };
+  });
+  route('POST', '/admin/reports/:id/resolve', 'admin', async ({ db, params, body }) => {
+    const r = await q(db, "SELECT id, kind, target_id FROM reports WHERE id = ? AND status = 'open'", +params.id).first();
+    if (!r) throw new HttpError(404, 'not-found');
+    const remove = body.remove === true;
+    if (remove) {
+      const tg = REPORT_TARGETS[r.kind];
+      await q(db, `UPDATE ${tg.table} SET ${tg.remove} WHERE id = ?`, r.target_id).run();
+    }
+    // Gỡ nội dung thì đóng luôn mọi báo cáo cùng nội dung; bỏ qua thì chỉ đóng báo cáo này.
+    if (remove) await q(db, "UPDATE reports SET status = 'removed' WHERE kind = ? AND target_id = ? AND status = 'open'", r.kind, r.target_id).run();
+    else await q(db, "UPDATE reports SET status = 'dismissed' WHERE id = ?", r.id).run();
+    return { ok: true };
   });
   route('POST', '/comments/:id/delete', 'user', async ({ db, user, params }) => {
     const r = user.admin
@@ -505,6 +564,7 @@ export function createApi({ verify, now = () => Date.now() }) {
 
   // Nội dung trả phí: chỉ gửi khi người dùng còn Premium VÀ sở hữu khóa học của ngôn ngữ đó (hoặc là admin).
   route('GET', '/content/vocab/:lang', 'user', async ({ db, env, user, t, params }) => {
+    await rate(db, user, t, 'content', 60, 3600000);
     if (!E.CONTENT_LANGS.includes(params.lang)) throw new HttpError(404, 'no-content');
     if (!user.admin) {
       const w = await wallet(db, user.uid, t);
@@ -578,7 +638,7 @@ export function createApi({ verify, now = () => Date.now() }) {
     if (n.n >= E.MAX_LISTINGS_PER_DAY) throw new HttpError(429, 'too-many-posts');
     const contacts = contactsFrom(body);
     const adm = user.admin ? 'approved' : 'pending';
-    const r = await q(db, 'INSERT INTO listings (uid, seller, cat, title, price, loc, country, region, addr, descr, emoji, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', user.uid, user.name || 'Người dùng', body.cat, v.title, v.price, v.loc, v.country, v.region, v.addr, v.desc, v.emoji, adm, t).run();
+    const r = await q(db, 'INSERT INTO listings (uid, seller, cat, title, price, loc, country, region, addr, descr, emoji, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', user.uid, E.displayName(user), body.cat, v.title, v.price, v.loc, v.country, v.region, v.addr, v.desc, v.emoji, adm, t).run();
     await q(db, 'INSERT INTO listing_contacts (listing_id, phone, facebook, zalo) VALUES (?, ?, ?, ?)', r.meta.last_row_id, contacts.phone, contacts.facebook, contacts.zalo).run();
     return { ok: true, id: r.meta.last_row_id, status: adm };
   });
@@ -613,7 +673,7 @@ export function createApi({ verify, now = () => Date.now() }) {
     const l = await q(db, "SELECT id, uid, seller, title FROM listings WHERE id = ? AND status = 'approved'", +body.listingId).first();
     if (!l) throw new HttpError(404, 'not-found');
     if (l.uid === user.uid) throw bad('own-listing');
-    await q(db, 'INSERT OR IGNORE INTO threads (listing_id, owner, buyer, seller_name, buyer_name, title, created_at, last_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', l.id, l.uid, user.uid, l.seller, user.name || 'Người dùng', l.title, t, t).run();
+    await q(db, 'INSERT OR IGNORE INTO threads (listing_id, owner, buyer, seller_name, buyer_name, title, created_at, last_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', l.id, l.uid, user.uid, l.seller, E.displayName(user), l.title, t, t).run();
     const th = await q(db, 'SELECT id FROM threads WHERE listing_id = ? AND buyer = ?', l.id, user.uid).first();
     return { id: th.id };
   });

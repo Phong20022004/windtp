@@ -47,12 +47,25 @@ def serve_api(origin):
         proc.wait(timeout=10)
 
 
+SESSION_PAGES = {}
+
+
+def bind_session(token, page):
+    """Gọi API trực tiếp bằng đúng khóa phiên mà trình duyệt `page` đang giữ (máy chủ chỉ chấp nhận một phiên mỗi tài khoản)."""
+    SESSION_PAGES[token] = page
+
+
 def api_call(base, method, path, token=None, body=None, origin=None):
     """Gọi API trực tiếp từ test (không qua trình duyệt) để kiểm tra trạng thái thật ở máy chủ."""
     import urllib.request, urllib.error
     headers = {'content-type': 'application/json', 'x-device-id': 'python-test-device-0001'}
     if token:
         headers['authorization'] = 'Bearer ' + token
+        page = SESSION_PAGES.get(token)
+        if page is not None:
+            key = page.evaluate("()=>localStorage.getItem('windtp-skey')")
+            if key:
+                headers['x-session-key'] = key
     if origin:
         headers['origin'] = origin
     req = urllib.request.Request(base + path, method=method, headers=headers, data=None if body is None else json.dumps(body).encode())

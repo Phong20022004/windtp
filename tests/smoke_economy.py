@@ -5,7 +5,7 @@ Chứng minh: sửa localStorage không đổi được Xu/Premium/quyền sở 
 import json, sys
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright
-from support import serve_dist, serve_api, api_call, api_token
+from support import serve_dist, serve_api, api_call, api_token, bind_session
 
 STATE_KEY = 'windtp-super-app-v2'
 failures, page_errors = [], []
@@ -87,6 +87,7 @@ with serve_dist() as URL, sync_playwright() as p:
         login(usr, 'hs@wind.vn', 'secret1')
         usr.wait_for_timeout(1500)
         user_token = api_token('uid-3', 'Hoc Sinh', 'hs@wind.vn', False)
+        bind_session(user_token, usr)
 
         # 1. Ví mới có số dư 0 ở máy chủ và trên giao diện
         w = me(user_token)
@@ -300,14 +301,17 @@ with serve_dist() as URL, sync_playwright() as p:
         got = eventually(lambda: usr2.evaluate("(k)=>JSON.parse(localStorage.getItem(k+'::u::hs@wind.vn')||'{}').settings.currency", STATE_KEY) == 'JPY', 15000)
         check(got, 'E65 đăng nhập trên thiết bị khác thì nhận được cài đặt đã đồng bộ')
         usr2.evaluate("()=>{const b=document.createElement('button');b.dataset.action='set-currency';b.dataset.cur='KRW';document.body.appendChild(b);b.click();b.remove()}")
+        bind_session(user_token, usr2)  # phiên hoạt động giờ là của thiết bị thứ hai
         ok = eventually(lambda: ((api_call(API, 'GET', '/me/state', user_token, origin=ORIGIN)[1].get('state') or {}).get('settings') or {}).get('currency') == 'KRW', 15000)
         check(ok, 'E66 thay đổi từ thiết bị thứ hai cũng lên máy chủ')
         ctx2.close()
 
-        # 9. Người dùng thấy số dư đúng sau khi làm mới ví
-        usr.evaluate('window.WindtpApi.wallet.refresh()')
+        # 9. Người dùng thấy số dư đúng sau khi làm mới ví (tải lại để máy này giành lại phiên hoạt động)
         usr.reload(wait_until='load', timeout=240000)
         usr.wait_for_function('window.WindtpAuth.isSettled()', timeout=60000)
+        if usr.query_selector('#login-gate'):
+            login(usr, 'hs@wind.vn', 'secret1')  # máy này đã bị thiết bị thứ hai đăng xuất; đăng nhập lại để giành phiên
+        bind_session(user_token, usr)
         usr.wait_for_timeout(1500)
         fmt_balance = '{:,}'.format(me(user_token)['balance'])
         check(fmt_balance in wallet_text(usr), 'E24 giao diện hiển thị đúng số dư của máy chủ (%s)' % fmt_balance)
