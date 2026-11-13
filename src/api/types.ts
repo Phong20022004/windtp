@@ -190,6 +190,9 @@ export type ApiErrorCode =
   | "self-referral"
   | "already-purchased"
   | "code-expired"
+  | "bad-contact"
+  | "own-listing"
+  | "bad-message"
   | "unavailable"
   | "bad-response"
   | "unknown";
@@ -215,6 +218,9 @@ export const API_MESSAGES: Readonly<Record<ApiErrorCode, string>> = {
   "no-code": "Không tìm thấy mã mời này",
   "self-referral": "Bạn không thể dùng mã mời của chính mình",
   "already-purchased": "Bạn đã mua khóa học nên không thể nhập mã mời nữa",
+  "bad-contact": "Cách liên hệ chưa hợp lệ: số điện thoại 8–15 chữ số, Facebook là đường dẫn facebook hoặc tên tài khoản, Zalo là số điện thoại",
+  "own-listing": "Đây là tin do bạn đăng",
+  "bad-message": "Tin nhắn không được để trống và tối đa 1000 ký tự",
   "code-expired": "Đã quá 1 tháng kể từ lúc đăng ký nên không thể nhập mã mời nữa",
   unavailable: "Máy chủ đang bận, hãy thử lại sau giây lát",
   "bad-response": "Máy chủ trả về dữ liệu không hợp lệ",
@@ -275,6 +281,41 @@ export interface Listing {
   emoji: string;
   at: number;
   mine: boolean;
+  /** Cách liên hệ người đăng (tùy chọn, rỗng nếu không điền). Facebook là đường dẫn đầy đủ, Zalo là số điện thoại không dấu +. */
+  phone: string;
+  facebook: string;
+  zalo: string;
 }
 
-export type ListingInput = Omit<Listing, "id" | "seller" | "at" | "mine">;
+export type ListingInput = Omit<Listing, "id" | "seller" | "at" | "mine" | "phone" | "facebook" | "zalo"> & Partial<Pick<Listing, "phone" | "facebook" | "zalo">>;
+
+/** Một cuộc trò chuyện trực tiếp về một tin đăng. */
+export interface ChatThread {
+  id: number;
+  listingId: number;
+  title: string;
+  /** Vai trò của mình: người đăng tin (seller) hay người xem tin (buyer). */
+  role: "seller" | "buyer";
+  /** Tên người còn lại. */
+  peer: string;
+  lastText: string;
+  lastAt: number;
+  unread: number;
+}
+
+export interface ChatInbox {
+  threads: ChatThread[];
+  unread: number;
+}
+
+export interface ChatMessage {
+  id: number;
+  mine: boolean;
+  text: string;
+  at: number;
+}
+
+export interface ChatView {
+  thread: Pick<ChatThread, "id" | "listingId" | "title" | "role" | "peer">;
+  messages: ChatMessage[];
+}

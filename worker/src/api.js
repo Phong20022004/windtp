@@ -540,7 +540,32 @@ export function createApi({ verify, now = () => Date.now() }) {
     const custom = row ? JSON.parse(row.json).customCats.map((c) => c.id) : [];
     return new Set([...E.BUILTIN_LISTING_CATS, ...custom]);
   }
-  const listingOut = (r, uid) => ({ id: r.id, seller: r.seller, cat: r.cat, title: r.title, price: r.price, loc: r.loc, country: r.country, region: r.region, addr: r.addr, desc: r.descr, emoji: r.emoji, at: r.created_at, mine: r.uid === uid });
+  // Cách liên hệ: chỉ nhận số điện thoại, Facebook (đường dẫn facebook/fb/messenger hoặc tên tài khoản) và Zalo (số điện thoại); sai định dạng thì từ chối.
+  const normPhone = (x) => { const p = x.replace(/[\s.()-]/g, ''); return /^\+?\d{8,15}$/.test(p) ? p : null; };
+  const FB_HOSTS = new Set(['facebook.com', 'www.facebook.com', 'm.facebook.com', 'web.facebook.com', 'fb.com', 'www.fb.com', 'fb.me', 'm.me']);
+  const normFacebook = (x) => {
+    if (/^[A-Za-z0-9.]{5,50}$/.test(x)) return 'https://facebook.com/' + x;
+    try {
+      const u = new URL(x);
+      if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+      if (u.username || u.password || !FB_HOSTS.has(u.hostname.toLowerCase())) return null;
+      const out = 'https://' + u.hostname.toLowerCase() + u.pathname + u.search;
+      return out.length <= 200 ? out : null;
+    } catch { return null; }
+  };
+  function contactsFrom(body) {
+    const out = {};
+    for (const [k, norm] of [['phone', normPhone], ['facebook', normFacebook], ['zalo', normPhone]]) {
+      const raw = typeof body[k] === 'string' ? body[k].trim() : '';
+      if (!raw) { out[k] = ''; continue; }
+      const v = raw.length <= 200 ? norm(raw) : null;
+      if (v === null) throw bad('bad-contact');
+      out[k] = k === 'zalo' ? v.replace(/^\+/, '') : v;
+    }
+    return out;
+  }
+  const LISTING_SELECT = 'SELECT l.*, c.phone, c.facebook, c.zalo FROM listings l LEFT JOIN listing_contacts c ON c.listing_id = l.id';
+  const listingOut = (r, uid) => ({ id: r.id, phone: r.phone || '', facebook: r.facebook || '', zalo: r.zalo || '', seller: r.seller, cat: r.cat, title: r.title, price: r.price, loc: r.loc, country: r.country, region: r.region, addr: r.addr, desc: r.descr, emoji: r.emoji, at: r.created_at, mine: r.uid === uid });
   route('POST', '/listings', 'user', async ({ db, user, t, body }) => {
     const v = {};
     for (const [k, [min, max]] of Object.entries(LISTING_FIELDS)) {
@@ -551,13 +576,15 @@ export function createApi({ verify, now = () => Date.now() }) {
     if (!(await allowedCats(db)).has(body.cat)) throw bad('bad-listing');
     const n = await q(db, "SELECT COUNT(*) AS n FROM listings WHERE uid = ? AND created_at > ? AND status != 'deleted'", user.uid, t - 86400000).first();
     if (n.n >= E.MAX_LISTINGS_PER_DAY) throw new HttpError(429, 'too-many-posts');
+    const contacts = contactsFrom(body);
     const adm = user.admin ? 'approved' : 'pending';
     const r = await q(db, 'INSERT INTO listings (uid, seller, cat, title, price, loc, country, region, addr, descr, emoji, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', user.uid, user.name || 'Người dùng', body.cat, v.title, v.price, v.loc, v.country, v.region, v.addr, v.desc, v.emoji, adm, t).run();
+    await q(db, 'INSERT INTO listing_contacts (listing_id, phone, facebook, zalo) VALUES (?, ?, ?, ?)', r.meta.last_row_id, contacts.phone, contacts.facebook, contacts.zalo).run();
     return { ok: true, id: r.meta.last_row_id, status: adm };
   });
   route('GET', '/listings', 'user', async ({ db, user }) => {
     const cats = await allowedCats(db);
-    const rows = (await q(db, "SELECT * FROM listings WHERE status = 'approved' ORDER BY id DESC LIMIT 300").all()).results;
+    const rows = (await q(db, LISTING_SELECT + " WHERE l.status = 'approved' ORDER BY l.id DESC LIMIT 300").all()).results;
     return { listings: rows.filter((r) => cats.has(r.cat)).map((r) => listingOut(r, user.uid)) };
   });
   route('POST', '/listings/:id/delete', 'user', async ({ db, user, params }) => {
@@ -567,7 +594,7 @@ export function createApi({ verify, now = () => Date.now() }) {
     if (!r.meta.changes) throw new HttpError(404, 'not-found');
     return { ok: true };
   });
-  route('GET', '/admin/listings', 'admin', async ({ db, user }) => ({ listings: (await q(db, "SELECT * FROM listings WHERE status = 'pending' ORDER BY id LIMIT 200").all()).results.map((r) => listingOut(r, user.uid)) }));
+  route('GET', '/admin/listings', 'admin', async ({ db, user }) => ({ listings: (await q(db, LISTING_SELECT + " WHERE l.status = 'pending' ORDER BY l.id LIMIT 200").all()).results.map((r) => listingOut(r, user.uid)) }));
   for (const [action, status] of [['approve', 'approved'], ['reject', 'rejected']]) {
     route('POST', `/admin/listings/:id/${action}`, 'admin', async ({ db, params }) => {
       const r = await q(db, "UPDATE listings SET status = ? WHERE id = ? AND status = 'pending'", status, +params.id).run();
@@ -575,6 +602,43 @@ export function createApi({ verify, now = () => Date.now() }) {
       return { ok: true };
     });
   }
+
+  // ----- Nhắn tin trực tiếp về một tin đăng (mua hàng, xin việc, hỏi thuê...) -----
+  async function myThread(db, user, id) {
+    const th = await q(db, 'SELECT * FROM threads WHERE id = ? AND (owner = ? OR buyer = ?)', +id, user.uid, user.uid).first();
+    if (!th) throw new HttpError(404, 'not-found'); // không phải người trong cuộc thì như không tồn tại
+    return th;
+  }
+  route('POST', '/threads', 'user', async ({ db, user, t, body }) => {
+    const l = await q(db, "SELECT id, uid, seller, title FROM listings WHERE id = ? AND status = 'approved'", +body.listingId).first();
+    if (!l) throw new HttpError(404, 'not-found');
+    if (l.uid === user.uid) throw bad('own-listing');
+    await q(db, 'INSERT OR IGNORE INTO threads (listing_id, owner, buyer, seller_name, buyer_name, title, created_at, last_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', l.id, l.uid, user.uid, l.seller, user.name || 'Người dùng', l.title, t, t).run();
+    const th = await q(db, 'SELECT id FROM threads WHERE listing_id = ? AND buyer = ?', l.id, user.uid).first();
+    return { id: th.id };
+  });
+  route('GET', '/threads', 'user', async ({ db, user }) => {
+    const rows = (await q(db, 'SELECT t.id, t.listing_id AS listingId, t.title, t.owner, t.buyer_name AS buyerName, t.seller_name AS sellerName, t.last_at AS lastAt, (SELECT body FROM messages m WHERE m.thread_id = t.id ORDER BY m.id DESC LIMIT 1) AS lastText, (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id AND m.sender != ? AND m.read_at IS NULL) AS unread FROM threads t WHERE t.owner = ? OR t.buyer = ? ORDER BY t.last_at DESC LIMIT 100', user.uid, user.uid, user.uid).all()).results;
+    const threads = rows.filter((r) => r.lastText !== null).map((r) => ({ id: r.id, listingId: r.listingId, title: r.title, role: r.owner === user.uid ? 'seller' : 'buyer', peer: r.owner === user.uid ? r.buyerName : r.sellerName, lastText: r.lastText, lastAt: r.lastAt, unread: r.unread }));
+    return { threads, unread: threads.reduce((n, x) => n + x.unread, 0) };
+  });
+  route('GET', '/threads/:id/messages', 'user', async ({ db, user, t, params }) => {
+    const th = await myThread(db, user, params.id);
+    const rows = (await q(db, 'SELECT id, sender, body, created_at AS at FROM (SELECT * FROM messages WHERE thread_id = ? ORDER BY id DESC LIMIT 200) ORDER BY id', th.id).all()).results;
+    await q(db, 'UPDATE messages SET read_at = ? WHERE thread_id = ? AND sender != ? AND read_at IS NULL', t, th.id, user.uid).run();
+    const seller = th.owner === user.uid;
+    return { thread: { id: th.id, listingId: th.listing_id, title: th.title, role: seller ? 'seller' : 'buyer', peer: seller ? th.buyer_name : th.seller_name }, messages: rows.map((m) => ({ id: m.id, mine: m.sender === user.uid, text: m.body, at: m.at })) };
+  });
+  route('POST', '/threads/:id/send', 'user', async ({ db, user, t, params, body }) => {
+    const th = await myThread(db, user, params.id);
+    const text = typeof body.text === 'string' ? body.text.trim() : '';
+    if (!text || text.length > E.MAX_MESSAGE_LEN) throw bad('bad-message');
+    const n = await q(db, 'SELECT COUNT(*) AS n FROM messages WHERE sender = ? AND created_at > ?', user.uid, t - 600000).first();
+    if (n.n >= E.MESSAGES_PER_10MIN) throw new HttpError(429, 'too-many-posts');
+    const r = await q(db, 'INSERT INTO messages (thread_id, sender, body, created_at) VALUES (?, ?, ?, ?)', th.id, user.uid, text, t).run();
+    await q(db, 'UPDATE threads SET last_at = ? WHERE id = ?', t, th.id).run();
+    return { ok: true, id: r.meta.last_row_id };
+  });
 
   async function authenticate(request, env) {
     const auth = request.headers.get('authorization') || '';

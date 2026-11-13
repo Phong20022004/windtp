@@ -66,7 +66,7 @@
   /** Lấy lại ví từ máy chủ. Lỗi mạng thì giữ số liệu đang hiển thị. */
   function econRefresh(quiet) {
     if (!state.account || !window.WindtpApi) return Promise.resolve(false);
-    return window.WindtpApi.wallet.refresh().then((me) => { econApplyWallet(me); econSyncBirth(me); econSocial(); econAutoRedeem(); econSyncPull(); return true; }, (e) => { econFail(e, quiet !== false); return false; });
+    return window.WindtpApi.wallet.refresh().then((me) => { econApplyWallet(me); econSyncBirth(me); econSocial(); econAutoRedeem(); econSyncPull(); econPollInbox(); return true; }, (e) => { econFail(e, quiet !== false); return false; });
   }
 
   /** Ngày sinh đã khai trong Cài đặt được gửi một lần; sau đó máy chủ giữ và không cho đổi. */
@@ -87,7 +87,7 @@
         .concat(pending.map((p) => ({ id: "s" + p.id, author: p.author, tag: p.tag, text: p.text, ts: p.created_at, status: "pending", likes: 0, liked: false, comments: [] })));
       const me = userId();
       state.customTasks = tasks.map((t) => ({ id: t.id, title: t.title, desc: "", xu: t.xu, chips: t.chips, money: t.money, cur: t.cur, ts: 0 }));
-      const lv = (l, status) => ({ id: "s" + l.id, cat: l.cat, title: l.title, price: l.price, loc: l.loc, country: l.country, region: l.region, addr: l.addr, desc: l.desc, seller: l.seller, emoji: l.emoji, ts: l.at, status, mine: l.mine, sid: "" });
+      const lv = (l, status) => ({ id: "s" + l.id, cat: l.cat, title: l.title, price: l.price, loc: l.loc, country: l.country, region: l.region, addr: l.addr, desc: l.desc, seller: l.seller, emoji: l.emoji, ts: l.at, status, mine: l.mine, sid: "", phone: l.phone || "", facebook: l.facebook || "", zalo: l.zalo || "" });
       state.listings = listings.map((l) => lv(l, "approved")).concat(pendingListings.map((l) => lv(l, "pending")));
       const st = (o) => (o.status === "approved" ? "granted" : o.status === "pending" ? "sent" : "rejected");
       state.taskClaims = orders.filter((o) => o.kind === "ctask" && o.status !== "rejected").map((o) => ({ id: "o" + o.id, taskId: String(o.code || "").slice(6), uid: me, title: o.summary || "", ts: o.at, status: st(o), bank: null }));
@@ -97,13 +97,13 @@
   }
   /** claim=true khi vừa đăng nhập: giành phiên (thiết bị khác bị đăng xuất) rồi mới lấy ví. Mở lại app đã đăng nhập thì không giành lại. */
   function econBoot(claim) {
-    econ.me = null; econ.ref = null; econ.devs = null; econ.ordersLoaded = false; econ.syncReady = false;
+    econ.me = null; econ.ref = null; econ.devs = null; econ.chat = null; econ.inbox = null; econ.unread = 0; econ.ordersLoaded = false; econ.syncReady = false;
     const go = () => econRefresh(false).then(() => { if (isAdmin()) econPublishCatalog(); });
     if (!claim || !window.WindtpApi) { go(); return; }
     econClient().claimSession().then(go, (e) => { if (e && e.code === "device-limit") econFail(e); else go(); });
   }
   function econReset() {
-    econ.me = null; econ.adminOrders = []; econ.myOrders = []; econ.ordersLoaded = false; econ.birthSent = ""; econ.syncReady = false; window.clearTimeout(econ.syncTimer);
+    econ.me = null; econ.chat = null; econ.inbox = null; econ.unread = 0; window.clearInterval(econ.chatTimer); econ.adminOrders = []; econ.myOrders = []; econ.ordersLoaded = false; econ.birthSent = ""; econ.syncReady = false; window.clearTimeout(econ.syncTimer);
     if (window.WindtpApi) { window.WindtpApi.wallet.clear(); window.WindtpApi.clearSession(); }
   }
   window.setInterval(() => { if (document.visibilityState === "visible" && state.account) econRefresh(); }, ECON_REFRESH_MS);
@@ -352,6 +352,11 @@
   actions["claim-referral-commission"] = econUnavailable;
 
   // ----- Mã mời bạn bè và thiết bị đăng nhập: máy chủ giữ mã, thưởng và giới hạn 2 thiết bị -----
+  /** Vẽ lại các chỗ có mã mời: Cài đặt (nếu đang mở) và danh sách nhiệm vụ. */
+  function econRepaintInvite() {
+    if (ui.renderModal === settingsModal) refreshModal();
+    if ($("#tab-tasks") && typeof renderTasks === "function") renderTasks();
+  }
   function econLoadInvite(force) {
     if (!state.account || !window.WindtpApi || userId() === "WIND-guest") return Promise.resolve(false);
     if (econ.inviteLoading || (!force && Date.now() - (econ.inviteTried || 0) < 30000)) return Promise.resolve(false);
@@ -360,7 +365,7 @@
       econ.ref = r; econ.devs = d; return true;
     }, (e) => { econFail(e, true); return false; }).then((ok) => {
       econ.inviteLoading = false;
-      if (ok && $("#tab-wallet") && typeof renderWallet === "function") renderWallet();
+      if (ok) econRepaintInvite();
       return ok;
     });
   }
@@ -390,6 +395,25 @@
         <span class="font-bold text-slate-700">Thiết bị ${i + 1}${d.current ? " (máy này)" : ""}</span>
         <span class="text-[10px] ${d.active ? "text-emerald-600 font-bold" : "text-slate-400"}">${d.active ? "Đang đăng nhập" : "Đã dùng " + fmtDateTime(d.firstSeen)}</span>
       </div>`).join("")}</div></div>` : ""}
+  </div>`;
+  }
+
+  /** Nhiệm vụ "Mời bạn bè": không giới hạn, thưởng phát tự động khi bạn được mời mua khóa học (không bấm nhận). */
+  function inviteTaskCard() {
+    if (!state.account || userId() === "WIND-guest") return "";
+    if (!econ.ref && !econ.inviteLoading) econLoadInvite();
+    const r = econ.ref;
+    const rw = r ? r.reward : { xu: 10000, chips: 7000 };
+    return `<div class="glass-card rounded-2xl p-3.5 flex gap-3 items-center mt-3">
+    <div class="w-20 h-20 rounded-2xl wd-tile flex items-center justify-center text-3xl shrink-0" style="--c1:#f59e0b;--c2:#ef4444"><span class="wd-tile-i">🎁</span></div>
+    <div class="flex-1 min-w-0">
+      <span class="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">Nhiệm vụ • Không giới hạn số lần</span>
+      <h4 class="text-xs font-bold text-slate-800 mt-0.5">Mời bạn bè học cùng WINDTP</h4>
+      <p class="text-xs font-extrabold text-emerald-600">+${fmt(rw.xu)} Xu + ${fmt(rw.chips)} chip cho mỗi bạn mua khóa học</p>
+      <p class="text-[10px] text-slate-500 mt-1">${r ? `Mã của bạn: <b class="tracking-widest text-amber-700">${esc(r.code)}</b> · Đã mời ${fmt(r.invited)} · Đã thưởng ${fmt(r.rewarded)} lượt` : "Đang tải mã mời…"}</p>
+      <div class="flex items-center justify-between mt-1.5 gap-2"><span class="text-[10px] text-slate-400 line-clamp-1">Bạn bè nhập mã trong 1 tháng đầu; thưởng tự cộng sau khi đơn khóa học của họ được duyệt</span>
+        <button data-action="ref-copy" class="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white keep-white rounded-lg text-[11px] font-bold whitespace-nowrap">Sao chép mã</button></div>
+    </div>
   </div>`;
   }
 
@@ -617,7 +641,7 @@
     if (!l || state.listings.length === before || l.id === firstId) return; // dữ liệu chưa hợp lệ, form giữ nguyên
     state.listings.shift();
     const ok = await econRun("listing", async () => {
-      await econClient().createListing({ cat: l.cat, title: l.title, price: l.price, loc: l.loc, country: l.country, region: l.region, addr: l.addr, desc: l.desc, emoji: l.emoji });
+      await econClient().createListing({ cat: l.cat, title: l.title, price: l.price, loc: l.loc, country: l.country, region: l.region, addr: l.addr, desc: l.desc, emoji: l.emoji, phone: l.phone, facebook: l.facebook, zalo: l.zalo });
       return true;
     });
     if (ok) econSocial();
@@ -628,6 +652,113 @@
     if (!ok) return;
     state.saved = state.saved.filter((x) => x !== el.dataset.id);
     toast("Đã xóa tin"); await econSocial(); refreshModal();
+  };
+
+  // ----- Liên hệ người đăng tin: gọi, Zalo, Facebook hoặc nhắn tin trực tiếp trên web (mua hàng, ứng tuyển, hỏi thuê...) -----
+  const serverListingId = (id) => (/^s\d+$/.test(String(id)) ? Number(String(id).slice(1)) : 0);
+  const CHAT_CTA = { jobs: "Ứng tuyển", market: "Mua / hỏi mua", housing: "Hỏi thuê phòng" };
+  const CHAT_HELLO = { jobs: (t) => "Chào bạn, mình muốn ứng tuyển vị trí “" + t + "”. Bạn cho mình hỏi thêm thông tin được không?", market: (t) => "Chào bạn, “" + t + "” còn không ạ?", housing: (t) => "Chào bạn, “" + t + "” còn trống không ạ? Mình muốn hỏi thêm thông tin." };
+  function contactBlock(l) {
+    if (l.mine === true) return "";
+    const sid = serverListingId(l.id);
+    const pill = "px-3 py-2 rounded-xl text-xs font-bold bg-white border border-teal-300 text-teal-700 hover:bg-teal-50";
+    const links = [];
+    if (l.phone) links.push(`<a href="tel:${esc(l.phone)}" class="${pill}">📞 ${esc(l.phone)}</a>`);
+    if (l.zalo) links.push(`<a href="https://zalo.me/${esc(l.zalo)}" target="_blank" rel="noopener noreferrer" class="${pill}">💬 Zalo</a>`);
+    if (l.facebook && /^https?:\/\//.test(l.facebook)) links.push(`<a href="${esc(l.facebook)}" target="_blank" rel="noopener noreferrer" class="${pill}">📘 Facebook</a>`);
+    return `<div class="rounded-2xl border border-teal-200 bg-teal-50/50 p-3 space-y-2">
+      ${sid ? `<button data-action="open-chat" data-id="${esc(l.id)}" class="w-full ${btnPrimary}">💬 ${CHAT_CTA[l.cat] || "Liên hệ người đăng"} · nhắn tin ngay trên WINDTP</button>` : ""}
+      ${links.length ? `<p class="text-[10px] font-bold text-slate-500">Hoặc liên hệ trực tiếp với ${esc(l.seller)}:</p><div class="flex flex-wrap gap-2">${links.join("")}</div>` : `<p class="text-[10px] text-slate-500">Người đăng chưa để số điện thoại hay Facebook${sid ? ", hãy nhắn tin trên WINDTP." : "."}</p>`}
+    </div>`;
+  }
+  function timeHm(ts) { const d = new Date(ts); return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) + " " + d.toLocaleDateString("vi-VN"); }
+  function chatBubbles(view) {
+    if (!view.messages.length) return '<p class="text-center text-[11px] text-slate-400 py-6">Chưa có tin nhắn. Hãy gửi lời chào đầu tiên.</p>';
+    return view.messages.map((m) => `<div class="flex ${m.mine ? "justify-end" : "justify-start"}"><div class="max-w-[82%] rounded-2xl px-3 py-2 ${m.mine ? "bg-sky-600 text-white keep-white rounded-br-md" : "bg-slate-100 text-slate-800 rounded-bl-md"}"><p class="text-xs whitespace-pre-line break-words">${esc(m.text)}</p><p class="text-[9px] mt-0.5 ${m.mine ? "opacity-80" : "text-slate-400"}">${timeHm(m.at)}</p></div></div>`).join("");
+  }
+  function chatModal() {
+    const c = econ.chat;
+    if (!c) return "";
+    const t = c.view.thread;
+    return `${modalHead("💬 " + esc(t.peer))}
+    <div class="px-4 pt-3"><p class="text-[11px] text-slate-500 truncate">Về tin: <b class="text-slate-700">${esc(t.title)}</b> · ${t.role === "seller" ? "người xem tin của bạn" : "người đăng tin"}</p></div>
+    <div id="chat-log" class="p-4 space-y-2 overflow-y-auto" style="height:min(50vh,420px)">${chatBubbles(c.view)}</div>
+    <div class="px-4 pb-4 flex gap-2 items-end"><textarea id="chat-text" rows="2" maxlength="1000" placeholder="Nhập tin nhắn..." class="${field} resize-none flex-1">${esc(c.draft || "")}</textarea><button data-action="chat-send" class="${btnPrimary} whitespace-nowrap">Gửi</button></div>
+    <p class="px-4 pb-4 text-[10px] text-slate-400">Đừng chuyển tiền trước khi gặp trực tiếp hoặc xác minh người bán. WINDTP không giữ tiền giao dịch giữa các thành viên.</p>`;
+  }
+  function chatScroll() { const el = $("#chat-log"); if (el) el.scrollTop = el.scrollHeight; }
+  function chatPaint() {
+    const c = econ.chat, el = $("#chat-log");
+    if (!c || !el || ui.renderModal !== chatModal) return;
+    const atEnd = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+    el.innerHTML = chatBubbles(c.view);
+    if (atEnd) chatScroll();
+  }
+  function chatPoll() {
+    window.clearInterval(econ.chatTimer);
+    econ.chatTimer = window.setInterval(() => {
+      const c = econ.chat;
+      if (!c || ui.renderModal !== chatModal) { window.clearInterval(econ.chatTimer); return; }
+      econClient().thread(c.id).then((v) => { if (econ.chat === c && ui.renderModal === chatModal) { c.view = v; chatPaint(); econPollInbox(); } }, () => { });
+    }, 7000);
+  }
+  function chatOpenView(id, view, draft) {
+    econ.chat = { id, view, draft: draft || "" };
+    openModal(chatModal);
+    chatScroll();
+    chatPoll();
+    econPollInbox();
+  }
+  actions["open-chat"] = async (el) => {
+    const l = state.listings.find((x) => x.id === el.dataset.id), sid = serverListingId(el.dataset.id);
+    if (!l || !sid) return;
+    const res = await econRun("chat-open", async () => { const id = await econClient().openThread(sid); return { id, view: await econClient().thread(id) }; });
+    if (!res) return;
+    const hello = res.view.messages.length ? "" : (CHAT_HELLO[l.cat] ? CHAT_HELLO[l.cat](l.title) : "");
+    chatOpenView(res.id, res.view, hello);
+  };
+  actions["chat-send"] = async () => {
+    const c = econ.chat, text = val("chat-text");
+    if (!c || !text) return;
+    const res = await econRun("chat-send", async () => { await econClient().sendMessage(c.id, text); return econClient().thread(c.id); });
+    if (!res || econ.chat !== c) return;
+    c.view = res; c.draft = "";
+    const box = $("#chat-text"); if (box) box.value = "";
+    chatPaint(); chatScroll();
+  };
+  function inboxModal() {
+    const box = econ.inbox || { threads: [] };
+    const rows = box.threads.map((t) => `<button data-action="open-thread" data-id="${t.id}" class="w-full text-left flex items-center gap-3 rounded-2xl border border-slate-200 p-3 hover:bg-slate-50">
+      <span class="w-10 h-10 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-black shrink-0">${esc((t.peer || "?").slice(0, 1).toUpperCase())}</span>
+      <span class="flex-1 min-w-0"><span class="flex items-center justify-between gap-2"><b class="text-xs text-slate-800 truncate">${esc(t.peer)}</b><span class="text-[9px] text-slate-400 whitespace-nowrap">${timeHm(t.lastAt)}</span></span>
+      <span class="block text-[10px] text-teal-700 truncate">${esc(t.title)}</span><span class="block text-[11px] text-slate-500 truncate">${esc(t.lastText)}</span></span>
+      ${t.unread ? `<span class="min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white keep-white text-[10px] font-bold flex items-center justify-center">${t.unread}</span>` : ""}</button>`).join("");
+    return `${modalHead("💬 Tin nhắn")}<div class="p-4 space-y-2">${rows || '<p class="text-center text-xs text-slate-500 py-10">Chưa có cuộc trò chuyện nào. Mở một tin đăng rồi bấm nhắn tin để bắt đầu.</p>'}</div>`;
+  }
+  function inboxButton() {
+    if (!state.account || userId() === "WIND-guest") return "";
+    const n = econ.unread || 0;
+    return `<button data-action="open-inbox" class="relative px-3.5 py-1.5 bg-white border border-teal-300 text-teal-700 text-xs font-bold rounded-xl whitespace-nowrap">💬 Tin nhắn${n ? ` <span class="ml-1 px-1.5 py-0.5 rounded-full bg-rose-500 text-white keep-white text-[10px]">${n}</span>` : ""}</button>`;
+  }
+  function econPollInbox() {
+    if (!state.account || !window.WindtpApi || userId() === "WIND-guest") return Promise.resolve();
+    return econClient().inbox().then((box) => {
+      const changed = box.unread !== (econ.unread || 0);
+      econ.inbox = box; econ.unread = box.unread;
+      if (ui.renderModal === inboxModal) refreshModal();
+      else if (changed && ui.tab === "utilities" && !ui.renderModal && typeof renderUtilities === "function") renderUtilities();
+    }, () => { });
+  }
+  actions["open-inbox"] = async () => {
+    const box = await econRun("inbox", () => econClient().inbox());
+    if (!box) return;
+    econ.inbox = box; econ.unread = box.unread;
+    openModal(inboxModal);
+  };
+  actions["open-thread"] = async (el) => {
+    const id = Number(el.dataset.id);
+    const view = await econRun("thread:" + id, () => econClient().thread(id));
+    if (view) chatOpenView(id, view, "");
   };
 
   // ----- Thích và bình luận: lưu ở máy chủ, mỗi người một lượt thích -----

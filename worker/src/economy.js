@@ -57,6 +57,8 @@ export const SESSION_GRACE_MS = 20 * 60000; // khóa cũ còn dùng được th�
 export const monthKey = (t) => new Date(t + DEVICE_TZ_OFFSET_MS).toISOString().slice(0, 7);
 
 export const MAX_LISTINGS_PER_DAY = 5;
+export const MAX_MESSAGE_LEN = 1000;
+export const MESSAGES_PER_10MIN = 40; // chống spam tin nhắn
 export const BUILTIN_LISTING_CATS = ['market', 'jobs', 'housing'];
 export const MAX_COMMENTS_PER_DAY = 30;
 export const MAX_COMMENT_LEN = 300;

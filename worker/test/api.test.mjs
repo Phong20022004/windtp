@@ -869,3 +869,69 @@ test('mã mời: chỉ nhập được trong 1 tháng kể từ lúc đăng ký;
   // Người mới đăng ký sau đó vẫn nhập được, hạn tính riêng theo từng người.
   assert.equal((await app.call('POST', '/referral/redeem', { uid: 'fresh', body: { code: owner } })).status, 200);
 });
+
+// ===== Liên hệ người đăng và nhắn tin trực tiếp =====
+const LST = { cat: 'jobs', title: 'Tuyển phục vụ ca tối', price: '28.000đ/giờ', loc: 'Q1, TP.HCM', country: 'Việt Nam', region: 'south', addr: '1 Lê Lợi', desc: 'Cần 2 bạn', emoji: '🧑‍💻' };
+async function approvedListing(app, patch = {}) {
+  const r = await app.call('POST', '/listings', { uid: 'seller', body: { ...LST, ...patch } });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal((await app.call('POST', `/admin/listings/${r.json.id}/approve`, { uid: 'boss', admin: true, body: {} })).status, 200);
+  return r.json.id;
+}
+
+test('liên hệ: số điện thoại, Facebook, Zalo được chuẩn hóa và hiện cho người đã đăng nhập; sai định dạng bị từ chối', async () => {
+  const app = await makeApp();
+  const id = await approvedListing(app, { phone: '0901 234.567', facebook: 'nguyen.van.a', zalo: '+84 901 234 567' });
+  const l = (await app.call('GET', '/listings', { uid: 'buyer' })).json.listings.find((x) => x.id === id);
+  assert.deepEqual([l.phone, l.facebook, l.zalo], ['0901234567', 'https://facebook.com/nguyen.van.a', '84901234567']);
+  const id2 = await approvedListing(app, { facebook: 'https://m.facebook.com/profile.php?id=100001' });
+  assert.equal((await app.call('GET', '/listings', { uid: 'buyer' })).json.listings.find((x) => x.id === id2).facebook, 'https://m.facebook.com/profile.php?id=100001');
+  const none = await approvedListing(app);
+  const n = (await app.call('GET', '/listings', { uid: 'buyer' })).json.listings.find((x) => x.id === none);
+  assert.deepEqual([n.phone, n.facebook, n.zalo], ['', '', '']);
+  for (const bad of [{ phone: 'abc' }, { phone: '123' }, { zalo: 'zalo.me/x' }, { facebook: 'javascript:alert(1)' }, { facebook: 'https://evil.com/fb' }, { facebook: 'https://user:pw@facebook.com/x' }, { facebook: 'ab' }]) {
+    const r = await app.call('POST', '/listings', { uid: 'seller', body: { ...LST, ...bad } });
+    assert.deepEqual([r.status, r.json.error], [400, 'bad-contact'], JSON.stringify(bad));
+  }
+});
+
+test('nhắn tin: người xem mở cuộc trò chuyện, hai bên trao đổi, đếm và đánh dấu đã đọc', async () => {
+  const app = await makeApp();
+  const id = await approvedListing(app);
+  const th = await app.call('POST', '/threads', { uid: 'buyer', body: { listingId: id } });
+  assert.equal(th.status, 200);
+  assert.equal((await app.call('POST', '/threads', { uid: 'buyer', body: { listingId: id } })).json.id, th.json.id, 'mỗi người một cuộc trò chuyện cho mỗi tin');
+  assert.deepEqual((await app.call('GET', '/threads', { uid: 'seller' })).json.threads, [], 'chưa có tin nhắn thì người đăng chưa thấy');
+  assert.equal((await app.call('POST', `/threads/${th.json.id}/send`, { uid: 'buyer', body: { text: '  Mình muốn ứng tuyển  ' } })).status, 200);
+  const inbox = (await app.call('GET', '/threads', { uid: 'seller' })).json;
+  assert.equal(inbox.unread, 1);
+  assert.deepEqual([inbox.threads[0].role, inbox.threads[0].lastText, inbox.threads[0].unread, inbox.threads[0].title], ['seller', 'Mình muốn ứng tuyển', 1, LST.title]);
+  const view = await app.call('GET', `/threads/${th.json.id}/messages`, { uid: 'seller' });
+  assert.deepEqual(view.json.messages.map((m) => [m.mine, m.text]), [[false, 'Mình muốn ứng tuyển']]);
+  assert.equal((await app.call('GET', '/threads', { uid: 'seller' })).json.unread, 0, 'mở xem là đã đọc');
+  assert.equal((await app.call('POST', `/threads/${th.json.id}/send`, { uid: 'seller', body: { text: 'Chào bạn, nhắn SĐT nhé' } })).status, 200);
+  assert.equal((await app.call('GET', '/threads', { uid: 'buyer' })).json.unread, 1);
+  const mine = await app.call('GET', `/threads/${th.json.id}/messages`, { uid: 'buyer' });
+  assert.deepEqual(mine.json.messages.map((m) => m.mine), [true, false]);
+  assert.equal(mine.json.thread.role, 'buyer');
+  assert.equal((await app.call('GET', '/threads', { uid: 'buyer' })).json.unread, 0);
+});
+
+test('nhắn tin: người ngoài cuộc không đọc/gửi được, không nhắn cho tin của mình hay tin chưa duyệt, giới hạn độ dài và tốc độ', async () => {
+  const app = await makeApp();
+  const id = await approvedListing(app);
+  const th = (await app.call('POST', '/threads', { uid: 'buyer', body: { listingId: id } })).json.id;
+  await app.call('POST', `/threads/${th}/send`, { uid: 'buyer', body: { text: 'xin chào' } });
+  assert.equal((await app.call('GET', `/threads/${th}/messages`, { uid: 'spy' })).status, 404);
+  assert.equal((await app.call('POST', `/threads/${th}/send`, { uid: 'spy', body: { text: 'chen ngang' } })).status, 404);
+  assert.deepEqual((await app.call('GET', '/threads', { uid: 'spy' })).json.threads, []);
+  const own = await app.call('POST', '/threads', { uid: 'seller', body: { listingId: id } });
+  assert.deepEqual([own.status, own.json.error], [400, 'own-listing']);
+  const pending = (await app.call('POST', '/listings', { uid: 'seller', body: LST })).json.id;
+  assert.equal((await app.call('POST', '/threads', { uid: 'buyer', body: { listingId: pending } })).status, 404);
+  assert.equal((await app.call('POST', '/threads', { uid: 'buyer', body: { listingId: 9999 } })).status, 404);
+  for (const text of ['', '   ', 'x'.repeat(1001), 123]) assert.equal((await app.call('POST', `/threads/${th}/send`, { uid: 'buyer', body: { text } })).status, 400);
+  let last;
+  for (let i = 0; i < 45; i++) last = await app.call('POST', `/threads/${th}/send`, { uid: 'buyer', body: { text: 'tin ' + i } });
+  assert.equal(last.status, 429);
+});

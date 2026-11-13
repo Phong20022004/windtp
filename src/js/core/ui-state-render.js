@@ -323,6 +323,7 @@
         <div class="mt-4 flex items-center gap-2"><span class="wind-coin-mark" role="img" aria-label="WIND Coin"><span class="wind-coin-mark__w">W</span></span><span class="text-sm font-bold">Thưởng minh bạch · Làm mới mỗi ngày</span></div>
       </div>
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">${list.map((t) => taskCard(t)).join("")}</div>
+      ${typeof inviteTaskCard === "function" ? inviteTaskCard() : ""}
       ${fbShareHtml()}`;
   }
 
@@ -352,7 +353,7 @@
       <h2 class="text-lg font-extrabold text-slate-800">\u{1F6E0}\uFE0F Ti\u1EC7n \xCDch \u0110a N\u0103ng WINDTP</h2>
       <p class="text-xs text-slate-500">Ch\u1EE3 \u0111\u1ED3 c\u0169, vi\u1EC7c l\xE0m, ph\xF2ng tr\u1ECD v\xE0 c\xE1c ti\u1EC7n \xEDch m\u1EDF r\u1ED9ng. M\u1ECDi tin \u0111\u0103ng \u0111\u1EC1u ch\u1EDD ch\u1EE7 qu\u1EA3n ki\u1EC3m duy\u1EC7t tr\u01B0\u1EDBc khi hi\u1EC3n th\u1ECB.</p>
     </div>
-    <button data-action="open-post-listing" class="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white keep-white text-xs font-bold rounded-xl shadow-sm whitespace-nowrap">+ \u0110\u0103ng tin ngay</button>
+    <div class="flex items-center gap-2">${typeof inboxButton === "function" ? inboxButton() : ""}<button data-action="open-post-listing" class="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white keep-white text-xs font-bold rounded-xl shadow-sm whitespace-nowrap">+ \u0110\u0103ng tin ngay</button></div>
   </div>
   <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
     ${[...UTIL_CATS, ...state.customCats.map((c) => [c.id, `${esc(c.emoji)} ${esc(c.name)}`])].map(([k, label]) => `<button data-action="util-cat" data-cat="${k}" aria-pressed="${cat === k}" class="px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${cat === k ? "bg-teal-600 text-white keep-white" : "bg-white border border-slate-200 text-slate-700 hover:bg-teal-50"}">${label}</button>`).join("")}
@@ -474,7 +475,6 @@ function renderWallet() {
     <div class="glass-card p-3.5 rounded-2xl"><p class="text-[11px] text-slate-500">Thu 30 ng\xE0y qua</p><p class="text-base font-extrabold text-emerald-600">+${fmt(totalIn)} Xu</p></div>
     <div class="glass-card p-3.5 rounded-2xl"><p class="text-[11px] text-slate-500">Chi 30 ng\xE0y qua</p><p class="text-base font-extrabold text-rose-500">-${fmt(totalOut)} Xu</p></div>
   </div>
-  ${typeof inviteCard === "function" ? inviteCard() : ""}
   ${state.orders.length ? `<div class="glass-card p-4 rounded-2xl">
     <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2 mb-3"><span>\u{1F9FE}</span> \u0110\u01A1n H\xE0ng & N\u1EA1p Xu</h3>
     <div class="space-y-3">${state.orders.slice(0, 10).map((o) => `

@@ -42,6 +42,12 @@
       <div class="grid grid-cols-2 gap-2">${inp("pl-country", "Quốc gia", "Ví dụ: Việt Nam, Vietnam, Japan")}<div><label class="text-xs font-bold text-slate-600" for="pl-region">Tên miền</label><select id="pl-region" class="${field} mt-1"><option value="">Chọn miền</option>${REGION_OPTS.slice(1).map((r) => `<option value="${r[0]}" ${cur === r[0] ? "selected" : ""}>${r[1]}</option>`).join("")}</select></div></div>
       ${inp("pl-addr", "Địa chỉ chi tiết", "Số nhà, đường, quận/huyện, thành phố")}
       ${sp}
+      <div class="rounded-xl border border-teal-200 bg-teal-50/50 p-3 space-y-2">
+        <p class="text-[11px] font-extrabold text-teal-800">Cách liên hệ (tùy chọn)</p>
+        <div class="grid grid-cols-2 gap-2">${inp("pl-phone", "Số điện thoại", "VD 0901 234 567")}${inp("pl-zalo", "Zalo (số điện thoại)", "VD 0901 234 567")}</div>
+        <div><label class="text-xs font-bold text-slate-600" for="pl-facebook">Facebook</label><input id="pl-facebook" value="${plv("pl-facebook")}" placeholder="Đường dẫn trang cá nhân hoặc tên tài khoản" maxlength="200" class="${field} mt-1"></div>
+        <p class="text-[10px] text-slate-500">Người xem còn liên hệ được bạn bằng tin nhắn trực tiếp ngay trên WINDTP (mua hàng, ứng tuyển, hỏi thuê...). Chỉ người đã đăng nhập mới thấy thông tin này.</p>
+      </div>
       <div><label class="text-xs font-bold text-slate-600" for="pl-desc">Mô tả</label><textarea id="pl-desc" rows="3" maxlength="400" class="${field} mt-1 resize-none">${plv("pl-desc")}</textarea></div>
       <button data-action="submit-listing" class="w-full ${btnPrimary}">Đăng tin</button></div>`;
   }
@@ -56,13 +62,17 @@
       const no = (c, m) => { if (c) toast(m); return c; };
       const title = g("pl-title"), country = g("pl-country"), region = g("pl-region"), addr = g("pl-addr");
       if (no(title.length < 5, "Tiêu đề cần tối thiểu 5 ký tự") || no(!country, "Vui lòng nhập quốc gia") || no(!region, "Vui lòng chọn miền") || no(addr.length < 5, "Vui lòng nhập địa chỉ chi tiết")) return;
+      const phone = g("pl-phone"), zalo = g("pl-zalo"), facebook = g("pl-facebook");
+      const okPhone = (x) => !x || /^\+?\d{8,15}$/.test(x.replace(/[\s.()-]/g, ""));
+      const okFb = (x) => { if (!x || /^[A-Za-z0-9.]{5,50}$/.test(x)) return true; try { const u = new URL(x); return (u.protocol === "https:" || u.protocol === "http:") && !u.username && !u.password && ["facebook.com", "www.facebook.com", "m.facebook.com", "web.facebook.com", "fb.com", "www.fb.com", "fb.me", "m.me"].includes(u.hostname.toLowerCase()); } catch (e) { return false; } };
+      if (no(!okPhone(phone), "Số điện thoại gồm 8–15 chữ số") || no(!okPhone(zalo), "Zalo nhập bằng số điện thoại 8–15 chữ số") || no(!okFb(facebook), "Facebook: dán đường dẫn facebook.com / fb.com / m.me hoặc nhập tên tài khoản")) return;
       let price = "", extra = [];
       if (cat === "jobs") { if (no(!g("pl-salary"), "Vui lòng nhập mức lương") || no(!g("pl-time"), "Vui lòng nhập thời gian làm việc")) return; price = g("pl-salary"); extra.push("Thời gian làm việc: " + g("pl-time")); }
       else if (cat === "housing") { if (no(!g("pl-deposit"), "Vui lòng nhập tiền cọc") || no(!g("pl-rent"), "Vui lòng nhập tiền nhà hàng tháng")) return; price = g("pl-rent") + " / tháng"; extra.push("Tiền cọc: " + g("pl-deposit")); extra.push("Tiền nhà: " + g("pl-rent") + " / tháng"); if (g("pl-fees")) extra.push("Điện nước, quản lý: " + g("pl-fees")); }
       else { if (no(!g("pl-price"), "Vui lòng nhập giá")) return; price = g("pl-price"); }
       const rn = (REGION_OPTS.find((r) => r[0] === region) || [0, region])[1];
       extra.push("Địa chỉ: " + addr + " · " + rn + " · " + country);
-      const l = { id: uid("l"), cat, title, price, loc: addr + ", " + rn, country, region, addr, sid: userId(), ts: Date.now(), desc: extra.join(" | ") + "\n" + (g("pl-desc") || "Chưa có mô tả chi tiết."), seller: state.userName, emoji: LISTING_EMOJI[cat] ?? state.customCats.find((c) => c.id === cat)?.emoji ?? "📌", status: "pending" };
+      const l = { id: uid("l"), cat, title, price, loc: addr + ", " + rn, country, region, addr, sid: userId(), ts: Date.now(), desc: extra.join(" | ") + "\n" + (g("pl-desc") || "Chưa có mô tả chi tiết."), seller: state.userName, phone, zalo, facebook, emoji: LISTING_EMOJI[cat] ?? state.customCats.find((c) => c.id === cat)?.emoji ?? "📌", status: "pending" };
       state.listings.unshift(l); ui.plv = null; ui.plCat = null; ui.utilCat = cat;
       commit(); closeModal(); toast("Tin đăng đã gửi và đang chờ chủ quản kiểm duyệt trước khi hiển thị.");
     }

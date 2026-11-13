@@ -1,6 +1,6 @@
   /* ===== v12 ===== */
   function lgLogo() {
-    return `<div class="lg-brand" role="img" aria-label="WINDTP">${windLogo(84)}<div class="lg-word" aria-hidden="true">${"WINDTP".split("").map((c, i) => `<span style="--i:${i}">${c}</span>`).join("")}</div><div class="lg-tag">Một nền tảng · Nhiều tiện ích</div></div>`;
+    return `<div class="lg-brand" role="img" aria-label="WINDTP">${windLogo(84)}<div class="lg-word" aria-hidden="true"><div class="lg-w1">${"WIND".split("").map((c, i) => `<span style="--i:${i}">${c}</span>`).join("")}</div><div class="lg-w2">${"TP".split("").map((c, i) => `<span style="--i:${i + 4}">${c}</span>`).join("")}</div></div><div class="lg-tag">Một nền tảng · Nhiều tiện ích</div></div>`;
   }
   function startSession(acct) {
     startSession_(acct);

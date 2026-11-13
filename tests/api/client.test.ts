@@ -184,6 +184,26 @@ describe("thiết bị và mã mời", () => {
     assert.equal(loop.seen.length, 3); // chỉ thử lại đúng một lần, không lặp vô hạn
   });
 
+  it("nhắn tin: mở cuộc trò chuyện, xem hộp thư, đọc và gửi tin", async () => {
+    const a = make([{ status: 200, body: { id: 7 } }]);
+    assert.equal(await a.client.openThread(12), 7);
+    assert.equal(a.seen[0]?.url, "https://api.windtp.test/threads");
+    assert.equal(a.seen[0]?.body, JSON.stringify({ listingId: 12 }));
+    const box = { threads: [{ id: 7, listingId: 12, title: "Tuyển", role: "buyer", peer: "Hà", lastText: "hi", lastAt: 1, unread: 2 }], unread: 2 };
+    assert.deepEqual(await make([{ status: 200, body: box }]).client.inbox(), box);
+    assert.equal((await failure(make([{ status: 200, body: { unread: 0 } }]).client.inbox())).code, "bad-response");
+    const view = { thread: { id: 7, listingId: 12, title: "Tuyển", role: "buyer", peer: "Hà" }, messages: [{ id: 1, mine: true, text: "hi", at: 1 }] };
+    const v = make([{ status: 200, body: view }]);
+    assert.deepEqual(await v.client.thread(7), view);
+    assert.equal(v.seen[0]?.url, "https://api.windtp.test/threads/7/messages");
+    const send = make([{ status: 200, body: { ok: true, id: 3 } }]);
+    await send.client.sendMessage(7, "xin chào");
+    assert.equal(send.seen[0]?.url, "https://api.windtp.test/threads/7/send");
+    assert.equal(send.seen[0]?.body, JSON.stringify({ text: "xin chào" }));
+    assert.equal((await failure(make([{ status: 400, body: { error: "bad-contact" } }]).client.createListing({ cat: "jobs", title: "t", price: "p", loc: "l", country: "c", region: "r", addr: "a", desc: "d", emoji: "e", phone: "x" }))).code, "bad-contact");
+    assert.equal((await failure(make([{ status: 400, body: { error: "own-listing" } }]).client.openThread(1))).code, "own-listing");
+  });
+
   it("claimSession gọi POST /session/claim và trả replaced", async () => {
     const a = make([{ status: 200, body: { ok: true, replaced: true } }]);
     assert.deepEqual(await a.client.claimSession(), { replaced: true });

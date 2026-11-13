@@ -105,8 +105,8 @@
     <p class="text-lg font-black text-teal-600">${esc(l.price)}</p>
     <p class="text-xs text-slate-500">${esc(l.loc)} \u2022 ${timeAgo(l.ts)} \u2022 Ng\u01B0\u1EDDi \u0111\u0103ng: <b>${esc(l.seller)}</b></p>
     <p class="text-sm text-slate-700 whitespace-pre-line break-words">${esc(l.desc)}</p>
+    ${typeof contactBlock === "function" ? contactBlock(l) : ""}
     <div class="flex flex-wrap gap-2 pt-2">
-      <button data-action="contact-seller" data-id="${l.id}" class="flex-1 ${btnPrimary}">Li\xEAn h\u1EC7 ng\u01B0\u1EDDi \u0111\u0103ng</button>
       <button data-action="save-listing" data-id="${l.id}" class="${btnGhost}">${saved ? "\u{1F516} B\u1ECF l\u01B0u" : "\u{1F516} L\u01B0u tin"}</button>
       ${mine ? `<button data-action="delete-listing" data-id="${l.id}" class="px-4 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-600">G\u1EE1 tin</button>` : ""}
     </div>
@@ -243,6 +243,7 @@
       <select id="set-cur" data-change="currency" class="${field} mt-1"><option value="VND" ${s.currency === "VND" ? "selected" : ""}>\u{1F1FB}\u{1F1F3} \u20AB VND</option><option value="KRW" ${s.currency === "KRW" ? "selected" : ""}>\u{1F1F0}\u{1F1F7} \u20A9 Won</option><option value="JPY" ${s.currency === "JPY" ? "selected" : ""}>\u{1F1EF}\u{1F1F5} \xA5 Y\xEAn</option></select></div>
     <div class="rounded-xl bg-slate-100 p-3 text-[11px] text-slate-600">D\u1EEF li\u1EC7u \u0111\u01B0\u1EE3c l\u01B0u ngay trong tr\xECnh duy\u1EC7t n\xE0y. M\u1EE9c \u0111\u1ED9 h\u1ECDc hi\u1EC7n t\u1EA1i: ${LEVELS[ui.match.level]}.</div>
     <button data-action="open-cultivation-system" class="w-full rounded-xl border border-violet-200 p-3 text-left font-extrabold text-violet-800" style="background:linear-gradient(100deg,#f5d0fe,#dbeafe,#ccfbf1)">🌌 Hệ thống cảnh giới tu tiên <span class="block text-[10px] font-normal mt-1">Xem tất cả cảnh giới, thời gian thăng cấp và quy định hạ cấp</span></button>
+    ${typeof inviteCard === "function" ? inviteCard() : ""}
     ${adminSection()}
     <button data-action="reset-data" class="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-xl text-xs transition-colors">\u0110\u1EB7t l\u1EA1i to\xE0n b\u1ED9 d\u1EEF li\u1EC7u demo</button>
   </div>`;

@@ -35,6 +35,17 @@
       <text x="14" y="78" font-size="30" font-weight="900" font-style="italic" font-family="Inter,Arial,sans-serif" fill="url(#lgB)" letter-spacing="1">WINDTP</text>
       <path d="M150 64 C170 56 190 58 206 52 C192 64 172 70 150 68Z" fill="#f59e0b" opacity=".85"/></svg>`;
   }
+  /** Màn đăng nhập tự sáng/tối: tối khi Dark Mode trong Cài đặt đang bật, hoặc khi hệ điều hành đang ở chế độ tối; tự cập nhật khi đổi. */
+  function lgAutoTheme(d) {
+    const mq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+    const apply = () => d.classList.toggle("lg-dark", document.documentElement.classList.contains("dark") || !!(mq && mq.matches));
+    apply();
+    let mo = null;
+    try { mo = new MutationObserver(apply); mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] }); } catch (e) { }
+    if (mq) { if (mq.addEventListener) mq.addEventListener("change", apply); else if (mq.addListener) mq.addListener(apply); }
+    const watch = new MutationObserver(() => { if (!d.isConnected) { if (mo) mo.disconnect(); if (mq) { if (mq.removeEventListener) mq.removeEventListener("change", apply); else if (mq.removeListener) mq.removeListener(apply); } watch.disconnect(); } });
+    watch.observe(document.body, { childList: true });
+  }
   function lgBg() {
     return `<svg class="lg-bg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><path d="M-40 520 C120 380 300 420 420 520 C300 470 180 500 120 640 Z" fill="#cfe3f5" opacity=".6"/><path d="M-60 600 C100 500 260 540 360 640 C240 600 140 620 80 720 Z" fill="#f8d9b8" opacity=".55"/><path d="M1040 120 C900 40 760 80 700 200 C780 130 900 130 960 240 Z" fill="#cfe3f5" opacity=".6"/><path d="M1060 260 C940 200 820 240 780 340 C860 290 940 300 990 380 Z" fill="#f8d9b8" opacity=".5"/><path d="M1040 520 C920 460 800 500 760 600 C840 540 940 560 1000 660 Z" fill="#cfe3f5" opacity=".5"/></svg>`;
   }
@@ -96,6 +107,7 @@
       <button type="button" class="lg-google" id="lg-google" data-m="register login"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>Tiếp tục với Google</button>
       <p class="lg-switch" id="lg-switch"></p></form></div>`;
     document.body.appendChild(d);
+    lgAutoTheme(d);
     const q = (id) => d.querySelector("#" + id), err = q("lg-err");
     const showErr = (m) => { err.textContent = m; err.style.display = m ? "block" : "none"; };
     let mode = "register";

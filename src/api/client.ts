@@ -5,6 +5,8 @@ import {
   type ApprovalExtras,
   type ApiErrorCode,
   type AdminDevices,
+  type ChatInbox,
+  type ChatView,
   type DeviceList,
   type Referral,
   type CatalogItem,
@@ -48,6 +50,9 @@ const BY_SERVER_CODE: Readonly<Record<string, ApiErrorCode>> = {
   "self-referral": "self-referral",
   "already-purchased": "already-purchased",
   "code-expired": "code-expired",
+  "bad-contact": "bad-contact",
+  "own-listing": "own-listing",
+  "bad-message": "bad-message",
 };
 
 function classify(status: number, serverCode: string): ApiErrorCode {
@@ -94,6 +99,11 @@ export interface ApiClient {
   createListing(input: ListingInput): Promise<{ id: number; status: "pending" | "approved" }>;
   deleteListing(id: number): Promise<void>;
   listings(): Promise<Listing[]>;
+  /** Mở (hoặc lấy lại) cuộc trò chuyện của mình về một tin đăng. */
+  openThread(listingId: number): Promise<number>;
+  inbox(): Promise<ChatInbox>;
+  thread(id: number): Promise<ChatView>;
+  sendMessage(threadId: number, text: string): Promise<void>;
   createPost(text: string, tag: string): Promise<{ id: number; status: "pending" | "approved" }>;
   deletePost(id: number): Promise<void>;
   /** Đặt trạng thái thích của mình cho một bài đã duyệt; trả về tổng lượt thích mới. */
@@ -216,6 +226,10 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, session, fetch
     createListing: async (input) => { const r = await post("/listings", input); return { id: Number(r.id), status: r.status === "approved" ? "approved" : "pending" }; },
     deleteListing: (id) => done(post(`/listings/${id}/delete`)),
     listings: async () => { const r = await request<{ listings: Listing[] }>("GET", "/listings"); if (!Array.isArray(r.listings)) throw new ApiError("bad-response", 200); return r.listings; },
+    openThread: async (listingId) => { const r = await post("/threads", { listingId }); const id = Number(r.id); if (!Number.isInteger(id)) throw new ApiError("bad-response", 200); return id; },
+    inbox: async () => { const r = await request<ChatInbox>("GET", "/threads"); if (!Array.isArray(r.threads)) throw new ApiError("bad-response", 200); return { threads: r.threads, unread: Number(r.unread) || 0 }; },
+    thread: async (id) => { const r = await request<ChatView>("GET", `/threads/${id}/messages`); if (!r.thread || !Array.isArray(r.messages)) throw new ApiError("bad-response", 200); return r; },
+    sendMessage: (threadId, text) => done(post(`/threads/${threadId}/send`, { text })),
     deletePost: (id) => done(post(`/posts/${id}/delete`)),
     profile: async () => {
       const r = await request<{ rev: unknown; state: unknown }>("GET", "/me/state");
