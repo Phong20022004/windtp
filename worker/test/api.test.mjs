@@ -475,84 +475,126 @@ test('cấu hình cửa hàng: admin ghi, mọi người đọc; dữ liệu sai
   assert.equal((await app.call('GET', '/store', { uid: 'u2' })).json.productEdits['sp-1'].name, 'Tên mới', 'gói sai không ghi đè dữ liệu cũ');
 });
 
-// ===== Giới hạn thiết bị =====
+// ===== Giới hạn thiết bị: 2 thiết bị/tháng, 1 phiên hoạt động =====
 const dev = (n) => `device-${n}`.padEnd(16, 'x');
+const claim = (app, uid, n) => app.call('POST', '/session/claim', { uid, device: dev(n), body: {} });
+const me = async (app, uid, n) => (await app.call('GET', '/me', { uid, device: dev(n) }));
 
-test('thiết bị: tối đa 2 thiết bị mỗi tài khoản, thiết bị thứ 3 bị từ chối, 2 thiết bị cũ vẫn dùng bình thường', async () => {
+test('thiết bị: mỗi tháng tối đa 2 thiết bị khác nhau đăng nhập; thiết bị thứ 3 bị từ chối nhưng 2 thiết bị cũ vẫn đăng nhập lại được', async () => {
   const app = await makeApp();
-  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(1) })).status, 200);
-  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(2) })).status, 200);
-  const third = await app.call('GET', '/me', { uid: 'u1', device: dev(3) });
+  assert.equal((await claim(app, 'u1', 1)).status, 200);
+  assert.equal((await claim(app, 'u1', 2)).status, 200);
+  const third = await claim(app, 'u1', 3);
   assert.equal(third.status, 403);
   assert.equal(third.json.error, 'device-limit');
-  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(1) })).status, 200);
-  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(2) })).status, 200);
+  assert.equal((await claim(app, 'u1', 1)).status, 200);
+  assert.equal((await claim(app, 'u1', 2)).status, 200);
   // Tài khoản khác không bị ảnh hưởng, kể cả khi dùng lại cùng mã thiết bị.
-  assert.equal((await app.call('GET', '/me', { uid: 'u2', device: dev(3) })).status, 200);
+  assert.equal((await claim(app, 'u2', 3)).status, 200);
 });
 
-test('thiết bị: thiếu hoặc sai định dạng X-Device-Id bị 400; admin không bị giới hạn', async () => {
+test('phiên: chỉ 1 thiết bị hoạt động cùng lúc; đăng nhập nơi mới thì nơi cũ bị đăng xuất', async () => {
+  const app = await makeApp();
+  assert.deepEqual([(await claim(app, 'u1', 1)).json.replaced], [false]);
+  assert.equal((await me(app, 'u1', 1)).status, 200);
+  const c2 = await claim(app, 'u1', 2);
+  assert.deepEqual([c2.status, c2.json.replaced], [200, true]);
+  const old = await me(app, 'u1', 1);
+  assert.equal(old.status, 403);
+  assert.equal(old.json.error, 'session-replaced');
+  assert.equal((await me(app, 'u1', 2)).status, 200);
+  // Đăng nhập lại ở máy 1 (đã nằm trong 2 máy của tháng) thì máy 2 bị đẩy ra.
+  assert.equal((await claim(app, 'u1', 1)).json.replaced, true);
+  assert.equal((await me(app, 'u1', 2)).json.error, 'session-replaced');
+  assert.equal((await me(app, 'u1', 1)).status, 200);
+});
+
+test('phiên: thiết bị thứ 3 bị từ chối không làm mất phiên của thiết bị đang dùng', async () => {
+  const app = await makeApp();
+  await claim(app, 'u1', 1); await claim(app, 'u1', 2);
+  assert.equal((await claim(app, 'u1', 3)).status, 403);
+  assert.equal((await me(app, 'u1', 3)).json.error, 'session-replaced');
+  assert.equal((await me(app, 'u1', 2)).status, 200);
+});
+
+test('phiên: tài khoản chưa có phiên (cũ) thì yêu cầu đầu tiên giành chỗ, thiết bị khác sau đó bị chặn tới khi đăng nhập', async () => {
+  const app = await makeApp();
+  assert.equal((await me(app, 'u1', 1)).status, 200);
+  assert.equal((await me(app, 'u1', 2)).json.error, 'session-replaced');
+  assert.equal((await claim(app, 'u1', 2)).status, 200);
+  assert.equal((await me(app, 'u1', 2)).status, 200);
+});
+
+test('thiết bị: sang tháng mới được làm mới 2 thiết bị', async () => {
+  const app = await makeApp(); // 2026-11-11
+  await claim(app, 'u1', 1); await claim(app, 'u1', 2);
+  assert.equal((await claim(app, 'u1', 3)).status, 403);
+  app.state.t += 25 * DAY; // 2026-12-06
+  assert.equal((await claim(app, 'u1', 3)).status, 200);
+  assert.equal((await claim(app, 'u1', 4)).status, 200);
+  assert.equal((await claim(app, 'u1', 5)).status, 403);
+  const list = await app.call('GET', '/devices', { uid: 'u1', device: dev(4) });
+  assert.equal(list.json.month, '2026-12');
+  assert.deepEqual(list.json.devices.map((d) => [d.id, d.current, d.active]), [[dev(3), false, false], [dev(4), true, true]]);
+});
+
+test('thiết bị: thiết bị đang hoạt động qua tháng mới được ghi lại cho tháng đó và tính vào hạn mức 2', async () => {
+  const app = await makeApp();
+  await claim(app, 'u1', 1);
+  app.state.t += 25 * DAY;
+  assert.equal((await me(app, 'u1', 1)).status, 200);
+  assert.equal((await claim(app, 'u1', 2)).status, 200);
+  assert.equal((await claim(app, 'u1', 3)).status, 403);
+});
+
+test('thiết bị: ranh giới tháng tính theo giờ Việt Nam', async () => {
+  const app = await makeApp();
+  app.state.t = Date.parse('2026-11-30T16:59:00Z'); // 23:59 ngày 30/11 giờ VN
+  await claim(app, 'u1', 1); await claim(app, 'u1', 2);
+  assert.equal((await claim(app, 'u1', 3)).status, 403);
+  app.state.t = Date.parse('2026-11-30T17:01:00Z'); // 00:01 ngày 1/12 giờ VN
+  assert.equal((await claim(app, 'u1', 3)).status, 200);
+});
+
+test('thiết bị: thiếu hoặc sai định dạng X-Device-Id bị 400; admin không bị giới hạn và không bị đăng xuất', async () => {
   const app = await makeApp();
   assert.equal((await app.call('GET', '/me', { uid: 'u1', device: '' })).status, 400);
   assert.equal((await app.call('GET', '/me', { uid: 'u1', device: 'ngan' })).status, 400);
   assert.equal((await app.call('GET', '/me', { uid: 'u1', device: 'co dau cach va ky tu la !!!' })).status, 400);
   assert.equal((await app.call('GET', '/me', { uid: 'u1', device: 'x'.repeat(65) })).status, 400);
-  for (let i = 1; i <= 4; i++) assert.equal((await app.call('GET', '/me', { uid: 'boss', admin: true, device: dev(i) })).status, 200);
+  assert.equal((await claim(app, 'u1', 1)).status, 200);
+  for (let i = 1; i <= 4; i++) {
+    assert.equal((await app.call('POST', '/session/claim', { uid: 'boss', admin: true, device: dev(i), body: {} })).status, 200);
+    assert.equal((await app.call('GET', '/me', { uid: 'boss', admin: true, device: dev(i) })).status, 200);
+  }
+  assert.equal((await app.call('GET', '/me', { uid: 'boss', admin: true, device: dev(1) })).status, 200);
   assert.equal((await app.call('GET', '/me', { uid: 'boss', admin: true, device: '' })).status, 200);
-  const none = app.db.sqlite.prepare('SELECT COUNT(*) AS n FROM devices WHERE uid = ?').get('u1');
-  assert.equal(none.n, 0);
+  assert.equal(app.db.sqlite.prepare('SELECT COUNT(*) AS n FROM device_months WHERE uid = ?').get('boss').n, 0);
+  assert.equal(app.db.sqlite.prepare('SELECT COUNT(*) AS n FROM active_sessions WHERE uid = ?').get('boss').n, 0);
 });
 
-test('thiết bị: nhiều thiết bị mới gửi song song chỉ có đúng 2 thiết bị được nhận; cùng một thiết bị song song đều qua', async () => {
+test('thiết bị: nhiều thiết bị mới đăng nhập song song chỉ có đúng 2 thiết bị được nhận', async () => {
   const app = await makeApp();
-  const rs = await Promise.all([1, 2, 3, 4, 5, 6].map((i) => app.call('GET', '/me', { uid: 'u1', device: dev(i) })));
+  const rs = await Promise.all([1, 2, 3, 4, 5, 6].map((i) => claim(app, 'u1', i)));
   assert.equal(rs.filter((r) => r.status === 200).length, 2);
   assert.equal(rs.filter((r) => r.status === 403).length, 4);
-  assert.equal(app.db.sqlite.prepare('SELECT COUNT(*) AS n FROM devices WHERE uid = ?').get('u1').n, 2);
-  const same = await Promise.all([1, 2, 3, 4].map(() => app.call('GET', '/me', { uid: 'u9', device: dev(7) })));
+  const month = app.db.sqlite.prepare('SELECT COUNT(*) AS n FROM device_months WHERE uid = ?').get('u1').n;
+  assert.equal(month, 2);
+  const same = await Promise.all([1, 2, 3, 4].map(() => claim(app, 'u9', 7)));
   assert.deepEqual(same.map((r) => r.status), [200, 200, 200, 200]);
 });
 
-test('thiết bị: xem danh sách, gỡ thiết bị khác để nhường chỗ, không gỡ được thiết bị đang dùng', async () => {
+test('thiết bị: danh sách thiết bị trong tháng; admin làm mới cho người dùng, người thường không gọi được', async () => {
   const app = await makeApp();
-  await app.call('GET', '/me', { uid: 'u1', device: dev(1) });
-  await app.call('GET', '/me', { uid: 'u1', device: dev(2) });
-  const list = await app.call('GET', '/devices', { uid: 'u1', device: dev(1) });
+  await claim(app, 'u1', 1); await claim(app, 'u1', 2);
+  const list = await app.call('GET', '/devices', { uid: 'u1', device: dev(2) });
   assert.equal(list.json.max, 2);
-  assert.deepEqual(list.json.devices.map((d) => [d.id, d.current]), [[dev(1), true], [dev(2), false]]);
-  assert.equal((await app.call('POST', '/devices/remove', { uid: 'u1', device: dev(1), body: { deviceId: dev(1) } })).status, 400);
-  assert.equal((await app.call('POST', '/devices/remove', { uid: 'u1', device: dev(1), body: { deviceId: dev(9) } })).status, 404);
-  assert.equal((await app.call('POST', '/devices/remove', { uid: 'u1', device: dev(1), body: { deviceId: 'khong hop le' } })).status, 400);
-  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(3) })).status, 403);
-  assert.equal((await app.call('POST', '/devices/remove', { uid: 'u1', device: dev(1), body: { deviceId: dev(2) } })).status, 200);
-  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(3) })).status, 200);
-  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(2) })).status, 403); // thiết bị đã gỡ không còn chỗ
-  // Người khác không gỡ được thiết bị của mình.
-  await app.call('GET', '/me', { uid: 'u2', device: dev(5) });
-  assert.equal((await app.call('POST', '/devices/remove', { uid: 'u2', device: dev(5), body: { deviceId: dev(1) } })).status, 404);
-});
-
-test('thiết bị: admin mở khóa cho người dùng; người thường không gọi được', async () => {
-  const app = await makeApp();
-  await app.call('GET', '/me', { uid: 'u1', device: dev(1) });
-  await app.call('GET', '/me', { uid: 'u1', device: dev(2) });
-  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(3) })).status, 403);
+  assert.deepEqual(list.json.devices.map((d) => [d.id, d.current, d.active]), [[dev(1), false, false], [dev(2), true, true]]);
+  assert.equal((await claim(app, 'u1', 3)).status, 403);
   assert.equal((await app.call('POST', '/admin/devices/reset', { uid: 'u1', body: { uid: 'u1' } })).status, 403);
   const r = await app.call('POST', '/admin/devices/reset', { uid: 'boss', admin: true, body: { uid: 'u1' } });
   assert.deepEqual([r.status, r.json.removed], [200, 2]);
-  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(3) })).status, 200);
-});
-
-test('thiết bị: thiết bị không dùng quá 30 ngày nhường chỗ cho thiết bị mới', async () => {
-  const app = await makeApp();
-  await app.call('GET', '/me', { uid: 'u1', device: dev(1) });
-  app.state.t += 20 * DAY;
-  await app.call('GET', '/me', { uid: 'u1', device: dev(2) });
-  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(3) })).status, 403);
-  app.state.t += 11 * DAY; // thiết bị 1 đã 31 ngày không dùng, thiết bị 2 mới 11 ngày
-  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(3) })).status, 200);
-  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(2) })).status, 200);
-  assert.equal((await app.call('GET', '/me', { uid: 'u1', device: dev(1) })).status, 403);
+  assert.equal((await claim(app, 'u1', 3)).status, 200);
 });
 
 // ===== Mã mời =====

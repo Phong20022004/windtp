@@ -34,13 +34,17 @@ export interface Referral {
 export interface DeviceInfo {
   id: string;
   firstSeen: number;
-  lastSeen: number;
   /** Đúng thiết bị đang gửi yêu cầu. */
   current: boolean;
+  /** Thiết bị đang giữ phiên đăng nhập (cùng lúc chỉ có một). */
+  active: boolean;
 }
 
 export interface DeviceList {
+  /** Số thiết bị tối đa mỗi tháng. */
   max: number;
+  /** Tháng đang tính (YYYY-MM, giờ Việt Nam); sang tháng mới được làm mới. */
+  month: string;
   devices: DeviceInfo[];
 }
 
@@ -171,6 +175,7 @@ export type ApiErrorCode =
   | "premium-required"
   | "course-required"
   | "device-limit"
+  | "session-replaced"
   | "bad-code"
   | "no-code"
   | "self-referral"
@@ -194,7 +199,8 @@ export const API_MESSAGES: Readonly<Record<ApiErrorCode, string>> = {
   "too-large": "Nội dung quá lớn",
   "premium-required": "Bài này cần Premium còn hạn, hãy gia hạn để học tiếp",
   "course-required": "Bạn chưa sở hữu khóa học của ngôn ngữ này",
-  "device-limit": "Tài khoản đã đăng nhập trên 2 thiết bị. Hãy gỡ một thiết bị cũ (ở mục Mời bạn bè) rồi thử lại",
+  "device-limit": "Tháng này tài khoản đã đăng nhập trên 2 thiết bị. Sang tháng sau bạn có thể dùng thiết bị mới, hoặc liên hệ admin để được hỗ trợ",
+  "session-replaced": "Tài khoản vừa đăng nhập ở thiết bị khác nên phiên này đã được đăng xuất",
   "bad-code": "Mã mời gồm 8 ký tự chữ và số",
   "no-code": "Không tìm thấy mã mời này",
   "self-referral": "Bạn không thể dùng mã mời của chính mình",

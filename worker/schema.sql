@@ -122,13 +122,20 @@ CREATE TABLE IF NOT EXISTS store (
   updated_at INTEGER NOT NULL
 );
 
--- Thiết bị đã đăng nhập của mỗi tài khoản (tối đa MAX_DEVICES, xem economy.js). device_id do app tạo và gửi qua header X-Device-Id.
-CREATE TABLE IF NOT EXISTS devices (
+-- Giới hạn thiết bị: mỗi tháng (giờ Việt Nam) một tài khoản chỉ dùng tối đa MAX_DEVICES_PER_MONTH thiết bị khác nhau để đăng nhập,
+-- sang tháng mới được làm mới. Cùng lúc chỉ một thiết bị đang hoạt động (active_sessions): đăng nhập nơi mới thì nơi cũ bị đăng xuất.
+-- device_id do app tạo và gửi qua header X-Device-Id.
+CREATE TABLE IF NOT EXISTS device_months (
   uid TEXT NOT NULL,
+  month TEXT NOT NULL,
   device_id TEXT NOT NULL,
   first_seen INTEGER NOT NULL,
-  last_seen INTEGER NOT NULL,
-  PRIMARY KEY (uid, device_id)
+  PRIMARY KEY (uid, month, device_id)
+);
+CREATE TABLE IF NOT EXISTS active_sessions (
+  uid TEXT PRIMARY KEY,
+  device_id TEXT NOT NULL,
+  since INTEGER NOT NULL
 );
 
 -- Mã mời: mỗi tài khoản đúng một mã. Một người chỉ nhập mã của người khác một lần (invitee là khóa chính).

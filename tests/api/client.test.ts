@@ -145,6 +145,22 @@ describe("thiết bị và mã mời", () => {
     assert.match(error.message, /2 thiết bị/);
   });
 
+  it("bị đăng xuất vì đăng nhập ở thiết bị khác thì báo session-replaced", async () => {
+    const { client } = make([{ status: 403, body: { error: "session-replaced" } }]);
+    const error = await failure(client.me());
+    assert.equal(error.code, "session-replaced");
+    assert.match(error.message, /đăng xuất/);
+  });
+
+  it("claimSession gọi POST /session/claim và trả replaced", async () => {
+    const a = make([{ status: 200, body: { ok: true, replaced: true } }]);
+    assert.deepEqual(await a.client.claimSession(), { replaced: true });
+    assert.equal(a.seen[0]?.method, "POST");
+    assert.equal(a.seen[0]?.url, "https://api.windtp.test/session/claim");
+    const b = make([{ status: 200, body: { ok: true } }]);
+    assert.deepEqual(await b.client.claimSession(), { replaced: false });
+  });
+
   it("đọc mã mời của mình và đúng các lỗi khi nhập mã", async () => {
     const info = { code: "ABCD2345", reward: { xu: 10000, chips: 7000 }, invited: 2, rewarded: 1, referredBy: false };
     const a = make([{ status: 200, body: info }]);
@@ -164,16 +180,12 @@ describe("thiết bị và mã mời", () => {
     assert.deepEqual(JSON.parse(ok.seen[0]?.body ?? "{}"), { code: "ABCD2345" });
   });
 
-  it("liệt kê, gỡ thiết bị và admin mở khóa", async () => {
-    const list = { max: 2, devices: [{ id: "device-a-123456789", firstSeen: 1, lastSeen: 2, current: true }] };
+  it("liệt kê thiết bị trong tháng và admin làm mới", async () => {
+    const list = { max: 2, month: "2026-11", devices: [{ id: "device-a-123456789", firstSeen: 1, current: true, active: true }] };
     const a = make([{ status: 200, body: list }]);
     assert.deepEqual(await a.client.devices(), list);
-    const bad = make([{ status: 200, body: { max: "2" } }]);
+    const bad = make([{ status: 200, body: { max: 2, devices: [] } }]);
     assert.equal((await failure(bad.client.devices())).code, "bad-response");
-    const r = make([{ status: 200, body: { ok: true } }]);
-    await r.client.removeDevice("device-b-123456789");
-    assert.equal(r.seen[0]?.url, "https://api.windtp.test/devices/remove");
-    assert.deepEqual(JSON.parse(r.seen[0]?.body ?? "{}"), { deviceId: "device-b-123456789" });
     const adm = make([{ status: 200, body: { ok: true, removed: 2 } }]);
     assert.equal(await adm.client.admin.resetDevices("u1"), 2);
     assert.equal(adm.seen[0]?.url, "https://api.windtp.test/admin/devices/reset");

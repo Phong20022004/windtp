@@ -48,10 +48,10 @@ export const CONTENT_LANGS = ['en', 'zh', 'ja', 'ko', 'de', 'fr', 'es']; // kh�
 
 // Mã mời: người mời nhận thưởng MỘT LẦN cho mỗi người được mời, chỉ khi đơn có quyền học khóa (access:<ngôn ngữ>) của người đó được duyệt.
 export const REFERRAL_REWARD = { xu: 10000, chips: 7000 };
-// Giới hạn thiết bị cho mỗi tài khoản (admin không bị giới hạn). Thiết bị không dùng quá DEVICE_IDLE_MS thì nhường chỗ.
+// Giới hạn thiết bị (admin không bị giới hạn): mỗi tháng tối đa MAX_DEVICES thiết bị khác nhau, và chỉ một thiết bị hoạt động cùng lúc.
 export const MAX_DEVICES = 2;
-export const DEVICE_IDLE_MS = 30 * 86400000;
-export const DEVICE_TOUCH_MS = 3600000; // chỉ ghi lại lần dùng cuối tối đa mỗi giờ một lần
+export const DEVICE_TZ_OFFSET_MS = 7 * 3600000; // tháng tính theo giờ Việt Nam
+export const monthKey = (t) => new Date(t + DEVICE_TZ_OFFSET_MS).toISOString().slice(0, 7);
 
 export const MAX_LISTINGS_PER_DAY = 5;
 export const BUILTIN_LISTING_CATS = ['market', 'jobs', 'housing'];

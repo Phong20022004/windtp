@@ -39,6 +39,7 @@ const BY_SERVER_CODE: Readonly<Record<string, ApiErrorCode>> = {
   "premium-required": "premium-required",
   "course-required": "course-required",
   "device-limit": "device-limit",
+  "session-replaced": "session-replaced",
   "bad-code": "bad-code",
   "no-code": "no-code",
   "self-referral": "self-referral",
@@ -82,8 +83,9 @@ export interface ApiClient {
   redeemReferral(code: string): Promise<void>;
   /** Các thiết bị đang được tính cho tài khoản (tối đa `max`). */
   devices(): Promise<DeviceList>;
-  /** Gỡ một thiết bị khác để nhường chỗ. */
-  removeDevice(deviceId: string): Promise<void>;
+  /** Gọi ngay sau khi đăng nhập: thiết bị này giữ phiên, thiết bị khác bị đăng xuất. */
+  claimSession(): Promise<{ replaced: boolean }>;
+
 
   createListing(input: ListingInput): Promise<{ id: number; status: "pending" | "approved" }>;
   deleteListing(id: number): Promise<void>;
@@ -183,10 +185,10 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, fetchImpl }: A
     redeemReferral: (code) => done(post("/referral/redeem", { code })),
     devices: async () => {
       const r = await request<DeviceList>("GET", "/devices");
-      if (typeof r.max !== "number" || !Array.isArray(r.devices)) throw new ApiError("bad-response", 200);
+      if (typeof r.max !== "number" || typeof r.month !== "string" || !Array.isArray(r.devices)) throw new ApiError("bad-response", 200);
       return r;
     },
-    removeDevice: (deviceId) => done(post("/devices/remove", { deviceId })),
+    claimSession: async () => ({ replaced: (await post("/session/claim", {})).replaced === true }),
     store: async () => { const r = await request<StoreConfig>("GET", "/store"); if (!Array.isArray(r.customProducts) || !Array.isArray(r.hiddenProducts) || !Array.isArray(r.customCats)) throw new ApiError("bad-response", 200); return r; },
     tasks: async () => (await request<{ tasks: SpecialTask[] }>("GET", "/tasks")).tasks,
     myOrders: async () => (await request<{ orders: Order[] }>("GET", "/orders/mine")).orders,

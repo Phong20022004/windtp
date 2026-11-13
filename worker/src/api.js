@@ -64,20 +64,32 @@ export function createApi({ verify, now = () => Date.now() }) {
     return q(db, 'SELECT balance, chips, premium_until AS premiumUntil, birth FROM wallets WHERE uid = ?', uid).first();
   }
   const DEVICE_RE = /^[A-Za-z0-9_-]{16,64}$/;
-  /** Ghi nhận thiết bị của tài khoản; thiết bị thứ MAX_DEVICES+1 bị từ chối (một câu lệnh nguyên tử nên song song cũng không vượt). */
-  async function registerDevice(db, uid, deviceId, t) {
-    const row = await q(db, 'SELECT last_seen AS lastSeen FROM devices WHERE uid = ? AND device_id = ?', uid, deviceId).first();
-    if (row) {
-      if (t - row.lastSeen > E.DEVICE_TOUCH_MS) await q(db, 'UPDATE devices SET last_seen = ? WHERE uid = ? AND device_id = ?', t, uid, deviceId).run();
-      return;
-    }
-    await q(db, 'DELETE FROM devices WHERE uid = ? AND last_seen < ?', uid, t - E.DEVICE_IDLE_MS).run();
+  /** Ghi thiết bị vào tháng hiện tại; thiết bị thứ MAX_DEVICES+1 trong tháng bị từ chối (một câu lệnh nguyên tử nên song song cũng không vượt). */
+  async function registerMonth(db, uid, deviceId, t) {
+    const month = E.monthKey(t);
     try {
-      const r = await q(db, 'INSERT INTO devices (uid, device_id, first_seen, last_seen) SELECT ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM devices WHERE uid = ?) < ?', uid, deviceId, t, t, uid, E.MAX_DEVICES).run();
-      if (!r.meta.changes) throw new HttpError(403, 'device-limit');
+      const r = await q(db, 'INSERT INTO device_months (uid, month, device_id, first_seen) SELECT ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM device_months WHERE uid = ? AND month = ? AND device_id = ?) OR (SELECT COUNT(*) FROM device_months WHERE uid = ? AND month = ?) < ?', uid, month, deviceId, t, uid, month, deviceId, uid, month, E.MAX_DEVICES).run();
+      if (!r.meta.changes && !(await q(db, 'SELECT 1 AS x FROM device_months WHERE uid = ? AND month = ? AND device_id = ?', uid, month, deviceId).first())) throw new HttpError(403, 'device-limit');
     } catch (e) {
       if (e instanceof HttpError) throw e;
       if (!/UNIQUE|PRIMARY KEY/i.test(String(e && e.message))) throw e; // cùng thiết bị gửi hai yêu cầu đầu tiên song song: đã được ghi nhận
+    }
+  }
+  /** Đăng nhập: thiết bị này trở thành thiết bị hoạt động duy nhất (thiết bị khác sẽ nhận session-replaced). */
+  async function claimSession(db, uid, deviceId, t) {
+    await registerMonth(db, uid, deviceId, t);
+    const prev = await q(db, 'SELECT device_id AS deviceId FROM active_sessions WHERE uid = ?', uid).first();
+    await q(db, 'INSERT INTO active_sessions (uid, device_id, since) VALUES (?, ?, ?) ON CONFLICT(uid) DO UPDATE SET device_id = excluded.device_id, since = excluded.since', uid, deviceId, t).run();
+    return { replaced: !!prev && prev.deviceId !== deviceId };
+  }
+  /** Mỗi yêu cầu: chỉ thiết bị đang hoạt động được dùng; chưa có ai (tài khoản cũ) thì thiết bị này nhận chỗ. */
+  async function checkSession(db, uid, deviceId, t) {
+    const row = await q(db, 'SELECT device_id AS deviceId, since FROM active_sessions WHERE uid = ?', uid).first();
+    if (!row) { await claimSession(db, uid, deviceId, t); return; }
+    if (row.deviceId !== deviceId) throw new HttpError(403, 'session-replaced');
+    if (E.monthKey(row.since) !== E.monthKey(t)) { // sang tháng mới: ghi lại thiết bị đang dùng cho tháng này
+      await registerMonth(db, uid, deviceId, t);
+      await q(db, 'UPDATE active_sessions SET since = ? WHERE uid = ? AND device_id = ?', t, uid, deviceId).run();
     }
   }
 
@@ -115,22 +127,19 @@ export function createApi({ verify, now = () => Date.now() }) {
     return { uid: user.uid, admin: user.admin, balance: w.balance, chips: w.chips, premiumUntil: w.premiumUntil, birth: w.birth, history: rows.results, owned: own.results.map((r) => r.id), serverTime: t };
   });
 
-  route('GET', '/devices', 'user', async ({ db, user, deviceId }) => ({
-    max: E.MAX_DEVICES,
-    devices: user.admin ? [] : (await q(db, 'SELECT device_id AS id, first_seen AS firstSeen, last_seen AS lastSeen FROM devices WHERE uid = ? ORDER BY first_seen', user.uid).all()).results.map((d) => ({ ...d, current: d.id === deviceId })),
-  }));
-  // Gỡ một thiết bị khác để nhường chỗ (không gỡ được thiết bị đang dùng).
-  route('POST', '/devices/remove', 'user', async ({ db, user, deviceId, body }) => {
-    if (typeof body.deviceId !== 'string' || !DEVICE_RE.test(body.deviceId)) throw bad('bad-device');
-    if (body.deviceId === deviceId) throw bad('current-device');
-    const r = await q(db, 'DELETE FROM devices WHERE uid = ? AND device_id = ?', user.uid, body.deviceId).run();
-    if (!r.meta.changes) throw new HttpError(404, 'not-found');
-    return { ok: true };
+  // Đăng nhập xong app gọi một lần để giành quyền "thiết bị hoạt động" (đẩy thiết bị cũ ra); quá giới hạn tháng thì 403 device-limit.
+  route('POST', '/session/claim', 'user', async ({ db, user, deviceId, t }) => user.admin ? { ok: true, replaced: false } : { ok: true, ...(await claimSession(db, user.uid, deviceId, t)) });
+  route('GET', '/devices', 'user', async ({ db, user, deviceId, t }) => {
+    const month = E.monthKey(t);
+    const used = user.admin ? [] : (await q(db, 'SELECT device_id AS id, first_seen AS firstSeen FROM device_months WHERE uid = ? AND month = ? ORDER BY first_seen', user.uid, month).all()).results;
+    const act = user.admin ? null : await q(db, 'SELECT device_id AS deviceId FROM active_sessions WHERE uid = ?', user.uid).first();
+    return { max: E.MAX_DEVICES, month, devices: used.map((d) => ({ id: d.id, firstSeen: d.firstSeen, current: d.id === deviceId, active: !!act && act.deviceId === d.id })) };
   });
-  // Admin mở khóa cho người dùng bị kẹt thiết bị (ví dụ mất máy cũ).
+  // Admin làm mới số thiết bị trong tháng cho người dùng bị kẹt (ví dụ mất máy).
   route('POST', '/admin/devices/reset', 'admin', async ({ db, body }) => {
     if (typeof body.uid !== 'string' || !body.uid || body.uid.length > 128) throw bad('bad-uid');
-    const r = await q(db, 'DELETE FROM devices WHERE uid = ?', body.uid).run();
+    const r = await q(db, 'DELETE FROM device_months WHERE uid = ?', body.uid).run();
+    await q(db, 'DELETE FROM active_sessions WHERE uid = ?', body.uid).run();
     return { ok: true, removed: r.meta.changes };
   });
 
@@ -600,7 +609,7 @@ export function createApi({ verify, now = () => Date.now() }) {
       const deviceId = request.headers.get('x-device-id') || '';
       if (!user.admin) {
         if (!DEVICE_RE.test(deviceId)) throw new HttpError(400, 'bad-device');
-        await registerDevice(env.DB, user.uid, deviceId, now());
+        if (url.pathname !== '/session/claim') await checkSession(env.DB, user.uid, deviceId, now());
       }
       const body = request.method === 'GET' ? {} : await readBody(request, match.r.max || (match.r.auth === 'admin' ? 65536 : 8192));
       const out = await match.r.fn({ db: env.DB, env, user, t: now(), body, url, deviceId, params: match.m.groups || {} });

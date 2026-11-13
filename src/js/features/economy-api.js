@@ -9,10 +9,21 @@
 
   /** Hiện lỗi API bằng tiếng Việt; lỗi mạng chỉ nhắc tối đa một lần mỗi 20 giây để không dồn dập. */
   function econFail(e, quiet) {
+    if (e && (e.code === "session-replaced" || e.code === "device-limit") && state.account) { econKick(e.message); return; }
     const msg = e && e.message ? e.message : "Có lỗi xảy ra, vui lòng thử lại";
     if (quiet && Date.now() - econ.warnedAt < 20000) return;
     econ.warnedAt = Date.now();
     toast(msg);
+  }
+
+  /** Tài khoản đăng nhập nơi khác (hoặc đã dùng đủ 2 thiết bị trong tháng): đăng xuất phiên này. */
+  function econKick(msg) {
+    if (econ.kicked) return;
+    econ.kicked = true;
+    try { window.WindtpAuth.logout().catch(() => { }); } catch (e) { }
+    localSignOut();
+    toast(msg);
+    window.setTimeout(() => { econ.kicked = false; }, 3000);
   }
 
   /** Chạy một thao tác tiền tệ; chặn bấm đúp cùng một thao tác trong lúc đang chờ máy chủ. */
@@ -84,9 +95,12 @@
       commit(); renderTasks();
     }, () => { });
   }
-  function econBoot() {
-    econ.me = null; econ.ordersLoaded = false; econ.syncReady = false;
-    econRefresh(false).then(() => { if (isAdmin()) econPublishCatalog(); });
+  /** claim=true khi vừa đăng nhập: giành phiên (thiết bị khác bị đăng xuất) rồi mới lấy ví. Mở lại app đã đăng nhập thì không giành lại. */
+  function econBoot(claim) {
+    econ.me = null; econ.ref = null; econ.devs = null; econ.ordersLoaded = false; econ.syncReady = false;
+    const go = () => econRefresh(false).then(() => { if (isAdmin()) econPublishCatalog(); });
+    if (!claim || !window.WindtpApi) { go(); return; }
+    econClient().claimSession().then(go, (e) => { if (e && e.code === "device-limit") econFail(e); else go(); });
   }
   function econReset() {
     econ.me = null; econ.adminOrders = []; econ.myOrders = []; econ.ordersLoaded = false; econ.birthSent = ""; econ.syncReady = false; window.clearTimeout(econ.syncTimer);
@@ -370,10 +384,11 @@
       <input id="ref-code" maxlength="8" autocomplete="off" placeholder="Nhập mã mời của bạn bè" class="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-200 text-xs uppercase" />
       <button data-action="ref-redeem" class="px-3 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white keep-white">Nhập mã</button>
     </div>`}
-    ${devs ? `<div class="pt-3 border-t border-slate-100"><p class="text-xs font-bold text-slate-800 mb-2">📱 Thiết bị đăng nhập (${devs.devices.length}/${devs.max})</p>
-      <div class="space-y-2">${devs.devices.map((d, i) => `<div class="flex items-center justify-between gap-2 text-xs">
-        <div class="min-w-0"><p class="font-bold text-slate-700 truncate">Thiết bị ${i + 1}${d.current ? " (máy này)" : ""}</p><p class="text-[10px] text-slate-400">Dùng lần cuối ${fmtDateTime(d.lastSeen)}</p></div>
-        ${d.current ? "" : `<button data-action="device-remove" data-id="${esc(d.id)}" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-50 text-rose-600 hover:bg-rose-100">Gỡ</button>`}
+    ${devs ? `<div class="pt-3 border-t border-slate-100"><p class="text-xs font-bold text-slate-800 mb-1">📱 Thiết bị tháng ${esc(devs.month.slice(5) + "/" + devs.month.slice(0, 4))}: ${devs.devices.length}/${devs.max}</p>
+      <p class="text-[11px] text-slate-500 mb-2">Mỗi tháng đăng nhập tối đa ${devs.max} thiết bị, sang tháng mới được làm mới. Cùng lúc chỉ dùng được trên 1 thiết bị: đăng nhập ở nơi khác thì máy này bị đăng xuất.</p>
+      <div class="space-y-1.5">${devs.devices.map((d, i) => `<div class="flex items-center justify-between gap-2 text-xs">
+        <span class="font-bold text-slate-700">Thiết bị ${i + 1}${d.current ? " (máy này)" : ""}</span>
+        <span class="text-[10px] ${d.active ? "text-emerald-600 font-bold" : "text-slate-400"}">${d.active ? "Đang đăng nhập" : "Đã dùng " + fmtDateTime(d.firstSeen)}</span>
       </div>`).join("")}</div></div>` : ""}
   </div>`;
   }
@@ -413,12 +428,6 @@
     if (!/^[A-Z2-9]{8}$/.test(code)) { toast("Mã mời gồm 8 ký tự"); return; }
     const ok = await econRun("ref-redeem", () => redeemCode(code, false));
     if (ok) await econLoadInvite(true);
-  };
-  actions["device-remove"] = async (el) => {
-    const id = el.dataset.id;
-    if (!id || !confirm("Gỡ thiết bị này khỏi tài khoản?")) return;
-    const ok = await econRun("device-remove", async () => { await econClient().removeDevice(id); return true; });
-    if (ok) { toast("Đã gỡ thiết bị."); await econLoadInvite(true); }
   };
   // Mã mời lấy từ liên kết ?ref= được nhập tự động ở lần đăng nhập đầu tiên.
   function econAutoRedeem() {

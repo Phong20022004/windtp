@@ -49,7 +49,7 @@
     scrubEconomy(state);
     state.account = publicAccount(acct);
     commit();
-    econBoot();
+    econBoot(true);
   }
   function localSignOut() {
     econReset();
