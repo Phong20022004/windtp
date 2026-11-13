@@ -62,6 +62,9 @@ function classify(status: number, serverCode: string): ApiErrorCode {
 
 export interface ApiClient {
   me(): Promise<Me>;
+  /** Dữ liệu cá nhân đồng bộ giữa các thiết bị (`state` là null khi chưa có bản nào). */
+  profile(): Promise<{ rev: number; state: Record<string, unknown> | null }>;
+  saveProfile(state: Record<string, unknown>): Promise<number>;
   setBirth(birth: string): Promise<void>;
   claim(taskId: string): Promise<{ xu: number; chips: number }>;
   exchangeChips(xu: number): Promise<void>;
@@ -192,6 +195,12 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, fetchImpl }: A
     deleteListing: (id) => done(post(`/listings/${id}/delete`)),
     listings: async () => { const r = await request<{ listings: Listing[] }>("GET", "/listings"); if (!Array.isArray(r.listings)) throw new ApiError("bad-response", 200); return r.listings; },
     deletePost: (id) => done(post(`/posts/${id}/delete`)),
+    profile: async () => {
+      const r = await request<{ rev: unknown; state: unknown }>("GET", "/me/state");
+      const state = r.state && typeof r.state === "object" && !Array.isArray(r.state) ? (r.state as Record<string, unknown>) : null;
+      return { rev: Number(r.rev) || 0, state };
+    },
+    saveProfile: async (state) => Number((await request<{ rev: unknown }>("PUT", "/me/state", { state })).rev) || 0,
     likePost: async (id, liked) => { const r = await post(`/posts/${id}/like`, { liked }); return { likes: Number(r.likes) || 0, liked: r.liked === true }; },
     commentPost: async (id, text) => ({ id: Number((await post(`/posts/${id}/comments`, { text })).id) }),
     deleteComment: (id) => done(post(`/comments/${id}/delete`)),

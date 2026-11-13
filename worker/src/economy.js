@@ -57,3 +57,6 @@ export const MAX_LISTINGS_PER_DAY = 5;
 export const BUILTIN_LISTING_CATS = ['market', 'jobs', 'housing'];
 export const MAX_COMMENTS_PER_DAY = 30;
 export const MAX_COMMENT_LEN = 300;
+// Dữ liệu cá nhân đồng bộ giữa thiết bị (khớp danh sách ở economy-api.js). Không có tiền, chip, quyền sở hữu, Premium, bài đăng.
+export const PROFILE_KEYS = ['lang', 'known', 'saved', 'reminders', 'notices', 'settings', 'streak', 'lastCheckIn', 'loginStreak', 'lastLogin', 'cultivationLevel', 'cultivationLastPenalty', 'streakRewardsClaimed', 'avatarId', 'frameId', 'ownedAvatars', 'ownedFrames', 'social', 'cart'];
+export const MAX_PROFILE_BYTES = 120000;

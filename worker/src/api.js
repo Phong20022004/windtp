@@ -106,7 +106,7 @@ export function createApi({ verify, now = () => Date.now() }) {
   }
 
   const routes = [];
-  const route = (method, pattern, auth, fn) => routes.push({ method, re: new RegExp('^' + pattern.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), auth, fn });
+  const route = (method, pattern, auth, fn, max = 0) => routes.push({ method, re: new RegExp('^' + pattern.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), auth, fn, max });
 
   route('GET', '/me', 'user', async ({ db, user, t }) => {
     const w = await wallet(db, user.uid, t, user.emailVerified ? user.email : '');
@@ -364,6 +364,23 @@ export function createApi({ verify, now = () => Date.now() }) {
     return { ok: true };
   });
 
+  // Dữ liệu cá nhân (tiến độ học, cài đặt, đã lưu...) đồng bộ giữa các thiết bị. Chỉ nhận khóa trong PROFILE_KEYS; số dư, quyền sở hữu, Premium không nằm ở đây.
+  route('GET', '/me/state', 'user', async ({ db, user }) => {
+    const r = await q(db, 'SELECT data, rev, updated_at FROM profiles WHERE uid = ?', user.uid).first();
+    return r ? { rev: r.rev, at: r.updated_at, state: JSON.parse(r.data) } : { rev: 0, at: 0, state: null };
+  });
+  route('PUT', '/me/state', 'user', async ({ db, user, t, body }) => {
+    const src = body.state;
+    if (!src || typeof src !== 'object' || Array.isArray(src)) throw bad('bad-state');
+    const clean = {};
+    for (const k of E.PROFILE_KEYS) if (Object.prototype.hasOwnProperty.call(src, k) && src[k] !== undefined) clean[k] = src[k];
+    const data = JSON.stringify(clean);
+    if (data.length > E.MAX_PROFILE_BYTES) throw new HttpError(413, 'too-large');
+    await q(db, 'INSERT INTO profiles (uid, data, rev, updated_at) VALUES (?, ?, 1, ?) ON CONFLICT (uid) DO UPDATE SET data = excluded.data, rev = rev + 1, updated_at = excluded.updated_at', user.uid, data, t).run();
+    const r = await q(db, 'SELECT rev FROM profiles WHERE uid = ?', user.uid).first();
+    return { ok: true, rev: r.rev };
+  }, 131072);
+
   route('POST', '/posts', 'user', async ({ db, user, t, body }) => {
     const text = typeof body.text === 'string' ? body.text.trim() : '';
     if (text.length < 3 || text.length > E.MAX_POST_LEN) throw bad('bad-text');
@@ -585,7 +602,7 @@ export function createApi({ verify, now = () => Date.now() }) {
         if (!DEVICE_RE.test(deviceId)) throw new HttpError(400, 'bad-device');
         await registerDevice(env.DB, user.uid, deviceId, now());
       }
-      const body = request.method === 'GET' ? {} : await readBody(request, match.r.auth === 'admin' ? 65536 : 8192);
+      const body = request.method === 'GET' ? {} : await readBody(request, match.r.max || (match.r.auth === 'admin' ? 65536 : 8192));
       const out = await match.r.fn({ db: env.DB, env, user, t: now(), body, url, deviceId, params: match.m.groups || {} });
       if (out instanceof Response) return new Response(out.body, { status: out.status, headers }); // nội dung thô (bài học), vẫn kèm CORS/no-store
       return reply(200, out);

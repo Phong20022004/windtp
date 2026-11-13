@@ -716,3 +716,25 @@ test('thích và bình luận: chỉ trên bài đã duyệt, mỗi người m�
   assert.equal((await comment('B', 'bài đã xóa')).status, 404);
   assert.equal((await app.call('GET', '/posts', { uid: 'B' })).json.posts.length, 0);
 });
+
+test('đồng bộ dữ liệu cá nhân: mỗi tài khoản một bản, chỉ giữ khóa cho phép, giới hạn kích thước, không đọc được của người khác', async () => {
+  const app = await makeApp();
+  assert.deepEqual((await app.call('GET', '/me/state', { uid: 'A' })).json, { rev: 0, at: 0, state: null });
+  const put = (uid, state) => app.call('PUT', '/me/state', { uid, body: { state } });
+  const r1 = await put('A', { lang: 'en', saved: ['x'], balance: 999999, chips: 5, owned: ['access:en'], premiumUntil: 9e15, posts: [{ text: 'giả' }], settings: { dark: true } });
+  assert.equal(r1.status, 200);
+  assert.equal(r1.json.rev, 1);
+  const got = (await app.call('GET', '/me/state', { uid: 'A' })).json;
+  assert.deepEqual(got.state, { lang: 'en', saved: ['x'], settings: { dark: true } }, 'khóa tiền/quyền sở hữu bị bỏ');
+  assert.equal((await put('A', { lang: 'ko' })).json.rev, 2, 'rev tăng mỗi lần ghi');
+  assert.deepEqual((await app.call('GET', '/me/state', { uid: 'A' })).json.state, { lang: 'ko' }, 'bản mới thay hẳn bản cũ');
+  assert.equal((await app.call('GET', '/me/state', { uid: 'B' })).json.state, null, 'người khác không thấy');
+  for (const bad of [null, 'x', [1], 5]) assert.equal((await put('A', bad)).status, 400);
+  assert.equal((await app.call('PUT', '/me/state', { uid: 'A', body: {} })).status, 400);
+  const huge = await put('A', { known: { en: Array.from({ length: 20000 }, (_, i) => 'từ-' + i) } });
+  assert.equal(huge.status, 413);
+  assert.deepEqual((await app.call('GET', '/me/state', { uid: 'A' })).json.state, { lang: 'ko' }, 'ghi quá lớn không làm mất bản cũ');
+  const big = await put('A', { known: { en: Array.from({ length: 5000 }, (_, i) => 'từ-' + i) } });
+  assert.equal(big.status, 200, 'dữ liệu học cỡ vài chục KB vẫn qua được giới hạn thân yêu cầu 128KB');
+  assert.equal((await app.call('PUT', '/me/state', { uid: 'A', body: { state: {} }, raw: undefined })).status, 200);
+});

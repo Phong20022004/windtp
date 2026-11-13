@@ -164,3 +164,11 @@ CREATE TABLE IF NOT EXISTS listings (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS listings_status ON listings (status, id DESC);
+
+-- Dữ liệu cá nhân đồng bộ giữa các thiết bị: một dòng cho mỗi tài khoản, bản ghi sau cùng thắng (rev tăng mỗi lần ghi).
+CREATE TABLE IF NOT EXISTS profiles (
+  uid TEXT PRIMARY KEY,
+  data TEXT NOT NULL,
+  rev INTEGER NOT NULL DEFAULT 1,
+  updated_at INTEGER NOT NULL
+);

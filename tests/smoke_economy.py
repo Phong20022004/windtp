@@ -281,6 +281,27 @@ with serve_dist() as URL, sync_playwright() as p:
         ok = eventually(lambda: usr.evaluate("window.WindtpApi.client.posts().then(p=>p.find(x=>x.id==%d).comments.length)" % pid) == 0)
         check(ok, 'E62 chủ bình luận xóa được bình luận của mình')
 
+        # 9h. Đồng bộ dữ liệu cá nhân: thiết bị thứ hai của cùng tài khoản thấy cài đặt đã đổi, tiền thì không đi theo bản đồng bộ
+        usr.evaluate("()=>{const b=document.createElement('button');b.dataset.action='set-currency';b.dataset.cur='JPY';document.body.appendChild(b);b.click();b.remove()}")
+        pushed = eventually(lambda: ((api_call(API, 'GET', '/me/state', user_token, origin=ORIGIN)[1].get('state') or {}).get('settings') or {}).get('currency') == 'JPY', 15000)
+        check(pushed, 'E63 đổi cài đặt trên máy này thì tự đẩy lên máy chủ')
+        _, prof = api_call(API, 'GET', '/me/state', user_token, origin=ORIGIN)
+        bad_keys = [k for k in ('balance', 'chips', 'owned', 'premiumUntil', 'history', 'posts', 'orders') if k in (prof.get('state') or {})]
+        check(not bad_keys and 'birth' not in prof['state']['settings'], 'E64 bản đồng bộ không chứa tiền, quyền sở hữu, bài đăng hay ngày sinh (%s)' % bad_keys)
+        ctx2 = browser.new_context(viewport={'width': 420, 'height': 900}, bypass_csp=True)
+        ctx2.add_init_script("try{localStorage.setItem('windtp-device','python-test-device-0001')}catch(e){}")  # thiết bị thứ hai (cùng mã với bộ gọi API của test để không vượt giới hạn 2 thiết bị)
+        usr2 = open_page(ctx2, API)
+        for i in range(3):
+            usr2.evaluate("window.__fakeAuth.seed({email:'pad%d@x.vn',password:'secret1',name:'Pad',admin:false})" % i)
+        usr2.evaluate("window.__fakeAuth.seed({email:'hs@wind.vn',password:'secret1',name:'Hoc Sinh',admin:false})")
+        login(usr2, 'hs@wind.vn', 'secret1')
+        got = eventually(lambda: usr2.evaluate("(k)=>JSON.parse(localStorage.getItem(k+'::u::hs@wind.vn')||'{}').settings.currency", STATE_KEY) == 'JPY', 15000)
+        check(got, 'E65 đăng nhập trên thiết bị khác thì nhận được cài đặt đã đồng bộ')
+        usr2.evaluate("()=>{const b=document.createElement('button');b.dataset.action='set-currency';b.dataset.cur='KRW';document.body.appendChild(b);b.click();b.remove()}")
+        ok = eventually(lambda: ((api_call(API, 'GET', '/me/state', user_token, origin=ORIGIN)[1].get('state') or {}).get('settings') or {}).get('currency') == 'KRW', 15000)
+        check(ok, 'E66 thay đổi từ thiết bị thứ hai cũng lên máy chủ')
+        ctx2.close()
+
         # 9. Người dùng thấy số dư đúng sau khi làm mới ví
         usr.evaluate('window.WindtpApi.wallet.refresh()')
         usr.reload(wait_until='load', timeout=240000)

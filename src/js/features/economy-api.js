@@ -55,7 +55,7 @@
   /** Lấy lại ví từ máy chủ. Lỗi mạng thì giữ số liệu đang hiển thị. */
   function econRefresh(quiet) {
     if (!state.account || !window.WindtpApi) return Promise.resolve(false);
-    return window.WindtpApi.wallet.refresh().then((me) => { econApplyWallet(me); econSyncBirth(me); econSocial(); econAutoRedeem(); return true; }, (e) => { econFail(e, quiet !== false); return false; });
+    return window.WindtpApi.wallet.refresh().then((me) => { econApplyWallet(me); econSyncBirth(me); econSocial(); econAutoRedeem(); econSyncPull(); return true; }, (e) => { econFail(e, quiet !== false); return false; });
   }
 
   /** Ngày sinh đã khai trong Cài đặt được gửi một lần; sau đó máy chủ giữ và không cho đổi. */
@@ -85,11 +85,11 @@
     }, () => { });
   }
   function econBoot() {
-    econ.me = null; econ.ordersLoaded = false;
+    econ.me = null; econ.ordersLoaded = false; econ.syncReady = false;
     econRefresh(false).then(() => { if (isAdmin()) econPublishCatalog(); });
   }
   function econReset() {
-    econ.me = null; econ.adminOrders = []; econ.myOrders = []; econ.ordersLoaded = false; econ.birthSent = "";
+    econ.me = null; econ.adminOrders = []; econ.myOrders = []; econ.ordersLoaded = false; econ.birthSent = ""; econ.syncReady = false; window.clearTimeout(econ.syncTimer);
     if (window.WindtpApi) window.WindtpApi.wallet.clear();
   }
   window.setInterval(() => { if (document.visibilityState === "visible" && state.account) econRefresh(); }, ECON_REFRESH_MS);
@@ -642,3 +642,57 @@
     if (!ok) return;
     await econSocial(); renderCommunity();
   };
+
+  // ----- Đồng bộ dữ liệu cá nhân giữa các thiết bị (bản ghi sau cùng thắng; tiền, quyền sở hữu, bài đăng không nằm trong đó) -----
+  const SYNC_TYPES = { lang: "stringnull", known: "object", saved: "array", reminders: "array", notices: "array", settings: "object", streak: "number", lastCheckIn: "string", loginStreak: "number", lastLogin: "string", cultivationLevel: "number", cultivationLastPenalty: "string", streakRewardsClaimed: "array", avatarId: "string", frameId: "string", ownedAvatars: "array", ownedFrames: "array", social: "object", cart: "object" };
+  const syncOk = (t, v) => t === "array" ? Array.isArray(v) : t === "object" ? !!v && typeof v === "object" && !Array.isArray(v) : t === "stringnull" ? v === null || typeof v === "string" : typeof v === t;
+  function syncSnapshot() {
+    const o = {};
+    Object.keys(SYNC_TYPES).forEach((k) => { if (state[k] !== undefined) o[k] = state[k]; });
+    if (o.settings) { o.settings = { ...o.settings }; delete o.settings.birth; } // ngày sinh do máy chủ giữ riêng
+    return o;
+  }
+  function syncHash(str) { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0; return str.length + ":" + h; }
+  function econSyncApply(remote) {
+    const birth = state.settings && state.settings.birth;
+    Object.keys(SYNC_TYPES).forEach((k) => {
+      if (!Object.prototype.hasOwnProperty.call(remote, k) || !syncOk(SYNC_TYPES[k], remote[k])) return;
+      state[k] = k === "settings" ? { ...state.settings, ...remote.settings, birth } : remote[k];
+    });
+    if (econ.me) econApplyWallet(econ.me); // avatar/khung mua bằng Xu luôn do máy chủ xác nhận, không lấy từ bản đồng bộ
+  }
+  async function econSyncPush() {
+    if (!state.account || !econ.syncReady || econ.syncBusy) return;
+    const snap = syncSnapshot(), hash = syncHash(JSON.stringify(snap)), email = state.account.email;
+    if (state.syncMeta && state.syncMeta.hash === hash) return;
+    econ.syncBusy = true;
+    try {
+      const rev = await econClient().saveProfile(snap);
+      if (state.account && state.account.email === email) { state.syncMeta = { rev, hash }; save(); }
+      econ.syncBusy = false; econSyncSchedule(); return;
+    } catch (e) { econ.syncTimer = window.setTimeout(econSyncPush, 30000); }
+    finally { econ.syncBusy = false; }
+  }
+  async function econSyncPull() {
+    if (!state.account || !window.WindtpApi || econ.syncPulling) return;
+    econ.syncPulling = true;
+    const email = state.account.email;
+    try {
+      const remote = await econClient().profile();
+      if (!state.account || state.account.email !== email) return;
+      const meta = state.syncMeta || {}, dirty = syncHash(JSON.stringify(syncSnapshot())) !== meta.hash;
+      if (remote.state && remote.rev !== meta.rev && (!dirty || meta.hash === undefined)) {
+        econSyncApply(remote.state);
+        state.syncMeta = { rev: remote.rev, hash: syncHash(JSON.stringify(syncSnapshot())) };
+        commit();
+      }
+      econ.syncReady = true;
+      econSyncSchedule();
+    } catch (e) { /* mất mạng: giữ dữ liệu trên máy, chưa đẩy gì lên để khỏi ghi đè bản trên máy chủ */ }
+    finally { econ.syncPulling = false; }
+  }
+  function econSyncSchedule() {
+    window.clearTimeout(econ.syncTimer);
+    econ.syncTimer = window.setTimeout(econSyncPush, 4000);
+  }
+  subscribe(() => { if (state.account && econ.syncReady) econSyncSchedule(); });
