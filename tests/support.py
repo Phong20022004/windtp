@@ -50,7 +50,7 @@ def serve_api(origin):
 def api_call(base, method, path, token=None, body=None, origin=None):
     """Gọi API trực tiếp từ test (không qua trình duyệt) để kiểm tra trạng thái thật ở máy chủ."""
     import urllib.request, urllib.error
-    headers = {'content-type': 'application/json'}
+    headers = {'content-type': 'application/json', 'x-device-id': 'python-test-device-0001'}
     if token:
         headers['authorization'] = 'Bearer ' + token
     if origin:
