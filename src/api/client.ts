@@ -8,6 +8,8 @@ import {
   type Referral,
   type CatalogItem,
   type SpecialTask,
+  type Listing,
+  type ListingInput,
   type StoreConfig,
   type Me,
   type Order,
@@ -79,6 +81,10 @@ export interface ApiClient {
   devices(): Promise<DeviceList>;
   /** Gỡ một thiết bị khác để nhường chỗ. */
   removeDevice(deviceId: string): Promise<void>;
+
+  createListing(input: ListingInput): Promise<{ id: number; status: "pending" | "approved" }>;
+  deleteListing(id: number): Promise<void>;
+  listings(): Promise<Listing[]>;
   createPost(text: string, tag: string): Promise<{ id: number; status: "pending" | "approved" }>;
   deletePost(id: number): Promise<void>;
   posts(): Promise<PublicPost[]>;
@@ -91,6 +97,9 @@ export interface ApiClient {
     rejectPost(id: number): Promise<void>;
     putCatalog(items: CatalogItem[]): Promise<number>;
     putTasks(items: SpecialTask[]): Promise<number>;
+    listings(): Promise<Listing[]>;
+    approveListing(id: number): Promise<void>;
+    rejectListing(id: number): Promise<void>;
     putStore(store: Omit<StoreConfig, "updatedAt">): Promise<void>;
     /** Tải ảnh (JPEG/PNG/WebP, tối đa 250KB) lên R2; trả về khóa dạng img/<hash>.jpg. */
     uploadImage(image: Blob): Promise<string>;
@@ -175,6 +184,9 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, fetchImpl }: A
     tasks: async () => (await request<{ tasks: SpecialTask[] }>("GET", "/tasks")).tasks,
     myOrders: async () => (await request<{ orders: Order[] }>("GET", "/orders/mine")).orders,
     createPost: async (text, tag) => { const r = await post("/posts", { text, tag }); return { id: Number(r.id), status: r.status === "approved" ? "approved" : "pending" }; },
+    createListing: async (input) => { const r = await post("/listings", input); return { id: Number(r.id), status: r.status === "approved" ? "approved" : "pending" }; },
+    deleteListing: (id) => done(post(`/listings/${id}/delete`)),
+    listings: async () => { const r = await request<{ listings: Listing[] }>("GET", "/listings"); if (!Array.isArray(r.listings)) throw new ApiError("bad-response", 200); return r.listings; },
     deletePost: (id) => done(post(`/posts/${id}/delete`)),
     posts: async () => (await request<{ posts: PublicPost[] }>("GET", "/posts")).posts,
     admin: {
@@ -186,6 +198,10 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, fetchImpl }: A
       rejectPost: (id) => done(post(`/admin/posts/${id}/reject`)),
       grant: (input) => done(post("/admin/grant", input)),
       resetDevices: async (uid) => Number((await post("/admin/devices/reset", { uid })).removed) || 0,
+
+      listings: async () => (await request<{ listings: Listing[] }>("GET", "/admin/listings")).listings,
+      approveListing: (id) => done(post(`/admin/listings/${id}/approve`)),
+      rejectListing: (id) => done(post(`/admin/listings/${id}/reject`)),
       putStore: (store) => done(request("PUT", "/admin/store", store)),
       uploadImage: async (image) => String((await request<{ key: string }>("PUT", "/admin/image", image)).key),
       putTasks: async (items) => Number((await request<{ count: number }>("PUT", "/admin/tasks", { items })).count),

@@ -98,7 +98,7 @@
   }
   function listingModal(l) {
     const saved = state.saved.includes(l.id);
-    const mine = l.seller === state.userName;
+    const mine = l.mine === true;
     return `${modalHead(esc(l.title))}
   <div class="p-5 space-y-3">
     <div class="rounded-2xl overflow-hidden">${l.img ? `<div class="relative h-44 bg-sky-100 flex items-center justify-center text-6xl"><span>${l.emoji}</span><img src="${esc(l.img)}" alt="" class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()"></div>` : `<div class="h-32 bg-gradient-to-br from-sky-100 to-indigo-100 flex items-center justify-center text-6xl">${l.emoji}</div>`}</div>
@@ -1115,7 +1115,7 @@
     "contact-seller": (el) => {
       const l = state.listings.find((x) => x.id === el.dataset.id);
       if (!l) return;
-      if (l.seller === state.userName) {
+      if (l.mine === true) {
         toast("\u0110\xE2y l\xE0 tin do b\u1EA1n \u0111\u0103ng");
         return;
       }

@@ -69,7 +69,7 @@
   /** Nhiệm vụ đặc biệt (admin đăng) và trạng thái chia sẻ Facebook/nhiệm vụ của chính người dùng, đều lấy từ máy chủ. */
   function econSocial() {
     const api = econClient();
-    return Promise.all([api.tasks(), api.myOrders(), api.posts(), isAdmin() ? api.admin.posts() : Promise.resolve([]), api.store()]).then(([tasks, orders, posts, pending, store]) => {
+    return Promise.all([api.tasks(), api.myOrders(), api.posts(), isAdmin() ? api.admin.posts() : Promise.resolve([]), api.store(), api.listings(), isAdmin() ? api.admin.listings() : Promise.resolve([])]).then(([tasks, orders, posts, pending, store, listings, pendingListings]) => {
       econApplyStore(store);
       // Bài đăng do máy chủ giữ; lượt thích và bình luận vẫn chỉ lưu trên máy này.
       const old = new Map((state.posts || []).map((p) => [p.id, p]));
@@ -78,6 +78,8 @@
         .concat(pending.map((p) => ({ id: "s" + p.id, author: p.author, tag: p.tag, text: p.text, ts: p.created_at, status: "pending", likes: 0, liked: false, comments: [] })));
       const me = userId();
       state.customTasks = tasks.map((t) => ({ id: t.id, title: t.title, desc: "", xu: t.xu, chips: t.chips, money: t.money, cur: t.cur, ts: 0 }));
+      const lv = (l, status) => ({ id: "s" + l.id, cat: l.cat, title: l.title, price: l.price, loc: l.loc, country: l.country, region: l.region, addr: l.addr, desc: l.desc, seller: l.seller, emoji: l.emoji, ts: l.at, status, mine: l.mine, sid: "" });
+      state.listings = listings.map((l) => lv(l, "approved")).concat(pendingListings.map((l) => lv(l, "pending")));
       const st = (o) => (o.status === "approved" ? "granted" : o.status === "pending" ? "sent" : "rejected");
       state.taskClaims = orders.filter((o) => o.kind === "ctask" && o.status !== "rejected").map((o) => ({ id: "o" + o.id, taskId: String(o.code || "").slice(6), uid: me, title: o.summary || "", ts: o.at, status: st(o), bank: null }));
       state.fbShares = orders.filter((o) => o.kind === "fbshare").map((o) => { const key = String(o.code || "").slice(3).toUpperCase(); return { id: "o" + o.id, uid: me, link: o.summary || "", period: key, periodLabel: key, ts: o.at, status: st(o) }; });
@@ -511,6 +513,13 @@
   ["approve-content", "reject-content"].forEach((name) => {
     const orig = actions[name], approve = name === "approve-content";
     actions[name] = async (el, ev) => {
+      if (el.dataset.type === "listing") {
+        if (!isAdmin()) { toast("Chỉ BigBoss mới được kiểm duyệt nội dung."); return; }
+        const ok = await econRun("mod:" + el.dataset.id, async () => { const api = econClient().admin, id = serverPostId(el); await (approve ? api.approveListing(id) : api.rejectListing(id)); return true; });
+        if (!ok) return;
+        toast(approve ? "Đã duyệt nội dung và cho phép hiển thị." : "Đã từ chối nội dung.");
+        await econSocial(); refreshModal(); return;
+      }
       if (el.dataset.type !== "post") { if (orig) orig(el, ev); return; }
       if (!isAdmin()) { toast("Chỉ BigBoss mới được kiểm duyệt nội dung."); return; }
       const ok = await econRun("mod:" + el.dataset.id, async () => { const api = econClient().admin, id = serverPostId(el); await (approve ? api.approvePost(id) : api.rejectPost(id)); return true; });
@@ -591,3 +600,25 @@
       if (JSON.stringify(state.customCats) !== before) econPutStore();
     };
   });
+
+  // ----- Tin rao vặt: lưu và kiểm duyệt ở máy chủ -----
+  const origSubmitListing = actions["submit-listing"];
+  actions["submit-listing"] = async (el, ev) => {
+    const before = state.listings.length, firstId = state.listings[0] && state.listings[0].id;
+    origSubmitListing(el, ev);
+    const l = state.listings[0];
+    if (!l || state.listings.length === before || l.id === firstId) return; // dữ liệu chưa hợp lệ, form giữ nguyên
+    state.listings.shift();
+    const ok = await econRun("listing", async () => {
+      await econClient().createListing({ cat: l.cat, title: l.title, price: l.price, loc: l.loc, country: l.country, region: l.region, addr: l.addr, desc: l.desc, emoji: l.emoji });
+      return true;
+    });
+    if (ok) econSocial();
+  };
+  actions["delete-listing"] = async (el) => {
+    const id = Number(String(el.dataset.id || "").replace(/^s/, ""));
+    const ok = await econRun("dellisting", async () => { await econClient().deleteListing(id); return true; });
+    if (!ok) return;
+    state.saved = state.saved.filter((x) => x !== el.dataset.id);
+    toast("Đã xóa tin"); await econSocial(); refreshModal();
+  };

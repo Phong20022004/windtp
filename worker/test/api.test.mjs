@@ -644,3 +644,38 @@ test('mã mời: đơn bị từ chối không thưởng; người thường kh�
   assert.equal((await app.call('POST', `/admin/orders/${o.json.id}/approve`, { uid: 'B', body: { grants: ['access:en'] } })).status, 403);
   assert.equal(app.db.sqlite.prepare("SELECT COUNT(*) AS n FROM tx WHERE kind = 'referral'").get().n, 0);
 });
+
+test('tin rao vặt: người dùng chờ duyệt, danh mục phải hợp lệ, chỉ chủ tin/admin xóa, xóa danh mục thì tin biến mất', async () => {
+  const app = await makeApp();
+  const listing = { cat: 'market', title: 'Bán sách cũ', price: '50.000đ', loc: 'Q1, TP.HCM', country: 'Việt Nam', region: 'south', addr: '1 Lê Lợi', desc: 'Còn mới 90%', emoji: '🏷️' };
+  const mk = (uid, patch = {}, admin) => app.call('POST', '/listings', { uid, admin, body: { ...listing, ...patch } });
+  const a = await mk('u1');
+  assert.equal(a.json.status, 'pending');
+  assert.equal((await mk('u1', { cat: 'khong-co' })).status, 400);
+  assert.equal((await mk('u1', { title: 'abc' })).status, 400);
+  assert.equal((await mk('u1', { desc: 'x'.repeat(1900) })).status, 400);
+  assert.equal((await app.call('GET', '/listings', { uid: 'u2' })).json.listings.length, 0, 'chưa duyệt thì chưa hiện');
+  assert.equal((await app.call('GET', '/admin/listings', { uid: 'u2' })).status, 403);
+  assert.equal((await app.call('GET', '/admin/listings', { uid: 'boss', admin: true })).json.listings.length, 1);
+  assert.equal((await app.call('POST', `/admin/listings/${a.json.id}/approve`, { uid: 'u1' })).status, 403);
+  assert.equal((await app.call('POST', `/admin/listings/${a.json.id}/approve`, { uid: 'boss', admin: true })).status, 200);
+  assert.equal((await app.call('POST', `/admin/listings/${a.json.id}/approve`, { uid: 'boss', admin: true })).status, 409);
+  const feed = (await app.call('GET', '/listings', { uid: 'u1' })).json.listings;
+  assert.equal(feed.length, 1);
+  assert.equal(feed[0].mine, true);
+  assert.equal(feed[0].desc, 'Còn mới 90%');
+  assert.equal((await app.call('GET', '/listings', { uid: 'u2' })).json.listings[0].mine, false);
+  // danh mục do admin tạo
+  await app.call('PUT', '/admin/store', { uid: 'boss', admin: true, body: { customProducts: [], productEdits: {}, hiddenProducts: [], customCats: [{ id: 'cat-1', name: 'Đồ ăn', emoji: '🍜' }] } });
+  const c = await mk('boss', { cat: 'cat-1' }, true);
+  assert.equal(c.json.status, 'approved', 'admin đăng hiện ngay');
+  assert.equal((await app.call('GET', '/listings', { uid: 'u2' })).json.listings.length, 2);
+  await app.call('PUT', '/admin/store', { uid: 'boss', admin: true, body: { customProducts: [], productEdits: {}, hiddenProducts: [], customCats: [] } });
+  assert.equal((await app.call('GET', '/listings', { uid: 'u2' })).json.listings.length, 1, 'danh mục bị xóa thì tin trong đó ẩn đi');
+  assert.equal((await app.call('POST', `/listings/${a.json.id}/delete`, { uid: 'u2' })).status, 404);
+  assert.equal((await app.call('POST', `/listings/${a.json.id}/delete`, { uid: 'u1' })).status, 200);
+  assert.equal((await app.call('GET', '/listings', { uid: 'u2' })).json.listings.length, 0);
+  for (let i = 0; i < 4; i++) await mk('u3');
+  assert.equal((await mk('u3')).status, 200);
+  assert.equal((await mk('u3')).status, 429, 'tối đa 5 tin mỗi ngày');
+});

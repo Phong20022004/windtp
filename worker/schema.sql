@@ -125,3 +125,22 @@ CREATE TABLE IF NOT EXISTS referrals (
   rewarded_at INTEGER -- NULL cho tới khi người được mời mua khóa học và đơn được duyệt
 );
 CREATE INDEX IF NOT EXISTS referrals_inviter ON referrals (inviter);
+
+-- Tin rao vặt (Chợ đồ cũ, Việc làm, Phòng trọ, danh mục admin tạo): người dùng đăng, admin duyệt như bài cộng đồng.
+CREATE TABLE IF NOT EXISTS listings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid TEXT NOT NULL,
+  seller TEXT NOT NULL,
+  cat TEXT NOT NULL,
+  title TEXT NOT NULL,
+  price TEXT NOT NULL,
+  loc TEXT NOT NULL,
+  country TEXT NOT NULL,
+  region TEXT NOT NULL DEFAULT '',
+  addr TEXT NOT NULL DEFAULT '',
+  descr TEXT NOT NULL,
+  emoji TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'deleted')),
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS listings_status ON listings (status, id DESC);

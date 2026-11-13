@@ -232,3 +232,21 @@ export interface StoreConfig {
   customCats: { id: string; name: string; emoji: string }[];
   updatedAt: number;
 }
+
+export interface Listing {
+  id: number;
+  seller: string;
+  cat: string;
+  title: string;
+  price: string;
+  loc: string;
+  country: string;
+  region: string;
+  addr: string;
+  desc: string;
+  emoji: string;
+  at: number;
+  mine: boolean;
+}
+
+export type ListingInput = Omit<Listing, "id" | "seller" | "at" | "mine">;

@@ -242,6 +242,22 @@ with serve_dist() as URL, sync_playwright() as p:
         status, _ = api_call(API, 'PUT', '/admin/store', user_token, {'customProducts': [], 'productEdits': {}, 'hiddenProducts': [], 'customCats': []}, ORIGIN)
         check(status == 403, 'E50 người thường không ghi được cấu hình cửa hàng')
 
+        # 9f. Tin rao vặt: lưu và kiểm duyệt ở máy chủ
+        lst = {'cat': 'market', 'title': 'Bán sách <b>cũ</b> giá rẻ', 'price': '50k', 'loc': 'Quận 1', 'country': 'Việt Nam', 'region': 'south', 'addr': '1 Lê Lợi', 'desc': 'Còn mới', 'emoji': '📌'}
+        r = usr.evaluate("(l)=>window.WindtpApi.client.createListing(l).then(r=>r.status,e=>e.serverCode)", lst)
+        check(r == 'pending', 'E52 tin rao vặt của người dùng chờ duyệt (%s)' % r)
+        check(usr.evaluate("window.WindtpApi.client.listings().then(p=>p.length)") == 0, 'E53 tin chưa duyệt không hiện cho mọi người')
+        adm.evaluate('()=>{const b=document.createElement("button");b.dataset.action="open-moderation";document.body.appendChild(b);b.click();b.remove()}')
+        adm.wait_for_selector('[data-action="approve-content"][data-type="listing"]', timeout=15000)
+        adm.click('[data-action="approve-content"][data-type="listing"]')
+        ok = eventually(lambda: usr.evaluate("window.WindtpApi.client.listings().then(p=>p.length)") == 1)
+        check(ok, 'E54 admin duyệt trên giao diện thì tin hiện cho mọi người')
+        mine = usr.evaluate("window.WindtpApi.client.listings().then(p=>p[0].mine)")
+        check(mine is True, 'E55 máy chủ đánh dấu đúng tin của chính người đăng')
+        lid = usr.evaluate("window.WindtpApi.client.listings().then(p=>p[0].id)")
+        status, _ = api_call(API, 'POST', '/listings/%d/delete' % lid, admin_token, {}, ORIGIN)
+        check(status == 200, 'E56 admin xóa được tin của người khác')
+
         # 9. Người dùng thấy số dư đúng sau khi làm mới ví
         usr.evaluate('window.WindtpApi.wallet.refresh()')
         usr.reload(wait_until='load', timeout=240000)

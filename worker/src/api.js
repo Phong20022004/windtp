@@ -440,6 +440,49 @@ export function createApi({ verify, now = () => Date.now() }) {
   });
   route('GET', '/tasks', 'user', async ({ db }) => ({ tasks: (await q(db, 'SELECT id, title, xu, chips, money, cur FROM tasks ORDER BY rowid').all()).results }));
 
+  // ----- Tin rao vặt -----
+  const LISTING_FIELDS = { title: [5, 120], price: [1, 80], loc: [1, 220], country: [1, 60], region: [0, 20], addr: [0, 200], desc: [1, 1800], emoji: [0, 8] };
+  async function allowedCats(db) {
+    const row = await q(db, 'SELECT json FROM store WHERE id = 1').first();
+    const custom = row ? JSON.parse(row.json).customCats.map((c) => c.id) : [];
+    return new Set([...E.BUILTIN_LISTING_CATS, ...custom]);
+  }
+  const listingOut = (r, uid) => ({ id: r.id, seller: r.seller, cat: r.cat, title: r.title, price: r.price, loc: r.loc, country: r.country, region: r.region, addr: r.addr, desc: r.descr, emoji: r.emoji, at: r.created_at, mine: r.uid === uid });
+  route('POST', '/listings', 'user', async ({ db, user, t, body }) => {
+    const v = {};
+    for (const [k, [min, max]] of Object.entries(LISTING_FIELDS)) {
+      const x = typeof body[k] === 'string' ? body[k].trim() : '';
+      if (x.length < min || x.length > max) throw bad('bad-listing');
+      v[k] = x;
+    }
+    if (!(await allowedCats(db)).has(body.cat)) throw bad('bad-listing');
+    const n = await q(db, "SELECT COUNT(*) AS n FROM listings WHERE uid = ? AND created_at > ? AND status != 'deleted'", user.uid, t - 86400000).first();
+    if (n.n >= E.MAX_LISTINGS_PER_DAY) throw new HttpError(429, 'too-many-posts');
+    const adm = user.admin ? 'approved' : 'pending';
+    const r = await q(db, 'INSERT INTO listings (uid, seller, cat, title, price, loc, country, region, addr, descr, emoji, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', user.uid, user.name || 'Người dùng', body.cat, v.title, v.price, v.loc, v.country, v.region, v.addr, v.desc, v.emoji, adm, t).run();
+    return { ok: true, id: r.meta.last_row_id, status: adm };
+  });
+  route('GET', '/listings', 'user', async ({ db, user }) => {
+    const cats = await allowedCats(db);
+    const rows = (await q(db, "SELECT * FROM listings WHERE status = 'approved' ORDER BY id DESC LIMIT 300").all()).results;
+    return { listings: rows.filter((r) => cats.has(r.cat)).map((r) => listingOut(r, user.uid)) };
+  });
+  route('POST', '/listings/:id/delete', 'user', async ({ db, user, params }) => {
+    const r = user.admin
+      ? await q(db, "UPDATE listings SET status = 'deleted' WHERE id = ? AND status != 'deleted'", +params.id).run()
+      : await q(db, "UPDATE listings SET status = 'deleted' WHERE id = ? AND uid = ? AND status != 'deleted'", +params.id, user.uid).run();
+    if (!r.meta.changes) throw new HttpError(404, 'not-found');
+    return { ok: true };
+  });
+  route('GET', '/admin/listings', 'admin', async ({ db, user }) => ({ listings: (await q(db, "SELECT * FROM listings WHERE status = 'pending' ORDER BY id LIMIT 200").all()).results.map((r) => listingOut(r, user.uid)) }));
+  for (const [action, status] of [['approve', 'approved'], ['reject', 'rejected']]) {
+    route('POST', `/admin/listings/:id/${action}`, 'admin', async ({ db, params }) => {
+      const r = await q(db, "UPDATE listings SET status = ? WHERE id = ? AND status = 'pending'", status, +params.id).run();
+      if (!r.meta.changes) throw new HttpError(409, 'not-pending');
+      return { ok: true };
+    });
+  }
+
   async function authenticate(request, env) {
     const auth = request.headers.get('authorization') || '';
     try { return await verify(auth.startsWith('Bearer ') ? auth.slice(7) : '', env); } catch { throw new HttpError(401, 'unauthenticated'); }

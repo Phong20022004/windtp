@@ -52,3 +52,6 @@ export const REFERRAL_REWARD = { xu: 10000, chips: 7000 };
 export const MAX_DEVICES = 2;
 export const DEVICE_IDLE_MS = 30 * 86400000;
 export const DEVICE_TOUCH_MS = 3600000; // chỉ ghi lại lần dùng cuối tối đa mỗi giờ một lần
+
+export const MAX_LISTINGS_PER_DAY = 5;
+export const BUILTIN_LISTING_CATS = ['market', 'jobs', 'housing'];

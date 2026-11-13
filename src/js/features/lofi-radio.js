@@ -347,7 +347,7 @@
       lastLogin: today,
       firstTopupDone: false,
       posts: seedPosts(now),
-      listings: seedListings(now).map((l) => ({ ...l, status: "approved" })),
+      listings: [],
       saved: [],
       reminders: [],
       notices: [
@@ -380,7 +380,7 @@
     // Cấu hình cửa hàng giờ do máy chủ giữ; bản cục bộ cũ chỉ được giữ lại để admin chuyển lên máy chủ một lần.
     if ((o.customProducts || []).length || Object.keys(o.productEdits || {}).length || (o.hiddenProducts || []).length || (o.customCats || []).length) window.__legacyStore = { customProducts: o.customProducts || [], productEdits: o.productEdits || {}, hiddenProducts: o.hiddenProducts || [], customCats: o.customCats || [] };
     o.customProducts = []; o.productEdits = {}; o.hiddenProducts = []; o.customCats = [];
-    o.balance = 0; o.history = []; o.owned = []; o.premiumUntil = 0; o.courseAccess = {}; o.chips = 0; o.posts = []; o.customTasks = []; o.taskClaims = []; o.fbShares = []; o.payouts = []; o.orders = []; o.credits = [];
+    o.balance = 0; o.history = []; o.owned = []; o.premiumUntil = 0; o.courseAccess = {}; o.chips = 0; o.posts = []; o.listings = []; o.customTasks = []; o.taskClaims = []; o.fbShares = []; o.payouts = []; o.orders = []; o.credits = [];
     o.chipsDelta = Number.isFinite(d) ? Math.max(-1e9, Math.min(1e9, Math.floor(d))) : 0;
     return o;
   }
