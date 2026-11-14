@@ -915,6 +915,19 @@ test('nhắn tin: chặn spam lặp nội dung và nhiều đường dẫn', asy
   assert.equal((await send('Xem http://a.vn nhé')).status, 200);
 });
 
+test('nhắn tin: người đăng chặn một lần thì người kia không mở cuộc mới ở tin khác', async () => {
+  const app = await makeApp();
+  const a = await approvedListing(app);
+  const b = await approvedListing(app);
+  const th = (await app.call('POST', '/threads', { uid: 'buyer', body: { listingId: a } })).json.id;
+  const sellerOf = async (id) => (await app.db.prepare('SELECT uid FROM listings WHERE id = ?').bind(id).first()).uid;
+  const owner = await sellerOf(a);
+  assert.equal(await sellerOf(b), owner, 'cùng người đăng');
+  assert.equal((await app.call('POST', `/threads/${th}/block`, { uid: owner, body: { block: true } })).status, 200);
+  assert.equal((await app.call('POST', '/threads', { uid: 'buyer', body: { listingId: b } })).status, 403);
+  assert.equal((await app.call('POST', '/threads', { uid: 'other', body: { listingId: b } })).status, 200, 'người khác vẫn nhắn được');
+});
+
 test('nhắn tin: người xem mở cuộc trò chuyện, hai bên trao đổi, đếm và đánh dấu đã đọc', async () => {
   const app = await makeApp();
   const id = await approvedListing(app);

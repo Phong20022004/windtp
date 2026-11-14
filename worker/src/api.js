@@ -722,6 +722,8 @@ export function createApi({ verify, now = () => Date.now() }) {
     const l = await q(db, "SELECT id, uid, seller, title FROM listings WHERE id = ? AND status = 'approved'", +body.listingId).first();
     if (!l) throw new HttpError(404, 'not-found');
     if (l.uid === user.uid) throw bad('own-listing');
+    // Người đăng đã chặn người này ở bất kỳ cuộc trò chuyện nào thì không mở thêm cuộc mới ở tin khác của họ.
+    if (await q(db, 'SELECT 1 AS x FROM thread_blocks b JOIN threads th ON th.id = b.thread_id WHERE b.by_uid = ? AND th.buyer = ?', l.uid, user.uid).first()) throw new HttpError(403, 'blocked');
     await q(db, 'INSERT OR IGNORE INTO threads (listing_id, owner, buyer, seller_name, buyer_name, title, created_at, last_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', l.id, l.uid, user.uid, l.seller, E.displayName(user), l.title, t, t).run();
     const th = await q(db, 'SELECT id FROM threads WHERE listing_id = ? AND buyer = ?', l.id, user.uid).first();
     return { id: th.id };

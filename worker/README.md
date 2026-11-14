@@ -68,3 +68,6 @@ Test: `python3 tests/smoke_economy.py` chạy app thật với máy chủ này (
 
 ## Chống spam trong chat
 Mỗi tin tối đa 2 đường dẫn; cùng một nội dung gửi quá 2 lần trong 10 phút bị từ chối (`400 spam`). Kèm giới hạn 40 tin / 10 phút.
+
+## Chặn theo người
+Khi người đăng chặn một người mua ở bất kỳ cuộc trò chuyện nào, người đó không mở thêm cuộc trò chuyện mới ở các tin khác của cùng người đăng (`403 blocked`). Bỏ chặn ở cuộc trò chuyện đó thì được mở lại.
