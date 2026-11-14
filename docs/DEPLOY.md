@@ -11,6 +11,7 @@ Tài liệu này là danh sách việc **bạn phải tự làm** (cần tài kh
 3. **Cấp quyền admin:** `npm run admin:grant -- <email>` (đặt custom claim `admin` trong Firebase; cần file service account qua `GOOGLE_APPLICATION_CREDENTIALS`, không commit file đó). Máy chủ chỉ tin cờ này trong token đã được ký.
 4. **Build trang:** đặt `WINDTP_API_URL` (địa chỉ Worker) rồi `npm run build`; đưa thư mục `dist/` (kèm `assets/` và `data/`) lên nơi lưu trang. Sau đó `npm run content:upload` để đưa nội dung trả phí lên R2.
 5. Kiểm tra thủ công một vòng: đăng ký, đăng nhập, nạp thử một đơn, duyệt đơn bằng tài khoản admin, đăng bài và báo cáo, tải bản sao dữ liệu, xóa một tài khoản thử.
+6. Kiểm tra thêm các tính năng mới (chưa từng chạy trên bản thật): đăng nhập trên máy thứ 2 trong cùng tháng (được) và máy thứ 3 (bị từ chối `device-limit`); đăng nhập máy khác thì máy cũ tự đăng xuất; nhập mã mời trong 1 tháng đầu và sau đó (bị từ chối `code-expired`); duyệt đơn `access:` của người được mời rồi xem người mời có đủ 10.000 Xu và 7.000 chip; đăng tin có số điện thoại/Facebook, mở chat, gửi tin, chặn, báo cáo và xử lý báo cáo bằng admin; ô "Làm mới thiết bị" trong khu Kiểm duyệt.
 
 `ALLOWED_ORIGIN` trong `wrangler.toml` phải đúng địa chỉ trang (không có dấu `/` cuối), nếu không trình duyệt sẽ chặn mọi lời gọi API.
 
@@ -29,7 +30,8 @@ Máy chủ đã giới hạn theo từng tài khoản (bảng `rate_limits`), nh
 |---|---|---|---|
 | Chung | mọi đường dẫn của API | 120 yêu cầu / phút / IP | Chặn 1 phút |
 | Ghi dữ liệu | phương thức POST hoặc PUT | 30 yêu cầu / phút / IP | Chặn 10 phút |
-| Nhạy cảm | `/session/claim`, `/orders`, `/me/delete`, `/me/export` | 10 yêu cầu / 10 phút / IP | Chặn 1 giờ |
+| Nhạy cảm | `/session/claim`, `/orders`, `/me/delete`, `/me/export`, `/referral/redeem` | 10 yêu cầu / 10 phút / IP | Chặn 1 giờ |
+| Chat | `/threads` (POST) và `/threads/*/send` | 30 yêu cầu / phút / IP | Chặn 10 phút |
 
 Loại trừ `/webhooks/sepay` khỏi các luật trên (hoặc cho phép dải IP của SePay), kẻo giao dịch thật bị chặn nhầm.
 
@@ -62,7 +64,9 @@ Tài khoản admin duyệt đơn và cộng Xu, nên là mục tiêu lớn nhấ
 - **Nạp tiền tự động:** chỉ đơn nạp Xu VND qua SePay được tự duyệt (mục 1); đơn mua hàng, Premium và KRW vẫn do admin duyệt tay. Casso hoặc ngân hàng khác chưa có.
 - **Bảng giá do máy chủ giữ:** admin hiện quyết định quyền lợi khi duyệt đơn; máy chủ chỉ đặt trần. Một tài khoản admin bị chiếm vẫn có thể cộng Xu trong trần cho phép.
 - **Kết quả game và tiến độ nhiệm vụ** do trình duyệt báo lên, nên chỉ chặn được ở mức hạn mức/ngày; chip kiếm trong game không đáng tin tuyệt đối.
-- **Nhân bản mã thiết bị:** khóa phiên do máy chủ cấp đã làm khó, nhưng không thể chặn hoàn toàn.
+- **Nhân bản mã thiết bị:** khóa phiên do máy chủ cấp đã làm khó, nhưng không thể chặn hoàn toàn. Giới hạn 2 thiết bị/tháng chỉ chặn ở API Worker, không chặn ở bước đăng nhập Firebase; xóa dữ liệu trình duyệt tạo thiết bị mới (admin làm mới được).
+- **Chat:** cập nhật bằng cách hỏi lại mỗi 3 giây khi đang mở, chưa có thông báo đẩy hay thời gian thực. Muốn có cần Durable Objects/WebSocket hoặc dịch vụ push ngoài (Firebase Cloud Messaging); nên quyết định riêng vì tốn thêm chi phí và công sức.
+- **Chưa test trên bản thật:** build, kiểm tra kiểu và test trình duyệt chưa chạy được trong môi trường phát triển (không có mạng); làm theo mục 1 bước 6.
 - **Số dư cũ trong localStorage** (từ trước khi có máy chủ) đã không còn hiệu lực; cần quyết định có bồi hoàn thủ công cho ai không.
 - **Nội dung bảng chữ cái** (ví dụ, cách đọc, Hán Việt của 214 bộ thủ) do AI soạn; nên nhờ người bản ngữ/giáo viên rà soát trước khi bán.
 - **Chính sách quyền riêng tư và điều khoản**: xem `docs/privacy-policy.md` (bản nháp, cần luật sư xem).
