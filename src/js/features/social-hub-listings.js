@@ -47,7 +47,7 @@
         <p class="text-[11px] font-extrabold text-teal-800">Cách liên hệ (tùy chọn)</p>
         <div class="grid grid-cols-2 gap-2">${inp("pl-phone", "Số điện thoại", "VD 0901 234 567")}${inp("pl-zalo", "Zalo (số điện thoại)", "VD 0901 234 567")}</div>
         <div><label class="text-xs font-bold text-slate-600" for="pl-facebook">Facebook</label><input id="pl-facebook" value="${plv("pl-facebook")}" placeholder="Đường dẫn trang cá nhân hoặc tên tài khoản" maxlength="200" class="${field} mt-1"></div>
-        <p class="text-[10px] text-slate-500">Người xem còn liên hệ được bạn bằng tin nhắn trực tiếp ngay trên WINDTP (mua hàng, ứng tuyển, hỏi thuê...). Chỉ người đã đăng nhập mới thấy thông tin này.</p>
+        <p class="text-[10px] text-slate-500">Người xem còn liên hệ được bạn bằng tin nhắn trực tiếp ngay trên WINDTP (mua hàng, ứng tuyển, hỏi thuê...). Mọi người dùng đã đăng nhập đều xem được thông tin này, nên chỉ nhập số bạn sẵn sàng công khai.</p>
       </div>
       <div><label class="text-xs font-bold text-slate-600" for="pl-desc">Mô tả</label><textarea id="pl-desc" rows="3" maxlength="400" class="${field} mt-1 resize-none">${plv("pl-desc")}</textarea></div>
       <button data-action="submit-listing" class="w-full ${btnPrimary}">Đăng tin</button></div>`;

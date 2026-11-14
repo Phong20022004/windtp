@@ -64,3 +64,7 @@ Test: `python3 tests/smoke_economy.py` chạy app thật với máy chủ này (
 - Bảng tin chỉ trả 30 bình luận mới nhất mỗi bài (`commentsTotal` là tổng).
 - `POST /reports {kind: post|comment|listing, id, reason}` (20/ngày, mỗi người một báo cáo/nội dung); admin: `GET /admin/reports`, `POST /admin/reports/:id/resolve {remove}`.
 - Cấu trúc DB: `schema.sql` cho cài mới, `migrations/` cho DB đang chạy (`wrangler d1 migrations apply`).
+
+
+## Chống spam trong chat
+Mỗi tin tối đa 2 đường dẫn; cùng một nội dung gửi quá 2 lần trong 10 phút bị từ chối (`400 spam`). Kèm giới hạn 40 tin / 10 phút.

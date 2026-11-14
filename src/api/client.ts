@@ -57,6 +57,7 @@ const BY_SERVER_CODE: Readonly<Record<string, ApiErrorCode>> = {
   "bad-contact": "bad-contact",
   "own-listing": "own-listing",
   "bad-message": "bad-message",
+  spam: "spam",
   blocked: "blocked",
 };
 

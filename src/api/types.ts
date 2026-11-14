@@ -209,6 +209,7 @@ export type ApiErrorCode =
   | "bad-contact"
   | "own-listing"
   | "bad-message"
+  | "spam"
   | "blocked"
   | "unavailable"
   | "bad-response"
@@ -239,6 +240,7 @@ export const API_MESSAGES: Readonly<Record<ApiErrorCode, string>> = {
   "own-listing": "Đây là tin do bạn đăng",
   "blocked": "Cuộc trò chuyện này đang bị chặn nên không gửi được tin nhắn",
   "bad-message": "Tin nhắn không được để trống và tối đa 1000 ký tự",
+  spam: "Tin nhắn bị chặn vì giống spam (lặp lại nhiều lần hoặc có quá nhiều đường dẫn)",
   "code-expired": "Đã quá 1 tháng kể từ lúc đăng ký nên không thể nhập mã mời nữa",
   unavailable: "Máy chủ đang bận, hãy thử lại sau giây lát",
   "bad-response": "Máy chủ trả về dữ liệu không hợp lệ",

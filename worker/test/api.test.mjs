@@ -903,6 +903,18 @@ test('liên hệ: số điện thoại, Facebook, Zalo được chuẩn hóa và
   }
 });
 
+test('nhắn tin: chặn spam lặp nội dung và nhiều đường dẫn', async () => {
+  const app = await makeApp();
+  const id = await approvedListing(app);
+  const th = (await app.call('POST', '/threads', { uid: 'buyer', body: { listingId: id } })).json.id;
+  const send = (text) => app.call('POST', `/threads/${th}/send`, { uid: 'buyer', body: { text } });
+  assert.equal((await send('Còn hàng không?')).status, 200);
+  assert.equal((await send('Còn hàng không?')).status, 200);
+  assert.equal((await send('Còn hàng không?')).json.error, 'spam');
+  assert.equal((await send('http://a.vn http://b.vn http://c.vn')).json.error, 'spam');
+  assert.equal((await send('Xem http://a.vn nhé')).status, 200);
+});
+
 test('nhắn tin: người xem mở cuộc trò chuyện, hai bên trao đổi, đếm và đánh dấu đã đọc', async () => {
   const app = await makeApp();
   const id = await approvedListing(app);

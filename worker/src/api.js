@@ -747,6 +747,10 @@ export function createApi({ verify, now = () => Date.now() }) {
     if (await q(db, 'SELECT 1 AS x FROM thread_blocks WHERE thread_id = ?', th.id).first()) throw new HttpError(403, 'blocked');
     const n = await q(db, 'SELECT COUNT(*) AS n FROM messages WHERE sender = ? AND created_at > ?', user.uid, t - 600000).first();
     if (n.n >= E.MESSAGES_PER_10MIN) throw new HttpError(429, 'too-many-posts');
+    // Chống spam: tối đa 2 đường dẫn mỗi tin; không gửi cùng một nội dung quá 2 lần trong 10 phút.
+    if ((text.match(/https?:\/\/|www\./gi) || []).length > 2) throw bad('spam');
+    const same = await q(db, 'SELECT COUNT(*) AS n FROM messages WHERE sender = ? AND body = ? AND created_at > ?', user.uid, text, t - 600000).first();
+    if (same.n >= 2) throw bad('spam');
     const r = await q(db, 'INSERT INTO messages (thread_id, sender, body, created_at) VALUES (?, ?, ?, ?)', th.id, user.uid, text, t).run();
     await q(db, 'UPDATE threads SET last_at = ? WHERE id = ?', t, th.id).run();
     return { ok: true, id: r.meta.last_row_id };
