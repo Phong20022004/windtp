@@ -971,7 +971,7 @@ test('chống giả mạo tên admin; PUT /me/state kiểm tra kiểu từng kh�
   assert.ok(!feed.some((p) => !p.admin && /admin|windtp|quản trị/i.test(p.author)), 'tên người thường không chứa từ dành riêng');
 });
 
-test('migrations 0001..0003 cho cùng cấu trúc bảng với schema.sql', async () => {
+test('migrations 0001..0004 cho cùng cấu trúc bảng với schema.sql', async () => {
   const { DatabaseSync } = await import('node:sqlite');
   const { readFileSync } = await import('node:fs');
   const cols = (sqls) => {
@@ -981,5 +981,64 @@ test('migrations 0001..0003 cho cùng cấu trúc bảng với schema.sql', asyn
     for (const { name } of d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()) out[name] = d.prepare(`PRAGMA table_info(${name})`).all().map((c) => `${c.name}:${c.type}:${c.notnull}`).sort();
     return out;
   };
-  assert.deepEqual(cols(['../migrations/0001_init.sql', '../migrations/0002_hardening.sql', '../migrations/0003_contacts_threads.sql']), cols(['../schema.sql']));
+  assert.deepEqual(cols(['../migrations/0001_init.sql', '../migrations/0002_hardening.sql', '../migrations/0003_contacts_threads.sql', '../migrations/0004_thread_safety.sql']), cols(['../schema.sql']));
+});
+
+// ===== An toàn nhắn tin và sửa cách liên hệ =====
+async function openChat(app) {
+  const id = await approvedListing(app);
+  const th = (await app.call('POST', '/threads', { uid: 'buyer', body: { listingId: id } })).json.id;
+  await app.call('POST', `/threads/${th}/send`, { uid: 'buyer', body: { text: 'xin chào' } });
+  return { id, th };
+}
+
+test('nhắn tin: chặn chặn cả hai chiều, bỏ chặn thì nhắn lại được, chỉ người trong cuộc chặn được', async () => {
+  const app = await makeApp();
+  const { th } = await openChat(app);
+  assert.equal((await app.call('POST', `/threads/${th}/block`, { uid: 'spy', body: {} })).status, 404);
+  assert.equal((await app.call('POST', `/threads/${th}/block`, { uid: 'seller', body: { block: true } })).status, 200);
+  for (const uid of ['buyer', 'seller']) {
+    const r = await app.call('POST', `/threads/${th}/send`, { uid, body: { text: 'còn không' } });
+    assert.deepEqual([r.status, r.json.error], [403, 'blocked'], uid);
+  }
+  const bv = (await app.call('GET', `/threads/${th}/messages`, { uid: 'buyer' })).json.blocked;
+  const sv = (await app.call('GET', `/threads/${th}/messages`, { uid: 'seller' })).json.blocked;
+  assert.deepEqual([bv, sv], [{ me: false, other: true }, { me: true, other: false }]);
+  // Người kia không tự gỡ được lệnh chặn của người chặn.
+  await app.call('POST', `/threads/${th}/block`, { uid: 'buyer', body: { block: false } });
+  assert.equal((await app.call('POST', `/threads/${th}/send`, { uid: 'buyer', body: { text: 'x' } })).status, 403);
+  assert.equal((await app.call('POST', `/threads/${th}/block`, { uid: 'seller', body: { block: false } })).status, 200);
+  assert.equal((await app.call('POST', `/threads/${th}/send`, { uid: 'buyer', body: { text: 'x' } })).status, 200);
+});
+
+test('nhắn tin: báo cáo cuộc trò chuyện, admin xem các tin gần nhất rồi khóa hoặc bỏ qua', async () => {
+  const app = await makeApp();
+  const { th } = await openChat(app);
+  await app.call('POST', `/threads/${th}/send`, { uid: 'seller', body: { text: 'chuyển khoản trước nhé' } });
+  assert.equal((await app.call('POST', `/threads/${th}/report`, { uid: 'spy', body: { reason: 'lừa đảo' } })).status, 404);
+  assert.equal((await app.call('POST', `/threads/${th}/report`, { uid: 'buyer', body: { reason: 'x' } })).status, 400);
+  assert.equal((await app.call('POST', `/threads/${th}/report`, { uid: 'buyer', body: { reason: 'Đòi chuyển khoản trước' } })).status, 200);
+  assert.equal((await app.call('POST', `/threads/${th}/report`, { uid: 'buyer', body: { reason: 'Đòi chuyển khoản trước' } })).status, 200, 'báo cáo lặp không tạo thêm');
+  assert.equal((await app.call('GET', '/admin/thread-reports', { uid: 'u2' })).status, 403);
+  const list = (await app.call('GET', '/admin/thread-reports', { uid: 'boss', admin: true })).json.reports;
+  assert.equal(list.length, 1);
+  assert.deepEqual(list[0].messages.map((m) => m.text), ['xin chào', 'chuyển khoản trước nhé']);
+  assert.notEqual(list[0].messages[0].from, list[0].messages[1].from);
+  assert.equal((await app.call('POST', `/admin/thread-reports/${list[0].id}/resolve`, { uid: 'boss', admin: true, body: { lock: true } })).status, 200);
+  assert.equal((await app.call('POST', `/threads/${th}/send`, { uid: 'seller', body: { text: 'tiếp' } })).json.error, 'blocked');
+  assert.equal((await app.call('GET', '/admin/thread-reports', { uid: 'boss', admin: true })).json.reports.length, 0);
+});
+
+test('liên hệ: người đăng sửa cách liên hệ cho tin cũ; người khác không sửa được, admin sửa được, sai định dạng bị từ chối', async () => {
+  const app = await makeApp();
+  const id = await approvedListing(app);
+  const read = async () => (await app.call('GET', '/listings', { uid: 'buyer' })).json.listings.find((x) => x.id === id);
+  assert.equal((await read()).phone, '');
+  const ok = await app.call('POST', `/listings/${id}/contact`, { uid: 'seller', body: { phone: '0988 111 222', facebook: 'shop.abc' } });
+  assert.deepEqual([ok.status, ok.json.phone, ok.json.facebook], [200, '0988111222', 'https://facebook.com/shop.abc']);
+  assert.deepEqual([(await read()).phone, (await read()).facebook, (await read()).zalo], ['0988111222', 'https://facebook.com/shop.abc', '']);
+  assert.equal((await app.call('POST', `/listings/${id}/contact`, { uid: 'buyer', body: { phone: '0900000000' } })).status, 404);
+  assert.equal((await app.call('POST', `/listings/${id}/contact`, { uid: 'seller', body: { phone: 'abc' } })).json.error, 'bad-contact');
+  assert.equal((await app.call('POST', `/listings/${id}/contact`, { uid: 'boss', admin: true, body: { zalo: '0911222333' } })).status, 200);
+  assert.deepEqual([(await read()).phone, (await read()).zalo], ['', '0911222333']);
 });

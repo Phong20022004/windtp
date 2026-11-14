@@ -687,17 +687,64 @@ export function createApi({ verify, now = () => Date.now() }) {
     const rows = (await q(db, 'SELECT id, sender, body, created_at AS at FROM (SELECT * FROM messages WHERE thread_id = ? ORDER BY id DESC LIMIT 200) ORDER BY id', th.id).all()).results;
     await q(db, 'UPDATE messages SET read_at = ? WHERE thread_id = ? AND sender != ? AND read_at IS NULL', t, th.id, user.uid).run();
     const seller = th.owner === user.uid;
-    return { thread: { id: th.id, listingId: th.listing_id, title: th.title, role: seller ? 'seller' : 'buyer', peer: seller ? th.buyer_name : th.seller_name }, messages: rows.map((m) => ({ id: m.id, mine: m.sender === user.uid, text: m.body, at: m.at })) };
+    const blocks = (await q(db, 'SELECT by_uid AS by FROM thread_blocks WHERE thread_id = ?', th.id).all()).results.map((b) => b.by);
+    const blocked = { me: blocks.includes(user.uid), other: blocks.some((b) => b !== user.uid) };
+    return { thread: { id: th.id, listingId: th.listing_id, title: th.title, role: seller ? 'seller' : 'buyer', peer: seller ? th.buyer_name : th.seller_name }, blocked, messages: rows.map((m) => ({ id: m.id, mine: m.sender === user.uid, text: m.body, at: m.at })) };
   });
   route('POST', '/threads/:id/send', 'user', async ({ db, user, t, params, body }) => {
     const th = await myThread(db, user, params.id);
     const text = typeof body.text === 'string' ? body.text.trim() : '';
     if (!text || text.length > E.MAX_MESSAGE_LEN) throw bad('bad-message');
+    if (await q(db, 'SELECT 1 AS x FROM thread_blocks WHERE thread_id = ?', th.id).first()) throw new HttpError(403, 'blocked');
     const n = await q(db, 'SELECT COUNT(*) AS n FROM messages WHERE sender = ? AND created_at > ?', user.uid, t - 600000).first();
     if (n.n >= E.MESSAGES_PER_10MIN) throw new HttpError(429, 'too-many-posts');
     const r = await q(db, 'INSERT INTO messages (thread_id, sender, body, created_at) VALUES (?, ?, ?, ?)', th.id, user.uid, text, t).run();
     await q(db, 'UPDATE threads SET last_at = ? WHERE id = ?', t, th.id).run();
     return { ok: true, id: r.meta.last_row_id };
+  });
+
+  // Chặn / bỏ chặn người còn lại trong cuộc trò chuyện này (hai bên đều không gửi thêm được khi có người chặn).
+  route('POST', '/threads/:id/block', 'user', async ({ db, user, t, params, body }) => {
+    const th = await myThread(db, user, params.id);
+    if (body.block === false) await q(db, 'DELETE FROM thread_blocks WHERE thread_id = ? AND by_uid = ?', th.id, user.uid).run();
+    else await q(db, 'INSERT OR IGNORE INTO thread_blocks (thread_id, by_uid, created_at) VALUES (?, ?, ?)', th.id, user.uid, t).run();
+    return { ok: true };
+  });
+  // Báo cáo cuộc trò chuyện (quấy rối, lừa đảo...): admin chỉ đọc các tin gần nhất của cuộc trò chuyện bị báo cáo, không đọc được cuộc khác.
+  route('POST', '/threads/:id/report', 'user', async ({ db, user, t, params, body }) => {
+    const th = await myThread(db, user, params.id);
+    const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
+    if (reason.length < 2 || reason.length > E.REPORT_REASON_MAX) throw bad('bad-report');
+    await rate(db, user, t, 'thread-report', E.MAX_REPORTS_PER_DAY, 86400000);
+    await q(db, 'INSERT OR IGNORE INTO thread_reports (thread_id, uid, reason, created_at) VALUES (?, ?, ?, ?)', th.id, user.uid, reason, t).run();
+    return { ok: true };
+  });
+  route('GET', '/admin/thread-reports', 'admin', async ({ db }) => {
+    const rows = (await q(db, "SELECT r.id, r.thread_id AS threadId, r.reason, r.created_at AS at, t.title, t.seller_name AS sellerName, t.buyer_name AS buyerName FROM thread_reports r JOIN threads t ON t.id = r.thread_id WHERE r.status = 'open' ORDER BY r.id LIMIT 100").all()).results;
+    const out = [];
+    for (const r of rows) {
+      const msgs = (await q(db, 'SELECT sender, body FROM (SELECT * FROM messages WHERE thread_id = ? ORDER BY id DESC LIMIT 8) ORDER BY id', r.threadId).all()).results;
+      const th = await q(db, 'SELECT owner FROM threads WHERE id = ?', r.threadId).first();
+      out.push({ id: r.id, threadId: r.threadId, reason: r.reason, at: r.at, title: r.title, messages: msgs.map((m) => ({ from: m.sender === th.owner ? r.sellerName : r.buyerName, text: String(m.body).slice(0, 300) })) });
+    }
+    return { reports: out };
+  });
+  route('POST', '/admin/thread-reports/:id/resolve', 'admin', async ({ db, t, params, body }) => {
+    const r = await q(db, "SELECT id, thread_id FROM thread_reports WHERE id = ? AND status = 'open'", +params.id).first();
+    if (!r) throw new HttpError(404, 'not-found');
+    if (body.lock === true) { // khóa cuộc trò chuyện: không ai gửi thêm được; đóng mọi báo cáo của cuộc này
+      await q(db, "INSERT OR IGNORE INTO thread_blocks (thread_id, by_uid, created_at) VALUES (?, 'admin', ?)", r.thread_id, t).run();
+      await q(db, "UPDATE thread_reports SET status = 'locked' WHERE thread_id = ? AND status = 'open'", r.thread_id).run();
+    } else await q(db, "UPDATE thread_reports SET status = 'dismissed' WHERE id = ?", r.id).run();
+    return { ok: true };
+  });
+  // Người đăng sửa cách liên hệ của tin mình (tin cũ chưa có thông tin liên hệ); admin sửa được mọi tin.
+  route('POST', '/listings/:id/contact', 'user', async ({ db, user, params, body }) => {
+    const l = await q(db, "SELECT id, uid FROM listings WHERE id = ? AND status != 'deleted'", +params.id).first();
+    if (!l || (l.uid !== user.uid && !user.admin)) throw new HttpError(404, 'not-found');
+    const c = contactsFrom(body);
+    await q(db, 'INSERT INTO listing_contacts (listing_id, phone, facebook, zalo) VALUES (?, ?, ?, ?) ON CONFLICT(listing_id) DO UPDATE SET phone = excluded.phone, facebook = excluded.facebook, zalo = excluded.zalo', l.id, c.phone, c.facebook, c.zalo).run();
+    return { ok: true, ...c };
   });
 
   async function authenticate(request, env) {

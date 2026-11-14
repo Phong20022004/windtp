@@ -7,6 +7,8 @@ import {
   type AdminDevices,
   type ChatInbox,
   type ChatView,
+  type ListingContact,
+  type ThreadReport,
   type DeviceList,
   type Referral,
   type CatalogItem,
@@ -53,6 +55,7 @@ const BY_SERVER_CODE: Readonly<Record<string, ApiErrorCode>> = {
   "bad-contact": "bad-contact",
   "own-listing": "own-listing",
   "bad-message": "bad-message",
+  blocked: "blocked",
 };
 
 function classify(status: number, serverCode: string): ApiErrorCode {
@@ -104,6 +107,10 @@ export interface ApiClient {
   inbox(): Promise<ChatInbox>;
   thread(id: number): Promise<ChatView>;
   sendMessage(threadId: number, text: string): Promise<void>;
+  blockThread(threadId: number, block: boolean): Promise<void>;
+  reportThread(threadId: number, reason: string): Promise<void>;
+  /** Người đăng sửa cách liên hệ của tin mình; trả về giá trị đã chuẩn hóa. */
+  setListingContact(listingId: number, contact: Partial<ListingContact>): Promise<ListingContact>;
   createPost(text: string, tag: string): Promise<{ id: number; status: "pending" | "approved" }>;
   deletePost(id: number): Promise<void>;
   /** Đặt trạng thái thích của mình cho một bài đã duyệt; trả về tổng lượt thích mới. */
@@ -129,6 +136,9 @@ export interface ApiClient {
     grant(input: { uid?: string; email?: string; xu?: number; chips?: number; note?: string }): Promise<void>;
     /** Mở khóa thiết bị cho một người dùng bị kẹt (xóa toàn bộ thiết bị đã ghi nhận). */
     resetDevices(uid: string): Promise<number>;
+    threadReports(): Promise<ThreadReport[]>;
+    /** lock=true khóa cuộc trò chuyện; false bỏ qua báo cáo. */
+    resolveThreadReport(id: number, lock: boolean): Promise<void>;
     /** Thiết bị đã dùng trong tháng và thiết bị đang hoạt động của một người dùng. */
     devices(uid: string): Promise<AdminDevices>;
   };
@@ -230,6 +240,9 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, session, fetch
     inbox: async () => { const r = await request<ChatInbox>("GET", "/threads"); if (!Array.isArray(r.threads)) throw new ApiError("bad-response", 200); return { threads: r.threads, unread: Number(r.unread) || 0 }; },
     thread: async (id) => { const r = await request<ChatView>("GET", `/threads/${id}/messages`); if (!r.thread || !Array.isArray(r.messages)) throw new ApiError("bad-response", 200); return r; },
     sendMessage: (threadId, text) => done(post(`/threads/${threadId}/send`, { text })),
+    blockThread: (threadId, block) => done(post(`/threads/${threadId}/block`, { block })),
+    reportThread: (threadId, reason) => done(post(`/threads/${threadId}/report`, { reason })),
+    setListingContact: async (listingId, contact) => { const r = await post(`/listings/${listingId}/contact`, contact); return { phone: String(r.phone ?? ""), facebook: String(r.facebook ?? ""), zalo: String(r.zalo ?? "") }; },
     deletePost: (id) => done(post(`/posts/${id}/delete`)),
     profile: async () => {
       const r = await request<{ rev: unknown; state: unknown }>("GET", "/me/state");
@@ -254,6 +267,8 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, session, fetch
         if (typeof r.max !== "number" || !Array.isArray(r.devices)) throw new ApiError("bad-response", 200);
         return r;
       },
+      threadReports: async () => { const r = await request<{ reports: ThreadReport[] }>("GET", "/admin/thread-reports"); if (!Array.isArray(r.reports)) throw new ApiError("bad-response", 200); return r.reports; },
+      resolveThreadReport: (id, lock) => done(post(`/admin/thread-reports/${id}/resolve`, { lock })),
       resetDevices: async (uid) => Number((await post("/admin/devices/reset", { uid })).removed) || 0,
 
       listings: async () => (await request<{ listings: Listing[] }>("GET", "/admin/listings")).listings,

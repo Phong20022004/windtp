@@ -659,8 +659,12 @@
   const CHAT_CTA = { jobs: "Ứng tuyển", market: "Mua / hỏi mua", housing: "Hỏi thuê phòng" };
   const CHAT_HELLO = { jobs: (t) => "Chào bạn, mình muốn ứng tuyển vị trí “" + t + "”. Bạn cho mình hỏi thêm thông tin được không?", market: (t) => "Chào bạn, “" + t + "” còn không ạ?", housing: (t) => "Chào bạn, “" + t + "” còn trống không ạ? Mình muốn hỏi thêm thông tin." };
   function contactBlock(l) {
-    if (l.mine === true) return "";
     const sid = serverListingId(l.id);
+    if (l.mine === true) {
+      if (!sid) return "";
+      const have = [l.phone && "📞 Điện thoại", l.zalo && "Zalo", l.facebook && "Facebook"].filter(Boolean).join(" · ");
+      return `<div class="rounded-2xl border border-teal-200 bg-teal-50/50 p-3 flex items-center justify-between gap-2"><p class="text-[11px] text-slate-600">${have ? "Cách liên hệ đang hiện: " + have : "Chưa có số điện thoại hay Facebook. Người xem vẫn nhắn tin trực tiếp được trên WINDTP."}</p><button data-action="edit-contact" data-id="${esc(l.id)}" class="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-white border border-teal-300 text-teal-700 whitespace-nowrap">Sửa cách liên hệ</button></div>`;
+    }
     const pill = "px-3 py-2 rounded-xl text-xs font-bold bg-white border border-teal-300 text-teal-700 hover:bg-teal-50";
     const links = [];
     if (l.phone) links.push(`<a href="tel:${esc(l.phone)}" class="${pill}">📞 ${esc(l.phone)}</a>`);
@@ -681,9 +685,10 @@
     if (!c) return "";
     const t = c.view.thread;
     return `${modalHead("💬 " + esc(t.peer))}
-    <div class="px-4 pt-3"><p class="text-[11px] text-slate-500 truncate">Về tin: <b class="text-slate-700">${esc(t.title)}</b> · ${t.role === "seller" ? "người xem tin của bạn" : "người đăng tin"}</p></div>
+    <div class="px-4 pt-3 flex items-center justify-between gap-2"><p class="text-[11px] text-slate-500 truncate">Về tin: <b class="text-slate-700">${esc(t.title)}</b> · ${t.role === "seller" ? "người xem tin của bạn" : "người đăng tin"}</p>
+      <span class="flex gap-1.5 shrink-0"><button data-action="chat-block" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">${c.view.blocked.me ? "Bỏ chặn" : "Chặn"}</button><button data-action="chat-report" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-600 hover:bg-rose-100">Báo cáo</button></span></div>
     <div id="chat-log" class="p-4 space-y-2 overflow-y-auto" style="height:min(50vh,420px)">${chatBubbles(c.view)}</div>
-    <div class="px-4 pb-4 flex gap-2 items-end"><textarea id="chat-text" rows="2" maxlength="1000" placeholder="Nhập tin nhắn..." class="${field} resize-none flex-1">${esc(c.draft || "")}</textarea><button data-action="chat-send" class="${btnPrimary} whitespace-nowrap">Gửi</button></div>
+    ${c.view.blocked.me || c.view.blocked.other ? `<p class="mx-4 mb-4 text-xs text-center text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-3">${c.view.blocked.me ? "Bạn đã chặn cuộc trò chuyện này. Bấm Bỏ chặn để nhắn tiếp." : "Cuộc trò chuyện này đang bị chặn nên không gửi được tin nhắn."}</p>` : `<div class="px-4 pb-4 flex gap-2 items-end"><textarea id="chat-text" rows="2" maxlength="1000" placeholder="Nhập tin nhắn..." class="${field} resize-none flex-1">${esc(c.draft || "")}</textarea><button data-action="chat-send" class="${btnPrimary} whitespace-nowrap">Gửi</button></div>`}
     <p class="px-4 pb-4 text-[10px] text-slate-400">Đừng chuyển tiền trước khi gặp trực tiếp hoặc xác minh người bán. WINDTP không giữ tiền giao dịch giữa các thành viên.</p>`;
   }
   function chatScroll() { const el = $("#chat-log"); if (el) el.scrollTop = el.scrollHeight; }
@@ -699,7 +704,13 @@
     econ.chatTimer = window.setInterval(() => {
       const c = econ.chat;
       if (!c || ui.renderModal !== chatModal) { window.clearInterval(econ.chatTimer); return; }
-      econClient().thread(c.id).then((v) => { if (econ.chat === c && ui.renderModal === chatModal) { c.view = v; chatPaint(); econPollInbox(); } }, () => { });
+      econClient().thread(c.id).then((v) => {
+        if (econ.chat !== c || ui.renderModal !== chatModal) return;
+        const flip = v.blocked.me !== c.view.blocked.me || v.blocked.other !== c.view.blocked.other;
+        c.view = v;
+        if (flip) { const box = $("#chat-text"); if (box) c.draft = box.value; refreshModal(); chatScroll(); } else chatPaint();
+        econPollInbox();
+      }, () => { });
     }, 7000);
   }
   function chatOpenView(id, view, draft) {
@@ -726,6 +737,71 @@
     const box = $("#chat-text"); if (box) box.value = "";
     chatPaint(); chatScroll();
   };
+  actions["chat-block"] = async () => {
+    const c = econ.chat;
+    if (!c) return;
+    const block = !c.view.blocked.me;
+    if (block && !confirm("Chặn cuộc trò chuyện này? Cả hai bên sẽ không gửi thêm được tin nhắn cho tới khi bạn bỏ chặn.")) return;
+    const res = await econRun("chat-block", async () => { await econClient().blockThread(c.id, block); return econClient().thread(c.id); });
+    if (!res || econ.chat !== c) return;
+    const box = $("#chat-text"); if (box) c.draft = box.value;
+    c.view = res; refreshModal(); chatScroll();
+  };
+  actions["chat-report"] = async () => {
+    const c = econ.chat;
+    if (!c) return;
+    const reason = (window.prompt("Lý do báo cáo cuộc trò chuyện này (lừa đảo, quấy rối, spam...):", "") || "").trim();
+    if (!reason) return;
+    const ok = await econRun("chat-report", async () => { await econClient().reportThread(c.id, reason.slice(0, 200)); return true; });
+    if (ok) toast("Đã gửi báo cáo. BigBoss sẽ xem các tin gần nhất của cuộc trò chuyện này.");
+  };
+  // Người đăng sửa cách liên hệ của tin mình (tin cũ chưa có thông tin liên hệ).
+  function contactModal() {
+    const l = ui.editContact && state.listings.find((x) => x.id === ui.editContact);
+    if (!l) return "";
+    const row = (id, label, v, ph) => `<div><label class="text-xs font-bold text-slate-600" for="${id}">${label}</label><input id="${id}" value="${esc(v || "")}" placeholder="${ph}" maxlength="200" class="${field} mt-1"></div>`;
+    return `${modalHead("Sửa cách liên hệ")}<div class="p-4 space-y-3"><p class="text-[11px] text-slate-500">Tin: <b>${esc(l.title)}</b>. Để trống nếu không muốn hiện. Người xem vẫn nhắn tin trực tiếp được trên WINDTP.</p>
+      ${row("ct-phone", "Số điện thoại", l.phone, "VD 0901 234 567")}${row("ct-zalo", "Zalo (số điện thoại)", l.zalo, "VD 0901 234 567")}${row("ct-facebook", "Facebook", l.facebook, "Đường dẫn trang cá nhân hoặc tên tài khoản")}
+      <button data-action="save-contact" class="w-full ${btnPrimary}">Lưu</button></div>`;
+  }
+  actions["edit-contact"] = (el) => { ui.editContact = el.dataset.id; openModal(contactModal); };
+  actions["save-contact"] = async () => {
+    const l = state.listings.find((x) => x.id === ui.editContact), sid = l && serverListingId(l.id);
+    if (!l || !sid) return;
+    const res = await econRun("save-contact", () => econClient().setListingContact(sid, { phone: val("ct-phone"), zalo: val("ct-zalo"), facebook: val("ct-facebook") }));
+    if (!res) return;
+    l.phone = res.phone; l.zalo = res.zalo; l.facebook = res.facebook;
+    commit();
+    toast("Đã lưu cách liên hệ.");
+    closeModal();
+  };
+
+  // ----- Admin: báo cáo cuộc trò chuyện -----
+  function threadReportsButton() {
+    return isAdmin() ? `<div class="mt-3 flex items-center justify-between gap-3"><p class="text-[11px] text-slate-600">Báo cáo tin nhắn: chỉ xem các tin gần nhất của cuộc trò chuyện bị báo cáo.</p><button data-action="open-thread-reports" class="px-3 py-2 rounded-xl text-xs font-extrabold bg-white border border-rose-300 text-rose-700 whitespace-nowrap">Xem báo cáo</button></div>` : "";
+  }
+  function threadReportsModal() {
+    const list = econ.threadReports || [];
+    const rows = list.map((r) => `<div class="rounded-2xl border border-rose-200 p-3 space-y-2">
+      <p class="text-xs font-bold text-slate-800">${esc(r.title)} <span class="text-[10px] text-slate-400 font-normal">· ${timeHm(r.at)}</span></p>
+      <p class="text-[11px] text-rose-700">Lý do: ${esc(r.reason)}</p>
+      <div class="rounded-xl bg-slate-50 p-2 space-y-1 max-h-40 overflow-y-auto">${r.messages.map((m) => `<p class="text-[11px] text-slate-700"><b>${esc(m.from)}:</b> ${esc(m.text)}</p>`).join("")}</div>
+      <div class="flex gap-2"><button data-action="resolve-thread-report" data-id="${r.id}" data-lock="1" class="flex-1 px-3 py-2 rounded-xl text-xs font-extrabold bg-rose-600 text-white keep-white">Khóa cuộc trò chuyện</button><button data-action="resolve-thread-report" data-id="${r.id}" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600">Bỏ qua</button></div></div>`).join("");
+    return `${modalHead("🛡️ Báo cáo tin nhắn")}<div class="p-4 space-y-3">${rows || '<p class="text-center text-xs text-slate-500 py-10">Không có báo cáo nào đang chờ.</p>'}</div>`;
+  }
+  actions["open-thread-reports"] = async () => {
+    const list = await econRun("thread-reports", () => econClient().admin.threadReports());
+    if (!list) return;
+    econ.threadReports = list; openModal(threadReportsModal);
+  };
+  actions["resolve-thread-report"] = async (el) => {
+    const id = Number(el.dataset.id), lock = el.dataset.lock === "1";
+    const ok = await econRun("resolve-tr:" + id, async () => { await econClient().admin.resolveThreadReport(id, lock); return true; });
+    if (!ok) return;
+    econ.threadReports = (econ.threadReports || []).filter((r) => r.id !== id);
+    refreshModal();
+  };
+
   function inboxModal() {
     const box = econ.inbox || { threads: [] };
     const rows = box.threads.map((t) => `<button data-action="open-thread" data-id="${t.id}" class="w-full text-left flex items-center gap-3 rounded-2xl border border-slate-200 p-3 hover:bg-slate-50">

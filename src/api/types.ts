@@ -193,6 +193,7 @@ export type ApiErrorCode =
   | "bad-contact"
   | "own-listing"
   | "bad-message"
+  | "blocked"
   | "unavailable"
   | "bad-response"
   | "unknown";
@@ -220,6 +221,7 @@ export const API_MESSAGES: Readonly<Record<ApiErrorCode, string>> = {
   "already-purchased": "Bạn đã mua khóa học nên không thể nhập mã mời nữa",
   "bad-contact": "Cách liên hệ chưa hợp lệ: số điện thoại 8–15 chữ số, Facebook là đường dẫn facebook hoặc tên tài khoản, Zalo là số điện thoại",
   "own-listing": "Đây là tin do bạn đăng",
+  "blocked": "Cuộc trò chuyện này đang bị chặn nên không gửi được tin nhắn",
   "bad-message": "Tin nhắn không được để trống và tối đa 1000 ký tự",
   "code-expired": "Đã quá 1 tháng kể từ lúc đăng ký nên không thể nhập mã mời nữa",
   unavailable: "Máy chủ đang bận, hãy thử lại sau giây lát",
@@ -308,6 +310,23 @@ export interface ChatInbox {
   unread: number;
 }
 
+/** Báo cáo cuộc trò chuyện dành cho admin: kèm các tin gần nhất của đúng cuộc đó. */
+export interface ThreadReport {
+  id: number;
+  threadId: number;
+  reason: string;
+  at: number;
+  title: string;
+  messages: Array<{ from: string; text: string }>;
+}
+
+/** Cách liên hệ người đăng sau khi chuẩn hóa. */
+export interface ListingContact {
+  phone: string;
+  facebook: string;
+  zalo: string;
+}
+
 export interface ChatMessage {
   id: number;
   mine: boolean;
@@ -317,5 +336,7 @@ export interface ChatMessage {
 
 export interface ChatView {
   thread: Pick<ChatThread, "id" | "listingId" | "title" | "role" | "peer">;
+  /** me: mình đã chặn; other: bên kia (hoặc quản trị) đã chặn. */
+  blocked: { me: boolean; other: boolean };
   messages: ChatMessage[];
 }
