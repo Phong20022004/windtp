@@ -353,7 +353,6 @@
 
   // Hoa hồng giới thiệu cần ánh xạ ID WIND-… sang tài khoản thật nên tạm tắt (xem worker/README.md).
   function econUnavailable() { toast("Tính năng này đang được chuyển sang máy chủ, tạm thời chưa dùng được."); }
-  actions["claim-referral-commission"] = econUnavailable;
 
   // ----- Mã mời bạn bè và thiết bị đăng nhập: máy chủ giữ mã, thưởng và giới hạn 2 thiết bị -----
   /** Vẽ lại các chỗ có mã mời: Cài đặt (nếu đang mở) và danh sách nhiệm vụ. */
@@ -437,7 +436,6 @@
     else window.prompt("Sao chép mã mời:", text);
   }
   actions["ref-copy"] = refCopy;
-  actions["referral-link"] = refCopy;
 
   async function redeemCode(code, quiet) {
     try {
@@ -778,6 +776,20 @@
     commit();
     toast("Đã lưu cách liên hệ.");
     closeModal();
+  };
+
+  // ----- Admin: làm mới thiết bị -----
+  function deviceResetBlock() {
+    return isAdmin() ? `<div class="mt-3 space-y-2"><p class="text-[11px] text-slate-600">Làm mới thiết bị tháng này cho người dùng bị kẹt (nhập email hoặc UID).</p><div class="flex gap-2"><input id="adm-dev-email" class="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="email hoặc UID"><button data-action="reset-user-devices" class="px-3 py-2 rounded-xl text-xs font-extrabold bg-white border border-rose-300 text-rose-700 whitespace-nowrap">Làm mới</button></div></div>` : "";
+  }
+  actions["reset-user-devices"] = async () => {
+    const box = document.getElementById("adm-dev-email");
+    const who = (box && box.value || "").trim();
+    if (!who) { toast("Nhập email hoặc UID."); return; }
+    const n = await econRun("dev-reset", () => econClient().admin.resetDevices(who));
+    if (n === false) return;
+    toast(`Đã làm mới thiết bị (${n} bản ghi).`);
+    if (box) box.value = "";
   };
 
   // ----- Admin: báo cáo cuộc trò chuyện -----

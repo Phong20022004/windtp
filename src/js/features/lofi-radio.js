@@ -355,7 +355,6 @@
         { id: "n-2", icon: "\u{1F3AF}", title: "Nhi\u1EC7m v\u1EE5 h\u1EB1ng ng\xE0y \u0111\xE3 s\u1EB5n s\xE0ng, v\xE0o Ti\u1EC7n \xEDch > Nhi\u1EC7m v\u1EE5 \u0111\u1EC3 nh\u1EADn Xu.", ts: now - 30 * 6e4, read: false }
       ],
       invited: [],
-      referralCommission: 0,
       settings: { dark: false, sound: true, sfx: true, push: true, gender: "", birth: "", currency: ((Intl.DateTimeFormat().resolvedOptions().timeZone || "").includes("Tokyo") ? "JPY" : ((Intl.DateTimeFormat().resolvedOptions().timeZone || "").includes("Seoul") ? "KRW" : "VND")) },
       orders: [],
       customCats: [],

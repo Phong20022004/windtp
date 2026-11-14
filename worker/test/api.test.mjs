@@ -667,6 +667,12 @@ test('thiết bị: danh sách thiết bị trong tháng; admin làm mới cho n
   const r = await app.call('POST', '/admin/devices/reset', { uid: 'boss', admin: true, body: { uid: 'u1' } });
   assert.deepEqual([r.status, r.json.removed], [200, 2]);
   assert.equal((await claim(app, 'u1', 3)).status, 200);
+  await app.call('GET', '/me', { uid: 'u1', device: dev(4) }); await app.db.prepare("INSERT INTO wallets (uid, email, created_at) VALUES ('u1', 'Nguoi@Example.com', 1) ON CONFLICT(uid) DO UPDATE SET email = excluded.email").run();
+  await claim(app, 'u1', 4);
+  const byMail = await app.call('POST', '/admin/devices/reset', { uid: 'boss', admin: true, body: { email: ' nguoi@example.com ' } });
+  assert.equal(byMail.status, 200);
+  assert.ok(byMail.json.removed >= 1);
+  assert.equal((await app.call('POST', '/admin/devices/reset', { uid: 'boss', admin: true, body: { email: 'khong@co.com' } })).status, 404);
 });
 
 // ===== Mã mời =====
@@ -1049,6 +1055,11 @@ test('xuất dữ liệu và xóa tài khoản: gỡ nội dung cá nhân, giữ
   const post = (await app.call('POST', '/posts', { uid: 'boss', admin: true, body: { text: 'Bài của admin' } })).json.id;
   await app.call('POST', `/posts/${post}/comments`, { uid: 'U', body: { text: 'bình luận của U' } });
   await app.call('PUT', '/me/state', { uid: 'U', body: { state: { settings: { currency: 'KRW' } }, rev: 0 } });
+  const lid = await approvedListing(app);
+  const th = (await app.call('POST', '/threads', { uid: 'U', body: { listingId: lid } })).json.id;
+  assert.ok(th);
+  assert.equal((await app.call('POST', `/threads/${th}/block`, { uid: 'U', body: { block: true } })).status, 200);
+  assert.equal((await app.call('POST', `/threads/${th}/report`, { uid: 'U', body: { reason: 'spam' } })).status, 200);
   const ex = await app.call('GET', '/me/export', { uid: 'U' });
   assert.equal(ex.status, 200);
   assert.equal(ex.json.comments.length, 1);
@@ -1060,6 +1071,7 @@ test('xuất dữ liệu và xóa tài khoản: gỡ nội dung cá nhân, giữ
   assert.equal(feed[0].comments.length, 0, 'bình luận đã xóa');
   const count = async (table) => (await app.db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE uid = ?`).bind('U').first()).n;
   for (const t of ['tx', 'profiles', 'wallets', 'user_sessions', 'post_comments']) assert.equal(await count(t), 0, t + ' đã xóa');
+  for (const [t, c] of [['thread_blocks', 'by_uid'], ['thread_reports', 'uid']]) assert.equal((await app.db.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE ${c} = ?`).bind('U').first()).n, 0, t + ' đã xóa');
   assert.equal((await app.call('GET', '/me/export', { uid: 'U' })).status, 403, 'phiên đã bị xóa');
   assert.equal((await app.call('POST', '/session/claim', { uid: 'U' })).status, 200);
   assert.equal((await app.call('POST', '/claim', { uid: 'U', body: { taskId: 't-checkin' } })).status, 409, 'xóa rồi không nhận lại thưởng cùng ngày');

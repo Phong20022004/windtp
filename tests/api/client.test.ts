@@ -257,6 +257,10 @@ describe("thiết bị và mã mời", () => {
     const adm = make([{ status: 200, body: { ok: true, removed: 2 } }]);
     assert.equal(await adm.client.admin.resetDevices("u1"), 2);
     assert.equal(adm.seen[0]?.url, "https://api.windtp.test/admin/devices/reset");
+    assert.equal(adm.seen[0]?.body, JSON.stringify({ uid: "u1" }));
+    const adm2 = make([{ status: 200, body: { ok: true, removed: 1 } }]);
+    assert.equal(await adm2.client.admin.resetDevices(" a@b.com "), 1);
+    assert.equal(adm2.seen[0]?.body, JSON.stringify({ email: "a@b.com" }));
     const view = { max: 2, month: "2026-11", devices: [{ id: "d1", firstSeen: 1 }], active: null };
     const v = make([{ status: 200, body: view }]);
     assert.deepEqual(await v.client.admin.devices("u 1"), view);

@@ -171,9 +171,15 @@ export function createApi({ verify, now = () => Date.now() }) {
   });
   // Admin làm mới số thiết bị trong tháng cho người dùng bị kẹt (ví dụ mất máy).
   route('POST', '/admin/devices/reset', 'admin', async ({ db, body }) => {
-    if (typeof body.uid !== 'string' || !body.uid || body.uid.length > 128) throw bad('bad-uid');
-    const r = await q(db, 'DELETE FROM device_months WHERE uid = ?', body.uid).run();
-    await q(db, 'DELETE FROM user_sessions WHERE uid = ?', body.uid).run();
+    let uid = typeof body.uid === 'string' ? body.uid.trim() : '';
+    if (!uid && typeof body.email === 'string' && body.email.trim()) {
+      const hit = await q(db, 'SELECT uid FROM wallets WHERE lower(email) = ?', body.email.trim().toLowerCase()).first();
+      if (!hit) throw new HttpError(404, 'no-user');
+      uid = hit.uid;
+    }
+    if (!uid || uid.length > 128) throw bad('bad-uid');
+    const r = await q(db, 'DELETE FROM device_months WHERE uid = ?', uid).run();
+    await q(db, 'DELETE FROM user_sessions WHERE uid = ?', uid).run();
     return { ok: true, removed: r.meta.changes };
   });
 
@@ -399,7 +405,7 @@ export function createApi({ verify, now = () => Date.now() }) {
   route('POST', '/admin/grant', 'admin', async ({ db, user, t, body }) => {
     let uid = typeof body.uid === 'string' ? body.uid.trim() : '';
     if (!uid && typeof body.email === 'string' && body.email.trim()) {
-      const hit = await q(db, 'SELECT uid FROM wallets WHERE email = ?', body.email.trim().toLowerCase()).first();
+      const hit = await q(db, 'SELECT uid FROM wallets WHERE lower(email) = ?', body.email.trim().toLowerCase()).first();
       if (!hit) throw new HttpError(404, 'no-user');
       uid = hit.uid;
     }
@@ -462,6 +468,8 @@ export function createApi({ verify, now = () => Date.now() }) {
     // Giữ lại để chống lạm dụng (không chứa nội dung cá nhân): khóa nhận thưởng (claims), hạn mức chip theo ngày, thiết bị theo tháng, việc đã nhập mã mời. Nếu bỏ, xóa rồi dùng lại cùng tài khoản sẽ nhận thưởng lần nữa.
     await atomic(db, [
       q(db, "UPDATE orders SET uid = 'deleted', email = NULL, name = NULL, contact = NULL WHERE uid = ?", uid),
+      q(db, 'DELETE FROM thread_blocks WHERE thread_id IN (SELECT id FROM threads WHERE owner = ? OR buyer = ?) OR by_uid = ?', uid, uid, uid),
+      q(db, 'DELETE FROM thread_reports WHERE thread_id IN (SELECT id FROM threads WHERE owner = ? OR buyer = ?) OR uid = ?', uid, uid, uid),
       q(db, 'DELETE FROM messages WHERE thread_id IN (SELECT id FROM threads WHERE owner = ? OR buyer = ?)', uid, uid),
       q(db, 'DELETE FROM threads WHERE owner = ? OR buyer = ?', uid, uid),
       q(db, 'DELETE FROM listing_contacts WHERE listing_id IN (SELECT id FROM listings WHERE uid = ?)', uid),

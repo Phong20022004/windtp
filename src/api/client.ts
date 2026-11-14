@@ -145,7 +145,7 @@ export interface ApiClient {
     uploadImage(image: Blob): Promise<string>;
     grant(input: { uid?: string; email?: string; xu?: number; chips?: number; note?: string }): Promise<void>;
     /** Mở khóa thiết bị cho một người dùng bị kẹt (xóa toàn bộ thiết bị đã ghi nhận). */
-    resetDevices(uid: string): Promise<number>;
+    resetDevices(who: string): Promise<number>;
     threadReports(): Promise<ThreadReport[]>;
     /** lock=true khóa cuộc trò chuyện; false bỏ qua báo cáo. */
     resolveThreadReport(id: number, lock: boolean): Promise<void>;
@@ -284,7 +284,7 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, session, fetch
       },
       threadReports: async () => { const r = await request<{ reports: ThreadReport[] }>("GET", "/admin/thread-reports"); if (!Array.isArray(r.reports)) throw new ApiError("bad-response", 200); return r.reports; },
       resolveThreadReport: (id, lock) => done(post(`/admin/thread-reports/${id}/resolve`, { lock })),
-      resetDevices: async (uid) => Number((await post("/admin/devices/reset", { uid })).removed) || 0,
+      resetDevices: async (who) => Number((await post("/admin/devices/reset", who.includes("@") ? { email: who.trim() } : { uid: who.trim() })).removed) || 0,
 
       listings: async () => (await request<{ listings: Listing[] }>("GET", "/admin/listings")).listings,
       approveListing: (id) => done(post(`/admin/listings/${id}/approve`)),

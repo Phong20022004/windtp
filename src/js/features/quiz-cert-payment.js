@@ -1279,31 +1279,6 @@
       sfx(`${side}-preview-${preset}`);
       refreshModal();
     },
-    "claim-referral-commission": () => {
-      const pending = Math.max(0, Number(state.referralCommission || 0));
-      if (!pending) {
-        toast("Chưa có thưởng WIND Coin chờ nhận.");
-        return;
-      }
-      state.balance += pending;
-      state.history.unshift({ id: uid("tx"), title: "Thưởng mời bạn mua khóa học", amount: pending, kind: "in", ts: Date.now() });
-      state.referralCommission = 0;
-      commit();
-      toast(`Đã nhận ${fmt(pending)} WIND Coin thưởng mời bạn.`);
-    },
-    "referral-link": async () => {
-      const code = userId();
-      let base = "";
-      try { base = window.WINDTP && window.WINDTP.appUrl ? window.WINDTP.appUrl() : ""; } catch (e) { }
-      if (!base) base = location.href.split(/[?#]/)[0];
-      const link = `${base.split(/[?#]/)[0]}?ref=${encodeURIComponent(code)}`;
-      let copied = false;
-      try { await navigator.clipboard.writeText(link); copied = true; } catch (e) { }
-      if (!copied) { try { const ta = document.createElement("textarea"); ta.value = link; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;left:0;top:0;opacity:0"; document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, link.length); copied = document.execCommand("copy"); ta.remove(); } catch (e) { } }
-      if (copied) toast("Đã sao chép liên kết mời bạn bè.");
-      else if (navigator.share) { try { await navigator.share({ title: "WINDTP", text: "Học cùng mình trên WINDTP nhé!", url: link }); } catch (e) { } }
-      else window.prompt("Sao chép liên kết mời bạn bè:", link);
-    },
     "spend-xu": () => {
       ui.shopCat = "study";
       ui.shopSub = "Tài liệu";
