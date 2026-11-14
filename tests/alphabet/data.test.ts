@@ -69,3 +69,14 @@ test("stripTone bỏ dấu thanh của pinyin", () => {
   assert.equal(data.stripTone("nǚ"), "nv");
   assert.equal(data.stripTone("shǒu"), "shou");
 });
+
+test("Katakana: âm đục và âm ghép đều có từ ví dụ viết bằng katakana", () => {
+  const ja = data.get("ja") as Cfg;
+  const groups = ja.groups.filter((g) => g.name.startsWith("Katakana"));
+  assert.equal(groups.length, 3);
+  for (const g of groups) for (const it of g.items) assert.ok(it.x && it.x.includes(" · "), `${g.name}: ${it.c} thiếu ví dụ`);
+  for (const g of groups.slice(1)) for (const it of g.items) {
+    const word = (it.x as string).split(" · ")[0] as string;
+    assert.ok(/[゠-ヿ]/.test(word), `${it.c}: ví dụ "${word}" phải chứa katakana`);
+  }
+});

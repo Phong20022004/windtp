@@ -76,6 +76,23 @@
       ["びゃ", "bya", "さんびゃく · ba trăm"], ["びゅ", "byu", "インタビュー · phỏng vấn"], ["びょ", "byo", "びょういん · bệnh viện"],
       ["ぴゃ", "pya", "ろっぴゃく · sáu trăm"], ["ぴゅ", "pyu", "コンピュータ · máy tính"], ["ぴょ", "pyo", "ぴょんぴょん · nhảy tưng tưng"]
     ];
+    // Ví dụ katakana (từ mượn và từ tượng thanh) cho âm đục/bán đục và âm ghép, cùng thứ tự với hai bảng trên.
+    var kataDak = ["ガム · kẹo cao su", "ギター · đàn ghi-ta", "グラス · ly thủy tinh", "ゲーム · trò chơi", "ゴルフ · gôn",
+      "ザック · ba lô", "ジュース · nước ép", "ズボン · quần dài", "ゼリー · thạch", "ゾーン · khu vực",
+      "ダンス · khiêu vũ", "ヂ · hiếm gặp (thường dùng ジ)", "ヅ · hiếm gặp (thường dùng ズ)", "デザート · món tráng miệng", "ドア · cửa",
+      "バス · xe buýt", "ビール · bia", "ブーツ · ủng", "ベッド · giường", "ボール · quả bóng",
+      "パン · bánh mì", "ピアノ · đàn piano", "プール · bể bơi", "ペン · cái bút", "ポスト · hòm thư"];
+    var kataYoon = ["キャベツ · bắp cải", "キュート · dễ thương", "キョロキョロ · nhìn quanh (từ tượng thanh)",
+      "シャツ · áo sơ mi", "シュークリーム · bánh su kem", "ショップ · cửa hàng",
+      "チャンス · cơ hội", "チューリップ · hoa tulip", "チョコレート · sô cô la",
+      "ニャーニャー · tiếng mèo kêu", "ニュース · tin tức", "ニョッキ · gnocchi",
+      "ヒャッホー · tiếng reo vui", "ヒュッテ · nhà nghỉ trên núi", "ヒョウ · con báo (tên động vật)",
+      "ミャンマー · Myanmar", "ミュージック · âm nhạc", "ミョウガ · gừng Nhật",
+      "リャマ · lạc đà không bướu", "リュック · ba lô", "リョクチャ · trà xanh",
+      "ギャラリー · phòng tranh", "ギュッと · ôm chặt (từ tượng thanh)", "ギョーザ · há cảo",
+      "ジャム · mứt", "ジュース · nước ép", "ジョギング · chạy bộ",
+      "ビャクダン · gỗ đàn hương", "ビューティー · sắc đẹp", "ビョーキ · bệnh (cách viết nhấn mạnh)",
+      "ピャーピャー · tiếng ríu rít", "ピューマ · báo sư tử", "ピョンピョン · nhảy tưng tưng"];
     function toKata(s) { return Array.from(s).map(function (ch) { var n = ch.charCodeAt(0); return n >= 0x3041 && n <= 0x3096 ? String.fromCharCode(n + 0x60) : ch; }).join(""); }
     var ja = {
       code: "ja", tts: "ja-JP", kind: "alphabet", typeMode: "rom",
@@ -85,8 +102,8 @@
         { name: "Hiragana · âm đục và bán đục (25)", items: rows(dakuten) },
         { name: "Hiragana · âm ghép (33)", items: rows(yoon) },
         { name: "Katakana · 46 âm cơ bản", items: hiraBase.map(function (p, i) { return item(toKata(p[0]), p[1], kataEx[i]); }) },
-        { name: "Katakana · âm đục và bán đục (25)", items: dakuten.map(function (p) { return item(toKata(p[0]), p[1], ""); }) },
-        { name: "Katakana · âm ghép (33)", items: yoon.map(function (p) { return item(toKata(p[0]), p[1], ""); }) }
+        { name: "Katakana · âm đục và bán đục (25)", items: dakuten.map(function (p, i) { return item(toKata(p[0]), p[1], kataDak[i]); }) },
+        { name: "Katakana · âm ghép (33)", items: yoon.map(function (p, i) { return item(toKata(p[0]), p[1], kataYoon[i]); }) }
       ]
     };
 

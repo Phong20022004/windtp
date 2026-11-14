@@ -89,8 +89,8 @@
       '<div class="mt-3 h-2 rounded-full bg-white/25 overflow-hidden"><div class="h-full bg-white" style="width:' + pct + '%"></div></div><p class="text-[11px] font-bold mt-1 opacity-90">Đã thuộc ' + done + '/' + total + ' (' + pct + '%)</p></div>';
   }
   function alphaChips(cfg, A) {
-    var chips = '<button data-action="alpha-group" data-g="all" class="px-3 py-1.5 rounded-full text-[11px] font-bold border ' + (A.group === "all" ? "bg-sky-600 text-white keep-white border-sky-600" : "bg-white text-slate-600 border-slate-200") + '">Tất cả</button>';
-    cfg.groups.forEach(function (g, gi) { chips += '<button data-action="alpha-group" data-g="' + gi + '" class="px-3 py-1.5 rounded-full text-[11px] font-bold border ' + (A.group === gi ? "bg-sky-600 text-white keep-white border-sky-600" : "bg-white text-slate-600 border-slate-200") + '">' + esc(g.name) + '</button>'; });
+    var chips = '<button data-action="alpha-group" data-g="all" aria-pressed="' + (A.group === "all") + '" class="px-3 py-1.5 rounded-full text-[11px] font-bold border ' + (A.group === "all" ? "bg-sky-600 text-white keep-white border-sky-600" : "bg-white text-slate-600 border-slate-200") + '">Tất cả</button>';
+    cfg.groups.forEach(function (g, gi) { chips += '<button data-action="alpha-group" data-g="' + gi + '" aria-pressed="' + (A.group === gi) + '" class="px-3 py-1.5 rounded-full text-[11px] font-bold border ' + (A.group === gi ? "bg-sky-600 text-white keep-white border-sky-600" : "bg-white text-slate-600 border-slate-200") + '">' + esc(g.name) + '</button>'; });
     return '<div class="flex flex-wrap gap-2" role="group" aria-label="Chọn nhóm chữ">' + chips + '</div>';
   }
   function alphaEmpty(msg) { return '<div class="glass-card rounded-3xl p-6 text-center text-sm text-slate-600">' + msg + '</div>'; }
@@ -104,7 +104,7 @@
         flat.forEach(function (f, i) {
           if (f.g !== gi) return;
           var m = alphaMastered(alphaRec(lang.code, f.it.c));
-          html += '<button data-action="alpha-pick" data-i="' + i + '" class="rounded-2xl border ' + (A.sel === i ? "border-sky-500 ring-2 ring-sky-300" : "border-slate-200") + ' bg-white p-2 flex flex-col items-center hover:border-sky-400" aria-label="' + esc(f.it.c + " " + f.it.r) + '">' +
+          html += '<button data-action="alpha-pick" data-i="' + i + '" aria-pressed="' + (A.sel === i) + '" class="rounded-2xl border ' + (A.sel === i ? "border-sky-500 ring-2 ring-sky-300" : "border-slate-200") + ' bg-white p-2 flex flex-col items-center hover:border-sky-400" aria-label="' + esc(f.it.c + " " + f.it.r) + '">' +
             '<span class="text-slate-800 font-black">' + alphaBig(f.it, 28) + '</span><span class="text-[10px] text-slate-500 mt-1 truncate max-w-full">' + esc(alphaShort(f.it)) + '</span>' + (m ? '<span class="text-[10px] text-emerald-600">✓</span>' : "") + '</button>';
         });
         html += '</div>';
@@ -134,8 +134,8 @@
       return '<div class="glass-card rounded-3xl p-4 space-y-3"><div class="flex items-center justify-between text-xs text-slate-500"><span>Chữ ' + (A.wi + 1) + '/' + scope.length + '</span><span class="font-bold text-sky-700">' + esc(it.r) + '</span></div>' +
         (it.x ? '<p class="text-xs text-slate-600">' + esc(it.x) + '</p>' : "") +
         '<div class="relative mx-auto" style="width:300px;max-width:100%;aspect-ratio:1/1"><div class="absolute inset-0 rounded-2xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center select-none pointer-events-none" aria-hidden="true" style="color:' + (A.guide ? "rgba(100,116,139,.28)" : "transparent") + '">' + alphaBig(it, 210) + '</div>' +
-        '<canvas id="alpha-canvas" class="absolute inset-0 w-full h-full rounded-2xl" style="touch-action:none" aria-label="Khung tập viết"></canvas></div>' +
-        '<div class="flex flex-wrap justify-center gap-2"><button data-action="alpha-wprev" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold">◀</button><button data-action="alpha-say" data-i="' + scope[A.wi] + '" class="px-3 py-2 rounded-xl bg-sky-50 text-sky-700 text-xs font-bold">🔊</button><button data-action="alpha-wclear" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold">🧹 Xóa</button><button data-action="alpha-wguide" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold">👁 Chữ mẫu</button><button data-action="alpha-wnext" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold">▶</button></div>' +
+        '<canvas id="alpha-canvas" role="img" class="absolute inset-0 w-full h-full rounded-2xl" style="touch-action:none" aria-label="Khung tập viết bằng chuột hoặc ngón tay. Nếu không vẽ được, hãy dùng các nút bên dưới để nghe, chuyển chữ và tự chấm."></canvas></div>' +
+        '<div class="flex flex-wrap justify-center gap-2"><button data-action="alpha-wprev" aria-label="Chữ trước" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold">◀</button><button data-action="alpha-say" data-i="' + scope[A.wi] + '" aria-label="Nghe chữ này" class="px-3 py-2 rounded-xl bg-sky-50 text-sky-700 text-xs font-bold">🔊</button><button data-action="alpha-wclear" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold">🧹 Xóa</button><button data-action="alpha-wguide" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold">👁 Chữ mẫu</button><button data-action="alpha-wnext" aria-label="Chữ sau" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold">▶</button></div>' +
         '<div class="flex justify-center gap-2"><button data-action="alpha-wgrade" data-ok="1" class="px-4 py-2 rounded-xl bg-emerald-600 text-white keep-white text-xs font-bold">✅ Viết đúng</button><button data-action="alpha-wgrade" data-ok="0" class="px-4 py-2 rounded-xl bg-rose-500 text-white keep-white text-xs font-bold">🔁 Cần luyện thêm</button></div></div>';
     },
     flash: function (cfg, lang, A) {
@@ -211,7 +211,7 @@
     if (kind === "type") {
       var dict = cfg.typeMode === "dictate";
       var prompt = dict ? '<button data-action="alpha-say" data-i="' + qi + '" class="px-6 py-4 rounded-2xl bg-sky-600 text-white keep-white text-2xl font-black" aria-label="Nghe lại">🔊</button><p class="text-xs text-slate-500 mt-2">Nghe và gõ chữ cái bạn nghe được</p>' : '<div class="text-slate-800 font-black">' + alphaBig(it, 96) + '</div><p class="text-xs text-slate-500 mt-2">Gõ cách đọc (không cần dấu thanh)' + (cfg.kind === "radicals" ? ", hoặc âm Hán Việt" : "") + '</p>';
-      var res = q.picked == null ? "" : '<p class="text-sm font-bold ' + (q.picked === 1 ? "text-emerald-600" : "text-rose-600") + '">' + (q.picked === 1 ? "Chính xác! " : "Chưa đúng. ") + 'Đáp án: ' + esc(dict ? it.c : it.r) + '</p>';
+      var res = q.picked == null ? "" : '<p role="status" aria-live="polite" class="text-sm font-bold ' + (q.picked === 1 ? "text-emerald-600" : "text-rose-600") + '">' + (q.picked === 1 ? "Chính xác! " : "Chưa đúng. ") + 'Đáp án: ' + esc(dict ? it.c : it.r) + '</p>';
       return head + '<div class="glass-card rounded-3xl p-6 text-center space-y-3">' + prompt + '<div class="flex gap-2 justify-center"><input id="alpha-type" type="text" autocomplete="off" autocapitalize="off" maxlength="40" value="' + esc(q.typed) + '"' + (q.picked != null ? " disabled" : "") + ' class="w-40 px-3 py-2 text-center rounded-xl border border-slate-300 bg-white text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-400" aria-label="Đáp án"><button data-action="alpha-check" ' + (q.picked != null ? "disabled " : "") + 'class="px-4 py-2 rounded-xl bg-emerald-600 text-white keep-white text-xs font-bold">Kiểm tra</button></div>' + res + '</div>' + next;
     }
     var hear = kind === "hear";
@@ -221,9 +221,10 @@
     var opts = q.opts.map(function (oi) {
       var o = flat[oi].it, state_ = "border-slate-200 bg-white";
       if (q.picked != null) state_ = oi === qi ? "border-emerald-500 bg-emerald-50" : (oi === q.picked ? "border-rose-400 bg-rose-50" : "border-slate-200 bg-white opacity-70");
-      return '<button data-action="alpha-ans" data-i="' + oi + '"' + (q.picked != null ? " disabled" : "") + ' class="rounded-2xl border p-3 ' + state_ + ' text-slate-800 ' + (hear ? "font-black" : "text-sm font-bold") + '">' + (hear ? alphaBig(o, 34) : esc(alphaShort(o))) + '</button>';
+      var mark = q.picked == null ? "" : (oi === qi ? " ✓" : (oi === q.picked ? " ✗" : ""));
+      return '<button data-action="alpha-ans" data-i="' + oi + '"' + (q.picked != null ? " disabled" : "") + (mark ? ' aria-label="' + esc(o.c + " " + o.r + (oi === qi ? " — đáp án đúng" : " — bạn đã chọn, chưa đúng")) + '"' : "") + ' class="rounded-2xl border p-3 ' + state_ + ' text-slate-800 ' + (hear ? "font-black" : "text-sm font-bold") + '">' + (hear ? alphaBig(o, 34) : esc(alphaShort(o))) + mark + '</button>';
     }).join("");
-    var fb = q.picked == null ? "" : '<p class="text-sm text-center ' + (q.picked === qi ? "text-emerald-600" : "text-rose-600") + ' font-bold">' + (q.picked === qi ? "Chính xác!" : "Chưa đúng") + ' · ' + esc(it.c) + ' = ' + esc(it.r) + '</p>';
+    var fb = q.picked == null ? "" : '<p role="status" aria-live="polite" class="text-sm text-center ' + (q.picked === qi ? "text-emerald-600" : "text-rose-600") + ' font-bold">' + (q.picked === qi ? "Chính xác!" : "Chưa đúng") + ' · ' + esc(it.c) + ' = ' + esc(it.r) + '</p>';
     return head + '<div class="glass-card rounded-3xl p-6 text-center">' + prompt2 + '</div><div class="grid grid-cols-2 gap-2">' + opts + '</div>' + fb + next;
   }
 
