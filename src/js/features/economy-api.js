@@ -706,14 +706,17 @@
     econ.chatTimer = window.setInterval(() => {
       const c = econ.chat;
       if (!c || ui.renderModal !== chatModal) { window.clearInterval(econ.chatTimer); return; }
+      if (document.visibilityState !== "visible" || c.polling) return;
+      c.polling = true;
       econClient().thread(c.id).then((v) => {
+        c.polling = false;
         if (econ.chat !== c || ui.renderModal !== chatModal) return;
         const flip = v.blocked.me !== c.view.blocked.me || v.blocked.other !== c.view.blocked.other;
         c.view = v;
         if (flip) { const box = $("#chat-text"); if (box) c.draft = box.value; refreshModal(); chatScroll(); } else chatPaint();
         econPollInbox();
-      }, () => { });
-    }, 7000);
+      }, () => { c.polling = false; });
+    }, 3000);
   }
   function chatOpenView(id, view, draft) {
     econ.chat = { id, view, draft: draft || "" };
