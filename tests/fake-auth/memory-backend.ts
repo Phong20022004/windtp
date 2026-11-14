@@ -151,6 +151,16 @@ export class MemoryAuthBackend implements AuthBackend {
     return "test." + btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
 
+  async deleteAccount(password: string, beforeDelete?: () => Promise<void>): Promise<void> {
+    const user = this.currentUser();
+    if (!user) throw new AuthFailure("recent-login");
+    const stored = this.readDb().find((u) => u.uid === user.uid);
+    if (!stored || (stored.password !== "" && stored.password !== password)) throw new AuthFailure("invalid-credentials");
+    await beforeDelete?.();
+    this.writeDb(this.readDb().map((u) => (u.uid === user.uid ? { ...u, email: "deleted:" + u.uid, password: "\u0000" } : u)));
+    await this.signOut();
+  }
+
   async signOut(): Promise<void> {
     sessionStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(SESSION_KEY);

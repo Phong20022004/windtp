@@ -434,6 +434,47 @@ export function createApi({ verify, now = () => Date.now() }) {
     return { ok: true, rev: r.rev };
   }, 131072);
 
+  // Dữ liệu của chính người dùng: xuất bản sao (GET /me/export) và xóa tài khoản (POST /me/delete {confirm: "DELETE"}).
+  route('GET', '/me/export', 'user', async ({ db, user, t }) => {
+    await rate(db, user, t, 'export', 5, 3600000);
+    const all = async (sql, ...a) => (await q(db, sql, ...a).all()).results;
+    const uid = user.uid;
+    const profile = await q(db, 'SELECT data, rev, updated_at AS at FROM profiles WHERE uid = ?', uid).first();
+    return {
+      exportedAt: t, uid, email: user.email || '',
+      wallet: await q(db, 'SELECT balance, chips, premium_until AS premiumUntil, birth, created_at AS createdAt FROM wallets WHERE uid = ?', uid).first(),
+      transactions: await all('SELECT kind, delta, chips_delta AS chipsDelta, title, created_at AS at FROM tx WHERE uid = ? ORDER BY id', uid),
+      owned: (await all('SELECT item_id AS id, created_at AS at FROM entitlements WHERE uid = ? ORDER BY created_at', uid)),
+      orders: await all('SELECT id, kind, currency, amount, xu, plan_id AS planId, summary, lines, contact, status, created_at AS at FROM orders WHERE uid = ? ORDER BY id', uid),
+      posts: await all("SELECT id, text, tag, status, created_at AS at FROM posts WHERE uid = ? AND status != 'deleted' ORDER BY id", uid),
+      comments: await all('SELECT id, post_id AS postId, text, created_at AS at FROM post_comments WHERE uid = ? AND deleted = 0 ORDER BY id', uid),
+      listings: await all("SELECT l.id, l.cat, l.title, l.price, l.loc, l.addr, l.descr AS \"desc\", l.status, l.created_at AS at, c.phone, c.facebook, c.zalo FROM listings l LEFT JOIN listing_contacts c ON c.listing_id = l.id WHERE l.uid = ? AND l.status != 'deleted' ORDER BY l.id", uid),
+      messages: await all('SELECT m.thread_id AS thread, m.sender = ? AS mine, m.body, m.created_at AS at FROM messages m JOIN threads th ON th.id = m.thread_id WHERE th.owner = ? OR th.buyer = ? ORDER BY m.id', uid, uid, uid),
+      devices: await all('SELECT month, first_seen AS firstSeen FROM device_months WHERE uid = ? ORDER BY month', uid),
+      profile: profile ? { rev: profile.rev, at: profile.at, state: JSON.parse(profile.data) } : null,
+    };
+  });
+  route('POST', '/me/delete', 'user', async ({ db, user, body }) => {
+    if (body.confirm !== 'DELETE') throw bad('confirm-required');
+    const uid = user.uid;
+    const del = (table, col = 'uid') => q(db, `DELETE FROM ${table} WHERE ${col} = ?`, uid);
+    // Đơn hàng giữ lại để đối soát tiền đã nhận nhưng gỡ mọi thông tin nhận dạng; sổ giao dịch gắn với uid thì xóa.
+    // Giữ lại để chống lạm dụng (không chứa nội dung cá nhân): khóa nhận thưởng (claims), hạn mức chip theo ngày, thiết bị theo tháng, việc đã nhập mã mời. Nếu bỏ, xóa rồi dùng lại cùng tài khoản sẽ nhận thưởng lần nữa.
+    await atomic(db, [
+      q(db, "UPDATE orders SET uid = 'deleted', email = NULL, name = NULL, contact = NULL WHERE uid = ?", uid),
+      q(db, 'DELETE FROM messages WHERE thread_id IN (SELECT id FROM threads WHERE owner = ? OR buyer = ?)', uid, uid),
+      q(db, 'DELETE FROM threads WHERE owner = ? OR buyer = ?', uid, uid),
+      q(db, 'DELETE FROM listing_contacts WHERE listing_id IN (SELECT id FROM listings WHERE uid = ?)', uid),
+      del('listings'), del('post_comments'), del('post_likes'),
+      q(db, 'DELETE FROM post_comments WHERE post_id IN (SELECT id FROM posts WHERE uid = ?)', uid),
+      q(db, 'DELETE FROM post_likes WHERE post_id IN (SELECT id FROM posts WHERE uid = ?)', uid),
+      del('posts'), del('reports'), del('profiles'), del('rate_limits'), del('user_sessions'), del('ref_codes'),
+      q(db, "UPDATE referrals SET inviter = 'deleted' WHERE inviter = ?", uid),
+      del('entitlements'), del('tx'), del('wallets'),
+    ]);
+    return { ok: true };
+  });
+
   route('POST', '/posts', 'user', async ({ db, user, t, body }) => {
     const text = typeof body.text === 'string' ? body.text.trim() : '';
     if (text.length < 3 || text.length > E.MAX_POST_LEN) throw bad('bad-text');

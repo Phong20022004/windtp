@@ -64,9 +64,12 @@
   }
 
   /** Lấy lại ví từ máy chủ. Lỗi mạng thì giữ số liệu đang hiển thị. */
-  function econRefresh(quiet) {
+  function econRefresh(quiet, timer) {
     if (!state.account || !window.WindtpApi) return Promise.resolve(false);
-    return window.WindtpApi.wallet.refresh().then((me) => { econApplyWallet(me); econSyncBirth(me); econSocial(); econAutoRedeem(); econSyncPull(); econPollInbox(); return true; }, (e) => { econFail(e, quiet !== false); return false; });
+    // Vòng lặp định kỳ chỉ làm mới ví và hộp thư mỗi lần; dữ liệu cộng đồng và hồ sơ đồng bộ cứ 3 lần mới tải (hành động của người dùng vẫn tải ngay).
+    econ.tick = (econ.tick || 0) + 1;
+    const heavy = timer !== "tick" || econ.tick % 3 === 1 || !econ.socialAt;
+    return window.WindtpApi.wallet.refresh().then((me) => { econApplyWallet(me); econSyncBirth(me); if (heavy) econSocial(); econAutoRedeem(); if (heavy) econSyncPull(); econPollInbox(); return true; }, (e) => { econFail(e, quiet !== false); return false; });
   }
 
   /** Ngày sinh đã khai trong Cài đặt được gửi một lần; sau đó máy chủ giữ và không cho đổi. */
@@ -80,10 +83,11 @@
   /** Nhiệm vụ đặc biệt (admin đăng) và trạng thái chia sẻ Facebook/nhiệm vụ của chính người dùng, đều lấy từ máy chủ. */
   function econSocial() {
     const api = econClient();
-    return Promise.all([api.tasks(), api.myOrders(), api.posts(), isAdmin() ? api.admin.posts() : Promise.resolve([]), api.store(), api.listings(), isAdmin() ? api.admin.listings() : Promise.resolve([])]).then(([tasks, orders, posts, pending, store, listings, pendingListings]) => {
+    return Promise.all([api.tasks(), api.myOrders(), api.posts(), isAdmin() ? api.admin.posts() : Promise.resolve([]), api.store(), api.listings(), isAdmin() ? api.admin.listings() : Promise.resolve([]), isAdmin() ? api.admin.reports() : Promise.resolve([])]).then(([tasks, orders, posts, pending, store, listings, pendingListings, reports]) => {
+      econ.reports = reports; econ.socialAt = Date.now();
       econApplyStore(store);
       // Bài đăng do máy chủ giữ; lượt thích và bình luận vẫn chỉ lưu trên máy này.
-      state.posts = posts.map((p) => ({ id: "s" + p.id, author: p.author, tag: p.tag, text: p.text, ts: p.at, admin: p.admin || undefined, mine: p.mine, status: "approved", likes: p.likes, liked: p.liked, comments: p.comments.map((c) => ({ id: "s" + c.id, author: c.author, text: c.text, ts: c.at, mine: c.mine })) }))
+      state.posts = posts.map((p) => ({ id: "s" + p.id, author: p.author, tag: p.tag, text: p.text, ts: p.at, admin: p.admin || undefined, mine: p.mine, status: "approved", likes: p.likes, liked: p.liked, comments: p.comments.map((c) => ({ id: "s" + c.id, author: c.author, text: c.text, ts: c.at, mine: c.mine, admin: c.admin || undefined })) }))
         .concat(pending.map((p) => ({ id: "s" + p.id, author: p.author, tag: p.tag, text: p.text, ts: p.created_at, status: "pending", likes: 0, liked: false, comments: [] })));
       const me = userId();
       state.customTasks = tasks.map((t) => ({ id: t.id, title: t.title, desc: "", xu: t.xu, chips: t.chips, money: t.money, cur: t.cur, ts: 0 }));
@@ -106,7 +110,7 @@
     econ.me = null; econ.chat = null; econ.inbox = null; econ.unread = 0; window.clearInterval(econ.chatTimer); econ.adminOrders = []; econ.myOrders = []; econ.ordersLoaded = false; econ.birthSent = ""; econ.syncReady = false; window.clearTimeout(econ.syncTimer);
     if (window.WindtpApi) { window.WindtpApi.wallet.clear(); window.WindtpApi.clearSession(); }
   }
-  window.setInterval(() => { if (document.visibilityState === "visible" && state.account) econRefresh(); }, ECON_REFRESH_MS);
+  window.setInterval(() => { if (document.visibilityState === "visible" && state.account) econRefresh(undefined, "tick"); }, ECON_REFRESH_MS);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && state.account && Date.now() - econ.loadedAt > 5000) econRefresh(); });
   window.addEventListener("online", () => econRefresh(false));
 
@@ -881,12 +885,17 @@
     if (!state.account || !econ.syncReady || econ.syncBusy) return;
     const snap = syncSnapshot(), hash = syncHash(JSON.stringify(snap)), email = state.account.email;
     if (state.syncMeta && state.syncMeta.hash === hash) return;
+    if (econ.syncTooLarge === hash) return; // bản này đã bị máy chủ từ chối vì quá lớn: không thử lại cho tới khi dữ liệu đổi
     econ.syncBusy = true;
     try {
       const rev = await econClient().saveProfile(snap);
       if (state.account && state.account.email === email) { state.syncMeta = { rev, hash }; save(); }
       econ.syncBusy = false; econSyncSchedule(); return;
-    } catch (e) { econ.syncTimer = window.setTimeout(econSyncPush, 30000); }
+    } catch (e) {
+      if (e && e.code === "too-large") { econ.syncTooLarge = hash; if (!econ.syncWarned) { econ.syncWarned = true; toast("Dữ liệu học trên máy quá lớn nên chưa đồng bộ được lên máy chủ. Dữ liệu vẫn được giữ trên máy này."); } }
+      else if (e && e.code === "bad-request") { econ.syncTooLarge = hash; }
+      else econ.syncTimer = window.setTimeout(econSyncPush, 30000);
+    }
     finally { econ.syncBusy = false; }
   }
   async function econSyncPull() {
@@ -912,3 +921,86 @@
     econ.syncTimer = window.setTimeout(econSyncPush, 4000);
   }
   subscribe(() => { if (state.account && econ.syncReady) econSyncSchedule(); });
+
+  // ===== Dữ liệu của tôi (xuất bản sao, xóa tài khoản) và báo cáo nội dung vi phạm =====
+  function dataCard() {
+    if (!state.account || userId() === "WIND-guest") return "";
+    return `<div class="rounded-2xl border border-slate-200 p-3 space-y-2"><p class="font-extrabold text-slate-800">🔒 Dữ liệu của tôi</p>
+      <p class="text-[11px] text-slate-600">Bạn có thể tải về toàn bộ dữ liệu mình đã gửi lên máy chủ, hoặc xóa vĩnh viễn tài khoản.</p>
+      <div class="grid grid-cols-2 gap-2"><button data-action="export-data" class="${btnGhost}">⬇️ Tải bản sao dữ liệu</button><button data-action="open-delete-account" class="px-3 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-600">🗑 Xóa tài khoản</button></div></div>`;
+  }
+  actions["export-data"] = async () => {
+    const data = await econRun("export", () => econClient().exportData());
+    if (!data) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = "windtp-du-lieu-cua-toi.json"; document.body.appendChild(a); a.click(); a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast("Đã tải bản sao dữ liệu");
+  };
+  function deleteAccountModal() {
+    return `${modalHead("🗑 Xóa tài khoản")}<div class="p-5 space-y-3 text-xs">
+      <div class="rounded-xl bg-rose-50 border border-rose-200 p-3 text-rose-800 space-y-1"><p class="font-extrabold">Việc này không thể hoàn tác.</p>
+        <p>Sẽ xóa: số dư Xu và chip, Premium, quyền học đã mua, lịch sử giao dịch, bài viết, bình luận, tin đăng, tin nhắn và dữ liệu học đã đồng bộ. Hãy tải bản sao dữ liệu trước nếu cần.</p>
+        <p>Đơn hàng cũ được giữ lại để đối soát nhưng đã gỡ tên, email và thông tin liên hệ. Một số khóa chống lạm dụng (đã nhận thưởng, thiết bị theo tháng) được giữ lại và không chứa nội dung cá nhân.</p></div>
+      <div><label class="font-bold text-slate-700" for="del-pw">Mật khẩu hiện tại (tài khoản Google bỏ trống, sẽ xác nhận qua cửa sổ Google)</label><input id="del-pw" type="password" autocomplete="current-password" class="${field} mt-1"></div>
+      <div><label class="font-bold text-slate-700" for="del-confirm">Gõ XOA để xác nhận</label><input id="del-confirm" autocomplete="off" class="${field} mt-1"></div>
+      <button data-action="delete-account-go" class="w-full px-3 py-2.5 rounded-xl text-xs font-bold bg-rose-600 text-white keep-white">Xóa vĩnh viễn tài khoản của tôi</button></div>`;
+  }
+  actions["open-delete-account"] = () => { if (!state.account) return; openModal(deleteAccountModal); };
+  actions["delete-account-go"] = async () => {
+    const fv = (id) => { const el = document.getElementById(id); return el ? el.value : ""; };
+    if (fv("del-confirm").trim().toUpperCase() !== "XOA") { toast("Hãy gõ XOA để xác nhận"); return; }
+    const email = String((state.account && state.account.email) || "").toLowerCase();
+    let serverError = null;
+    const ok = await econRun("delete-account", async () => {
+      try {
+        await window.WindtpAuth.deleteAccount(fv("del-pw"), async () => {
+          try { await econClient().deleteData(); } catch (e) { serverError = e; throw e; }
+        });
+        return true;
+      } catch (e) {
+        econFail(serverError || e);
+        return false;
+      }
+    });
+    if (!ok) return;
+    try { Object.keys(localStorage).filter((k) => k.endsWith("::u::" + email)).forEach((k) => localStorage.removeItem(k)); } catch (_) { }
+    localSignOut();
+    toast("Đã xóa tài khoản và dữ liệu của bạn");
+  };
+
+  const REPORT_REASONS = ["Spam hoặc quảng cáo", "Lừa đảo", "Nội dung phản cảm hoặc xúc phạm", "Thông tin cá nhân bị lộ", "Khác"];
+  function reportModal() {
+    return `${modalHead("🚩 Báo cáo nội dung")}<div class="p-5 space-y-3 text-xs">
+      <div><label class="font-bold text-slate-700" for="rp-reason">Lý do</label><select id="rp-reason" class="${field} mt-1">${REPORT_REASONS.map((r) => `<option>${esc(r)}</option>`).join("")}</select></div>
+      <div><label class="font-bold text-slate-700" for="rp-note">Ghi chú thêm (tùy chọn)</label><textarea id="rp-note" rows="3" maxlength="120" class="${field} mt-1 resize-none"></textarea></div>
+      <button data-action="report-send" class="w-full ${btnPrimary}">Gửi báo cáo</button></div>`;
+  }
+  actions["report"] = (el) => {
+    if (!state.account) { toast("Hãy đăng nhập để báo cáo"); return; }
+    ui.report = { kind: el.dataset.kind, id: Number(String(el.dataset.id).replace(/^s/, "")) };
+    openModal(reportModal);
+  };
+  actions["report-send"] = async () => {
+    const r = ui.report; if (!r) return;
+    const reason = (document.getElementById("rp-reason") || {}).value || "Khác", note = ((document.getElementById("rp-note") || {}).value || "").trim();
+    const text = (note ? reason + ": " + note : reason).slice(0, 200);
+    const ok = await econRun("report", () => econClient().report(r.kind, r.id, text).then(() => true));
+    if (ok) { ui.report = null; closeModal(); toast("Đã gửi báo cáo, cảm ơn bạn"); }
+  };
+  function reportsSection() {
+    const rows = econ.reports || [];
+    if (!rows.length) return `<div><h3 class="font-extrabold text-sm text-slate-800">Báo cáo vi phạm · 0</h3><p class="text-xs text-slate-500 py-3">Chưa có báo cáo nào đang chờ.</p></div>`;
+    const kind = { post: "Bài viết", comment: "Bình luận", listing: "Tin đăng" };
+    return `<div class="space-y-3"><h3 class="font-extrabold text-sm text-slate-800">Báo cáo vi phạm · ${rows.length}</h3>${rows.map((r) => `<div class="rounded-2xl p-3 border border-rose-200 bg-white">
+      <p class="text-[10px] font-extrabold text-rose-600 uppercase">${kind[r.kind] || esc(r.kind)} · ${esc(r.author || "")}</p>
+      <p class="text-xs text-slate-800 mt-1 break-words">${r.alive ? esc(r.text) : "(nội dung đã bị xóa)"}</p>
+      <p class="text-[11px] text-slate-500 mt-1">Lý do: ${esc(r.reason)}</p>
+      <div class="flex gap-2 pt-2">${r.alive ? `<button data-action="report-resolve" data-id="${r.id}" data-remove="1" class="flex-1 px-3 py-2 rounded-lg text-xs font-bold bg-rose-600 text-white keep-white">Gỡ nội dung</button>` : ""}<button data-action="report-resolve" data-id="${r.id}" data-remove="0" class="flex-1 px-3 py-2 rounded-lg text-xs font-bold bg-slate-100 text-slate-700">Bỏ qua</button></div></div>`).join("")}</div>`;
+  }
+  actions["report-resolve"] = async (el) => {
+    if (!isAdmin()) return;
+    const ok = await econRun("report-resolve", () => econClient().admin.resolveReport(Number(el.dataset.id), el.dataset.remove === "1").then(() => true));
+    if (ok) { await econSocial().catch(() => { }); if (ui.renderModal === moderationModal) refreshModal(); toast("Đã xử lý báo cáo"); }
+  };

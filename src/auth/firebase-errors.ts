@@ -25,6 +25,8 @@ export function mapFirebaseErrorCode(code: string): AuthErrorCode {
       return "popup-closed";
     case "auth/popup-blocked":
       return "popup-blocked";
+    case "auth/requires-recent-login":
+      return "recent-login";
     default:
       return "unknown";
   }

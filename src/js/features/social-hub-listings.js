@@ -41,6 +41,7 @@
       ${inp("pl-title", "Tiêu đề (tối thiểu 5 ký tự)", "")}
       <div class="grid grid-cols-2 gap-2">${inp("pl-country", "Quốc gia", "Ví dụ: Việt Nam, Vietnam, Japan")}<div><label class="text-xs font-bold text-slate-600" for="pl-region">Tên miền</label><select id="pl-region" class="${field} mt-1"><option value="">Chọn miền</option>${REGION_OPTS.slice(1).map((r) => `<option value="${r[0]}" ${cur === r[0] ? "selected" : ""}>${r[1]}</option>`).join("")}</select></div></div>
       ${inp("pl-addr", "Địa chỉ chi tiết", "Số nhà, đường, quận/huyện, thành phố")}
+      <p class="text-[10px] text-amber-700 -mt-1">⚠️ Tin đăng được hiển thị công khai cho mọi người dùng. Chỉ ghi địa chỉ nơi gặp mặt hoặc khu vực bạn sẵn sàng công khai (không ghi nhà riêng nếu không cần).</p>
       ${sp}
       <div class="rounded-xl border border-teal-200 bg-teal-50/50 p-3 space-y-2">
         <p class="text-[11px] font-extrabold text-teal-800">Cách liên hệ (tùy chọn)</p>

@@ -108,7 +108,7 @@
     ${typeof contactBlock === "function" ? contactBlock(l) : ""}
     <div class="flex flex-wrap gap-2 pt-2">
       <button data-action="save-listing" data-id="${l.id}" class="${btnGhost}">${saved ? "\u{1F516} B\u1ECF l\u01B0u" : "\u{1F516} L\u01B0u tin"}</button>
-      ${mine ? `<button data-action="delete-listing" data-id="${l.id}" class="px-4 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-600">G\u1EE1 tin</button>` : ""}
+      ${mine ? `<button data-action="delete-listing" data-id="${l.id}" class="px-4 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-600">G\u1EE1 tin</button>` : (String(l.id).startsWith("s") ? `<button data-action="report" data-kind="listing" data-id="${l.id}" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600">🚩 Báo cáo</button>` : "")}
     </div>
   </div>`;
   }
@@ -139,7 +139,7 @@
       ${l.img ? `<img src="${esc(l.img)}" alt="" class="mt-2 w-full max-h-48 object-cover rounded-xl">` : ""}
       <div class="mt-2 rounded-xl bg-slate-50 border border-slate-100 p-3 space-y-1"><p class="text-xs text-slate-800"><b>Giá / mức lương:</b> ${esc(l.price)}</p><p class="text-xs text-slate-800"><b>Khu vực:</b> ${esc(l.loc)}</p><p class="text-xs text-slate-800 whitespace-pre-line break-words"><b>Mô tả:</b> ${esc(l.desc)}</p></div>${buttons("listing", l.id)}</div>`;
     const total = pendingPosts.length + pendingListings.length;
-    return `${modalHead("🛡️ Kiểm duyệt nội dung")}<div class="p-5 space-y-4"><div><h3 class="font-extrabold text-sm text-slate-800">Chờ duyệt · ${total}</h3><p class="text-[11px] text-slate-500 mt-1">Xem toàn bộ nội dung người dùng đăng rồi bấm Duyệt để hiển thị công khai.</p></div><div class="space-y-3">${pendingPosts.map(postRow).join("")}${pendingListings.map(listingRow).join("")}${total ? "" : '<p class="text-xs text-slate-500 text-center py-5">Không có nội dung chờ duyệt.</p>'}</div></div>`;
+    return `${modalHead("🛡️ Kiểm duyệt nội dung")}<div class="p-5 space-y-4"><div><h3 class="font-extrabold text-sm text-slate-800">Chờ duyệt · ${total}</h3><p class="text-[11px] text-slate-500 mt-1">Xem toàn bộ nội dung người dùng đăng rồi bấm Duyệt để hiển thị công khai.</p></div><div class="space-y-3">${pendingPosts.map(postRow).join("")}${pendingListings.map(listingRow).join("")}${total ? "" : '<p class="text-xs text-slate-500 text-center py-5">Không có nội dung chờ duyệt.</p>'}</div>${typeof reportsSection === "function" ? reportsSection() : ""}</div>`;
   }
   function categoryModal() {
     return `${modalHead("\uFF0B T\u1EA1o danh m\u1EE5c m\u1EDBi")}
@@ -245,6 +245,7 @@
     <button data-action="open-cultivation-system" class="w-full rounded-xl border border-violet-200 p-3 text-left font-extrabold text-violet-800" style="background:linear-gradient(100deg,#f5d0fe,#dbeafe,#ccfbf1)">🌌 Hệ thống cảnh giới tu tiên <span class="block text-[10px] font-normal mt-1">Xem tất cả cảnh giới, thời gian thăng cấp và quy định hạ cấp</span></button>
     ${typeof inviteCard === "function" ? inviteCard() : ""}
     ${adminSection()}
+    ${typeof dataCard === "function" ? dataCard() : ""}
     <button data-action="reset-data" class="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-xl text-xs transition-colors">\u0110\u1EB7t l\u1EA1i to\xE0n b\u1ED9 d\u1EEF li\u1EC7u demo</button>
   </div>`;
   }

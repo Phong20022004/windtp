@@ -18,6 +18,7 @@ describe("mapFirebaseErrorCode", () => {
     ["auth/popup-closed-by-user", "popup-closed"],
     ["auth/cancelled-popup-request", "popup-closed"],
     ["auth/popup-blocked", "popup-blocked"],
+    ["auth/requires-recent-login", "recent-login"],
     ["auth/khong-biet", "unknown"],
     ["", "unknown"],
   ];

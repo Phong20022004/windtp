@@ -306,3 +306,23 @@ describe("wallet store", () => {
     assert.equal(store.current(), null);
   });
 });
+
+describe("dữ liệu cá nhân và báo cáo", () => {
+  it("xóa dữ liệu gửi kèm xác nhận DELETE; báo cáo gửi đúng loại, mã và lý do", async () => {
+    const { client, seen } = make([{ status: 200, body: { ok: true } }, { status: 200, body: { ok: true } }]);
+    await client.deleteData();
+    await client.report("comment", 7, "Spam");
+    assert.equal(seen[0]?.url, "https://api.windtp.test/me/delete");
+    assert.equal(seen[0]?.body, '{"confirm":"DELETE"}');
+    assert.equal(seen[1]?.url, "https://api.windtp.test/reports");
+    assert.equal(seen[1]?.body, '{"kind":"comment","id":7,"reason":"Spam"}');
+  });
+
+  it("xuất dữ liệu và danh sách báo cáo của admin đọc từ máy chủ; quá giới hạn báo cáo là too-many", async () => {
+    const { client, seen } = make([{ status: 200, body: { uid: "u1", wallet: null } }, { status: 200, body: { reports: [{ id: 1, kind: "post", targetId: 2, reason: "x", at: 1, text: "t", author: "a", alive: true }] } }, { status: 429, body: { error: "too-many-reports" } }]);
+    assert.equal((await client.exportData()).uid, "u1");
+    assert.equal((await client.admin.reports())[0]?.targetId, 2);
+    assert.equal(seen[1]?.url, "https://api.windtp.test/admin/reports");
+    assert.equal((await failure(client.report("post", 2, "Spam"))).code, "too-many");
+  });
+});

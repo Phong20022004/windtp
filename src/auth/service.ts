@@ -126,6 +126,10 @@ export function createAuthService(backend: AuthBackend): AuthService {
       return guarded(() => backend.signOut());
     },
 
+    deleteAccount(password, beforeDelete) {
+      return guarded(() => backend.deleteAccount(password, beforeDelete));
+    },
+
     async getIdToken(forceRefresh = false) {
       if (!account) return null;
       try {

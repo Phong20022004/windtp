@@ -6,6 +6,8 @@ import {
   type ApiErrorCode,
   type AdminDevices,
   type ChatInbox,
+  type ContentReport,
+  type ReportKind,
   type ChatView,
   type ListingContact,
   type ThreadReport,
@@ -78,6 +80,12 @@ export interface ApiClient {
   /** Dữ liệu cá nhân đồng bộ giữa các thiết bị (`state` là null khi chưa có bản nào). */
   profile(): Promise<{ rev: number; state: Record<string, unknown> | null }>;
   saveProfile(state: Record<string, unknown>): Promise<number>;
+  /** Bản sao toàn bộ dữ liệu của tài khoản đang lưu ở máy chủ. */
+  exportData(): Promise<Record<string, unknown>>;
+  /** Xóa dữ liệu của tài khoản ở máy chủ (không hoàn tác). */
+  deleteData(): Promise<void>;
+  /** Báo cáo nội dung vi phạm cho admin. */
+  report(kind: ReportKind, id: number, reason: string): Promise<void>;
   setBirth(birth: string): Promise<void>;
   claim(taskId: string): Promise<{ xu: number; chips: number }>;
   exchangeChips(xu: number): Promise<void>;
@@ -125,6 +133,8 @@ export interface ApiClient {
     posts(): Promise<AdminPost[]>;
     approvePost(id: number): Promise<void>;
     rejectPost(id: number): Promise<void>;
+    reports(): Promise<ContentReport[]>;
+    resolveReport(id: number, remove: boolean): Promise<void>;
     putCatalog(items: CatalogItem[]): Promise<number>;
     putTasks(items: SpecialTask[]): Promise<number>;
     listings(): Promise<Listing[]>;
@@ -250,6 +260,9 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, session, fetch
       return { rev: Number(r.rev) || 0, state };
     },
     saveProfile: async (state) => Number((await request<{ rev: unknown }>("PUT", "/me/state", { state })).rev) || 0,
+    exportData: async () => request<Record<string, unknown>>("GET", "/me/export"),
+    deleteData: () => done(post("/me/delete", { confirm: "DELETE" })),
+    report: (kind, id, reason) => done(post("/reports", { kind, id, reason })),
     likePost: async (id, liked) => { const r = await post(`/posts/${id}/like`, { liked }); return { likes: Number(r.likes) || 0, liked: r.liked === true }; },
     commentPost: async (id, text) => ({ id: Number((await post(`/posts/${id}/comments`, { text })).id) }),
     deleteComment: (id) => done(post(`/comments/${id}/delete`)),
@@ -259,6 +272,8 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, session, fetch
       approveOrder: (id, extras) => done(post(`/admin/orders/${id}/approve`, extras ?? {})),
       rejectOrder: (id) => done(post(`/admin/orders/${id}/reject`)),
       posts: async () => (await request<{ posts: AdminPost[] }>("GET", "/admin/posts")).posts,
+      reports: async () => (await request<{ reports: ContentReport[] }>("GET", "/admin/reports")).reports,
+      resolveReport: (id, remove) => done(post(`/admin/reports/${id}/resolve`, { remove })),
       approvePost: (id) => done(post(`/admin/posts/${id}/approve`)),
       rejectPost: (id) => done(post(`/admin/posts/${id}/reject`)),
       grant: (input) => done(post("/admin/grant", input)),

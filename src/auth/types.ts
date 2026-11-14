@@ -20,6 +20,7 @@ export type AuthErrorCode =
   | "network"
   | "popup-closed"
   | "popup-blocked"
+  | "recent-login"
   | "unknown";
 
 /** Lỗi xác thực đã chuẩn hóa; `message` là tiếng Việt, hiển thị thẳng cho người dùng. */
@@ -45,6 +46,7 @@ export const AUTH_MESSAGES: Readonly<Record<AuthErrorCode, string>> = {
   network: "Không kết nối được máy chủ, hãy kiểm tra mạng",
   "popup-closed": "Bạn đã đóng cửa sổ đăng nhập Google",
   "popup-blocked": "Trình duyệt đã chặn cửa sổ đăng nhập Google, hãy cho phép cửa sổ bật lên",
+  "recent-login": "Cần đăng nhập lại để xác nhận thao tác này",
   unknown: "Có lỗi xảy ra, vui lòng thử lại",
 };
 
@@ -68,6 +70,8 @@ export interface AuthBackend {
   signInWithGoogle(persistence: Persistence): Promise<BackendUser>;
   sendPasswordReset(email: string): Promise<void>;
   signOut(): Promise<void>;
+  /** Xóa vĩnh viễn tài khoản đăng nhập. Tài khoản email phải nhập lại mật khẩu; tài khoản Google xác nhận lại qua cửa sổ Google. */
+  deleteAccount(password: string, beforeDelete?: () => Promise<void>): Promise<void>;
   /** ID token hiện tại để gửi cho máy chủ (null khi chưa đăng nhập). `forceRefresh` bắt buộc làm mới, dùng khi máy chủ báo 401. */
   getIdToken(forceRefresh?: boolean): Promise<string | null>;
 }
@@ -87,6 +91,9 @@ export interface AuthService {
   loginWithGoogle(remember: boolean): Promise<AuthAccount>;
   requestPasswordReset(email: string): Promise<void>;
   logout(): Promise<void>;
+  /** Xóa tài khoản đăng nhập của người đang dùng (sau khi dữ liệu trên máy chủ đã xóa). */
+  /** `beforeDelete` chạy sau khi xác nhận lại danh tính và ngay trước khi xóa tài khoản (dùng để xóa dữ liệu ở máy chủ); nếu nó lỗi thì tài khoản không bị xóa. */
+  deleteAccount(password: string, beforeDelete?: () => Promise<void>): Promise<void>;
   /** ID token để gọi API ví/đơn hàng; null khi chưa đăng nhập hoặc mất mạng. */
   getIdToken(forceRefresh?: boolean): Promise<string | null>;
 }

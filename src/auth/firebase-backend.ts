@@ -12,12 +12,16 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  deleteUser,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
+  EmailAuthProvider,
   updateProfile,
   type Auth,
   type User,
 } from "firebase/auth";
 import { readErrorCode, toAuthFailure } from "./firebase-errors";
-import type { AuthBackend, BackendUser, Persistence } from "./types";
+import { AuthFailure, type AuthBackend, type BackendUser, type Persistence } from "./types";
 
 async function toBackendUser(user: User): Promise<BackendUser> {
   let admin = false;
@@ -107,6 +111,26 @@ export function createFirebaseBackend(config: FirebaseOptions): AuthBackend {
 
     async getIdToken(forceRefresh = false) {
       return auth.currentUser ? auth.currentUser.getIdToken(forceRefresh) : null;
+    },
+
+    async deleteAccount(password, beforeDelete) {
+      const user = auth.currentUser;
+      if (!user) throw new AuthFailure("recent-login");
+      try {
+        if (user.providerData.some((p) => p.providerId === "password") && user.email) {
+          await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password));
+        } else {
+          await reauthenticateWithPopup(user, new GoogleAuthProvider());
+        }
+      } catch (error) {
+        throw toAuthFailure(error);
+      }
+      await beforeDelete?.(); // lỗi ở đây dừng hẳn việc xóa; người gọi tự báo lỗi cho người dùng
+      try {
+        await deleteUser(user);
+      } catch (error) {
+        throw error instanceof AuthFailure ? error : toAuthFailure(error);
+      }
     },
 
     async signOut() {

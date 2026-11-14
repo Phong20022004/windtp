@@ -61,6 +61,13 @@ class StubBackend implements AuthBackend {
   async signOut(): Promise<void> {
     this.calls.signOuts += 1;
   }
+
+  deletedWith: string[] = [];
+  async deleteAccount(password: string, beforeDelete?: () => Promise<void>): Promise<void> {
+    if (this.failWith) throw this.failWith;
+    await beforeDelete?.();
+    this.deletedWith.push(password);
+  }
 }
 
 async function rejectsWith(promise: Promise<unknown>, code: AuthErrorCode): Promise<void> {
@@ -170,6 +177,17 @@ describe("trạng thái phiên", () => {
     await rejectsWith(auth.requestPasswordReset("sai"), "invalid-email");
     await auth.requestPasswordReset(" A@B.vn ");
     assert.deepEqual(backend.calls.resets, ["a@b.vn"]);
+  });
+
+  it("deleteAccount chuyển mật khẩu và hàm xóa dữ liệu cho backend, giữ nguyên lỗi đã chuẩn hóa", async () => {
+    const backend = new StubBackend(user());
+    const auth = createAuthService(backend);
+    let ran = 0;
+    await auth.deleteAccount("secret1", async () => { ran += 1; });
+    assert.deepEqual(backend.deletedWith, ["secret1"]);
+    assert.equal(ran, 1);
+    backend.failWith = new AuthFailure("recent-login");
+    await rejectsWith(auth.deleteAccount("secret1"), "recent-login");
   });
 });
 

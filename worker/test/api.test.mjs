@@ -1042,3 +1042,25 @@ test('liên hệ: người đăng sửa cách liên hệ cho tin cũ; người k
   assert.equal((await app.call('POST', `/listings/${id}/contact`, { uid: 'boss', admin: true, body: { zalo: '0911222333' } })).status, 200);
   assert.deepEqual([(await read()).phone, (await read()).zalo], ['', '0911222333']);
 });
+
+test('xuất dữ liệu và xóa tài khoản: gỡ nội dung cá nhân, giữ đơn đã ẩn danh, không nhận thưởng lại', async () => {
+  const app = await makeApp();
+  await app.call('POST', '/claim', { uid: 'U', body: { taskId: 't-checkin' } });
+  const post = (await app.call('POST', '/posts', { uid: 'boss', admin: true, body: { text: 'Bài của admin' } })).json.id;
+  await app.call('POST', `/posts/${post}/comments`, { uid: 'U', body: { text: 'bình luận của U' } });
+  await app.call('PUT', '/me/state', { uid: 'U', body: { state: { settings: { currency: 'KRW' } }, rev: 0 } });
+  const ex = await app.call('GET', '/me/export', { uid: 'U' });
+  assert.equal(ex.status, 200);
+  assert.equal(ex.json.comments.length, 1);
+  assert.equal(ex.json.profile.state.settings.currency, 'KRW');
+  assert.ok(ex.json.transactions.length >= 1);
+  assert.equal((await app.call('POST', '/me/delete', { uid: 'U', body: {} })).status, 400, 'cần xác nhận');
+  assert.equal((await app.call('POST', '/me/delete', { uid: 'U', body: { confirm: 'DELETE' } })).status, 200);
+  const feed = (await app.call('GET', '/posts', { uid: 'boss', admin: true })).json.posts;
+  assert.equal(feed[0].comments.length, 0, 'bình luận đã xóa');
+  const count = async (table) => (await app.db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE uid = ?`).bind('U').first()).n;
+  for (const t of ['tx', 'profiles', 'wallets', 'user_sessions', 'post_comments']) assert.equal(await count(t), 0, t + ' đã xóa');
+  assert.equal((await app.call('GET', '/me/export', { uid: 'U' })).status, 403, 'phiên đã bị xóa');
+  assert.equal((await app.call('POST', '/session/claim', { uid: 'U' })).status, 200);
+  assert.equal((await app.call('POST', '/claim', { uid: 'U', body: { taskId: 't-checkin' } })).status, 409, 'xóa rồi không nhận lại thưởng cùng ngày');
+});

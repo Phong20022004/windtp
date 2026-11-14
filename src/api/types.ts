@@ -135,7 +135,22 @@ export interface PublicComment {
   author: string;
   text: string;
   mine: boolean;
+  admin?: boolean;
   at: number;
+}
+
+export type ReportKind = "post" | "comment" | "listing";
+
+export interface ContentReport {
+  id: number;
+  kind: ReportKind;
+  targetId: number;
+  reason: string;
+  at: number;
+  text: string;
+  author: string;
+  /** false khi nội dung đã bị xóa từ trước. */
+  alive: boolean;
 }
 
 export interface PublicPost {
@@ -149,6 +164,7 @@ export interface PublicPost {
   likes: number;
   liked: boolean;
   comments: PublicComment[];
+  commentsTotal?: number;
 }
 
 export interface AdminPost {
