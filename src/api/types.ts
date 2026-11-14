@@ -139,6 +139,16 @@ export interface PublicComment {
   at: number;
 }
 
+export interface BankEvent {
+  bankId: string;
+  amount: number;
+  content: string;
+  /** received | no-code | no-order | ambiguous | amount-mismatch | not-pending | error (đã duyệt tự động thì không có trong danh sách). */
+  result: string;
+  orderId: number | null;
+  at: number;
+}
+
 export type ReportKind = "post" | "comment" | "listing";
 
 export interface ContentReport {

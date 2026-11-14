@@ -1012,7 +1012,7 @@ test('migrations 0001..0004 cho cùng cấu trúc bảng với schema.sql', asyn
     for (const { name } of d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()) out[name] = d.prepare(`PRAGMA table_info(${name})`).all().map((c) => `${c.name}:${c.type}:${c.notnull}`).sort();
     return out;
   };
-  assert.deepEqual(cols(['../migrations/0001_init.sql', '../migrations/0002_hardening.sql', '../migrations/0003_contacts_threads.sql', '../migrations/0004_thread_safety.sql']), cols(['../schema.sql']));
+  assert.deepEqual(cols(['../migrations/0001_init.sql', '../migrations/0002_hardening.sql', '../migrations/0003_contacts_threads.sql', '../migrations/0004_thread_safety.sql', '../migrations/0005_bank_events.sql']), cols(['../schema.sql']));
 });
 
 // ===== An toàn nhắn tin và sửa cách liên hệ =====
@@ -1100,4 +1100,52 @@ test('xuất dữ liệu và xóa tài khoản: gỡ nội dung cá nhân, giữ
   assert.equal((await app.call('GET', '/me/export', { uid: 'U' })).status, 403, 'phiên đã bị xóa');
   assert.equal((await app.call('POST', '/session/claim', { uid: 'U' })).status, 200);
   assert.equal((await app.call('POST', '/claim', { uid: 'U', body: { taskId: 't-checkin' } })).status, 409, 'xóa rồi không nhận lại thưởng cùng ngày');
+});
+
+test('webhook SePay: tự duyệt đơn nạp Xu khi mã và số tiền khớp; còn lại để admin đối soát; không xử lý trùng', async () => {
+  const app = await makeApp();
+  app.env.SEPAY_API_KEY = 'khoa-bi-mat-sepay-0123456789';
+  const hook = async (payload, key = app.env.SEPAY_API_KEY) => {
+    const res = await app.handle(new Request('https://api.test/webhooks/sepay', { method: 'POST', headers: key ? { authorization: `Apikey ${key}` } : {}, body: JSON.stringify(payload) }), app.env);
+    return { status: res.status, json: await res.json() };
+  };
+  const ev = (id, amount, content, extra = {}) => ({ id, transferType: 'in', transferAmount: amount, content, ...extra });
+  const order = async (uid, amount, code, kind = 'topup') => (await app.call('POST', '/orders', { uid, body: { kind, currency: 'VND', amount, code, summary: 'Nạp' } })).json.id;
+  const status = (id) => ({ ...app.db.sqlite.prepare('SELECT status, reviewed_by AS by FROM orders WHERE id = ?').get(id) });
+  const result = (bankId) => app.db.sqlite.prepare('SELECT result FROM bank_events WHERE bank_id = ?').get(String(bankId)).result;
+
+  const o1 = await order('A', 100000, 'WIND21234');
+  assert.equal((await hook(ev(1, 100000, 'x'), 'sai-khoa')).status, 401, 'sai khóa');
+  assert.equal((await hook(ev(1, 100000, 'x'), '')).status, 401, 'thiếu khóa');
+  assert.equal((await hook(ev(1, 100000, 'ck wind21234 nap xu'))).status, 200);
+  assert.deepEqual(status(o1), { status: 'approved', by: 'bank:sepay:1' });
+  assert.equal(app.balance('A').balance, 100000 * (await import('../src/economy.js')).TOPUP_RATE.VND, 'Xu cộng đúng theo đơn');
+  const before = app.balance('A').balance;
+  assert.equal((await hook(ev(1, 100000, 'ck wind21234'))).json.duplicate, true, 'gửi lại cùng id thì bỏ qua');
+  assert.equal(app.balance('A').balance, before);
+
+  const o2 = await order('B', 200000, 'WIND25678');
+  await hook(ev(2, 150000, 'WIND25678'));
+  assert.equal(status(o2).status, 'pending', 'sai số tiền không tự duyệt'); assert.equal(result(2), 'amount-mismatch');
+  await hook(ev(3, 200000, 'chuyen tien khong ma'));
+  assert.equal(result(3), 'no-code');
+  await hook(ev(4, 200000, 'WIND29999'));
+  assert.equal(result(4), 'no-order');
+  await hook(ev(5, 200000, 'WIND25678', { transferType: 'out' }));
+  assert.equal(app.db.sqlite.prepare('SELECT COUNT(*) AS n FROM bank_events WHERE bank_id = ?').get('5').n, 0, 'tiền ra không được ghi');
+
+  await order('C', 50000, 'WIND27777'); await order('D', 50000, 'WIND27777');
+  await hook(ev(6, 50000, 'WIND27777'));
+  assert.equal(result(6), 'ambiguous', 'trùng mã không tự duyệt');
+  const o5 = await order('E', 70000, 'WIND11111', 'shop');
+  await hook(ev(7, 70000, 'WIND11111'));
+  assert.equal(status(o5).status, 'pending', 'đơn mua hàng luôn do admin duyệt'); assert.equal(result(7), 'no-code', 'chỉ mã đơn nạp Xu (WIND2/WIND3) được nhận diện');
+
+  const list = (await app.call('GET', '/admin/bank-events', { uid: 'boss', admin: true })).json.events;
+  assert.deepEqual(list.map((e) => e.bankId).sort(), ['2', '3', '4', '6', '7']);
+  assert.equal((await app.call('GET', '/admin/bank-events', { uid: 'A' })).status, 403);
+  assert.equal((await app.call('POST', `/admin/orders/${o2}/approve`, { uid: 'boss', admin: true, body: {} })).status, 200, 'admin vẫn duyệt tay được');
+
+  delete app.env.SEPAY_API_KEY;
+  assert.equal((await hook(ev(8, 1, 'x'), 'bat-ky-khoa-nao-123')).status, 503, 'chưa cấu hình khóa thì từ chối');
 });

@@ -79,5 +79,5 @@ export async function makeApp({ clock } = {}) {
     return out;
   };
   const balance = (uid) => db.sqlite.prepare('SELECT balance, chips, premium_until AS p FROM wallets WHERE uid = ?').get(uid);
-  return { call, db, issuer, state, balance, as, objects, keys };
+  return { call, db, issuer, state, balance, as, objects, keys, handle, env };
 }

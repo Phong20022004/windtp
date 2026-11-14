@@ -71,3 +71,6 @@ Mỗi tin tối đa 2 đường dẫn; cùng một nội dung gửi quá 2 lần
 
 ## Chặn theo người
 Khi người đăng chặn một người mua ở bất kỳ cuộc trò chuyện nào, người đó không mở thêm cuộc trò chuyện mới ở các tin khác của cùng người đăng (`403 blocked`). Bỏ chặn ở cuộc trò chuyện đó thì được mở lại.
+
+## Webhook ngân hàng (SePay)
+`POST /webhooks/sepay` (xác thực `Authorization: Apikey <SEPAY_API_KEY>`, so sánh thời gian cố định) tự duyệt đơn nạp Xu VND khi nội dung chuyển khoản có mã `WIND2xxxx`/`WIND3xxxx` của đúng một đơn đang chờ và số tiền bằng đúng số tiền đơn. Mỗi giao dịch ngân hàng chỉ xử lý một lần (`bank_events.bank_id`); các giao dịch không tự khớp được xem ở `GET /admin/bank-events`. Việc duyệt dùng chung hàm với nút duyệt của admin nên có cùng các bảo vệ (khóa chống duyệt trùng, giao dịch nguyên tử). Hướng dẫn cài đặt: `docs/DEPLOY.md`.

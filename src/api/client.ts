@@ -6,6 +6,7 @@ import {
   type ApiErrorCode,
   type AdminDevices,
   type ChatInbox,
+  type BankEvent,
   type ContentReport,
   type ReportKind,
   type ChatView,
@@ -135,6 +136,8 @@ export interface ApiClient {
     approvePost(id: number): Promise<void>;
     rejectPost(id: number): Promise<void>;
     reports(): Promise<ContentReport[]>;
+    /** Tiền vào ngân hàng (webhook) chưa tự khớp được đơn nào, để admin đối soát tay. */
+    bankEvents(): Promise<BankEvent[]>;
     resolveReport(id: number, remove: boolean): Promise<void>;
     putCatalog(items: CatalogItem[]): Promise<number>;
     putTasks(items: SpecialTask[]): Promise<number>;
@@ -273,6 +276,7 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, session, fetch
       approveOrder: (id, extras) => done(post(`/admin/orders/${id}/approve`, extras ?? {})),
       rejectOrder: (id) => done(post(`/admin/orders/${id}/reject`)),
       posts: async () => (await request<{ posts: AdminPost[] }>("GET", "/admin/posts")).posts,
+      bankEvents: async () => (await request<{ events: BankEvent[] }>("GET", "/admin/bank-events")).events,
       reports: async () => (await request<{ reports: ContentReport[] }>("GET", "/admin/reports")).reports,
       resolveReport: (id, remove) => done(post(`/admin/reports/${id}/resolve`, { remove })),
       approvePost: (id) => done(post(`/admin/posts/${id}/approve`)),

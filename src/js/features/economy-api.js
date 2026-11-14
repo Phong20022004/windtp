@@ -252,7 +252,7 @@
   // ----- Danh sách đơn: người dùng xem đơn của mình, admin xem đơn chờ duyệt (đều từ máy chủ) -----
   function econLoadOrders() {
     const api = econClient();
-    const job = isAdmin() ? Promise.all([api.admin.orders("pending"), api.admin.orders("approved")]).then(([p, a]) => { econ.adminOrders = p.concat(a); }) : api.myOrders().then((list) => { econ.myOrders = list; });
+    const job = isAdmin() ? Promise.all([api.admin.orders("pending"), api.admin.orders("approved"), api.admin.bankEvents()]).then(([p, a, ev]) => { econ.adminOrders = p.concat(a); econ.bankEvents = ev; }) : api.myOrders().then((list) => { econ.myOrders = list; });
     return job.then(() => { econ.ordersLoaded = true; }, (e) => econFail(e));
   }
   function econOrderLines(o) { try { const v = JSON.parse(o.lines || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
@@ -301,6 +301,13 @@
       ${who}${o.kind === "fbshare" ? `<a href="${esc(o.summary || "")}" target="_blank" rel="noopener noreferrer nofollow" class="block text-[11px] text-blue-700 underline break-all">${esc(o.summary || "")}</a>` : `<p class="text-[11px] text-slate-600">${esc(o.summary || "")}</p>`}${adm && o.kind === "ctask" && c.bank ? `<p class="text-[11px] text-slate-600">Ngân hàng: ${esc(c.bankName || "")} · ${esc(c.bank)} · ${esc(c.holder || "")}</p>` : ""}${ship}${mismatch}${doc}
       ${give && (adm || done) ? `<p class="text-[11px] font-bold text-amber-700">${o.status === "approved" ? "Đã cộng" : "Sẽ cộng"}: ${give}</p>` : ""}${buttons}</div>`;
   }
+  /** Tiền vào ngân hàng mà máy chủ không tự khớp được (sai số tiền, thiếu hoặc trùng mã...): admin đối chiếu và duyệt tay đơn tương ứng. */
+  function bankEventsBox() {
+    const ev = econ.bankEvents || [];
+    if (!ev.length) return "";
+    const why = { "no-code": "không thấy mã đơn", "no-order": "mã không có đơn đang chờ", ambiguous: "nhiều đơn trùng mã", "amount-mismatch": "sai số tiền", "not-pending": "đơn đã xử lý", error: "lỗi khi duyệt", received: "đang xử lý" };
+    return `<div class="rounded-xl border border-amber-300 bg-amber-50 p-3 space-y-1.5"><p class="font-extrabold text-amber-900">🏦 Tiền vào chưa tự khớp (${ev.length})</p>${ev.slice(0, 20).map((e) => `<p class="text-[11px] text-slate-700 break-words"><b>${money(e.amount, "VND")}</b> · ${esc(why[e.result] || e.result)}${e.orderId ? " · đơn #" + e.orderId : ""} · “${esc(e.content)}”</p>`).join("")}</div>`;
+  }
   function ordersModal() {
     const adm = isAdmin(), tab = ui.ordTab || "pending";
     const all = adm ? econ.adminOrders : econ.myOrders;
@@ -312,6 +319,7 @@
       <div class="flex gap-2">${tb("pending", "Đang chờ xử lý")}${tb("done", "Đã xử lý")}</div>
       ${econ.ordersLoaded ? "" : '<p class="text-slate-500 text-center py-2">Đang tải đơn hàng…</p>'}
       ${list.length ? list.map((o) => econOrderCard(o, adm)).join("") : econ.ordersLoaded ? '<p class="text-slate-500 text-center py-4">Chưa có đơn nào.</p>' : ""}
+      ${adm && tab === "pending" ? bankEventsBox() : ""}
       ${grant}</div>`;
   }
   actions["open-orders"] = () => { econ.ordersLoaded = false; openModal(ordersModal); econLoadOrders().then(() => refreshModal()); };

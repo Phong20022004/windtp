@@ -14,6 +14,14 @@ Tài liệu này là danh sách việc **bạn phải tự làm** (cần tài kh
 
 `ALLOWED_ORIGIN` trong `wrangler.toml` phải đúng địa chỉ trang (không có dấu `/` cuối), nếu không trình duyệt sẽ chặn mọi lời gọi API.
 
+### Nạp tiền tự động qua SePay (tùy chọn)
+Máy chủ có sẵn webhook `POST /webhooks/sepay`. Khi tiền VND vào tài khoản có nội dung chuyển khoản chứa mã đơn nạp Xu (`WIND2xxxx` hoặc `WIND3xxxx`) và **số tiền khớp chính xác**, đơn được duyệt tự động (người duyệt ghi là `bank:sepay:<mã giao dịch>`). Đơn mua hàng, đơn Premium, tiền KRW và mọi trường hợp lệch (sai số tiền, thiếu mã, trùng mã) **không** tự duyệt, chỉ hiện trong khung "Tiền vào chưa tự khớp" ở màn Đơn hàng của admin để bạn đối chiếu và duyệt tay.
+1. Đăng ký SePay, liên kết tài khoản Techcombank đang nhận tiền.
+2. Tạo khóa bí mật dài ngẫu nhiên (từ 16 ký tự, nên 32+), lưu vào Worker: `wrangler secret put SEPAY_API_KEY`.
+3. Trong SePay thêm webhook: URL `https://<địa-chỉ-worker>/webhooks/sepay`, kiểu chứng thực *API Key* (SePay gửi tiêu đề `Authorization: Apikey <khóa>`), chỉ gửi giao dịch tiền vào.
+4. Thử bằng một khoản nhỏ: tạo đơn nạp tối thiểu, chuyển đúng số tiền kèm mã, kiểm tra đơn tự chuyển sang đã duyệt và Xu được cộng.
+Chưa đặt `SEPAY_API_KEY` thì webhook từ chối mọi yêu cầu (503). Định dạng dữ liệu SePay được viết theo tài liệu công khai của họ tại thời điểm làm; hãy đối chiếu tài liệu hiện hành và thử một giao dịch thật trước khi bật cho khách.
+
 ## 2. Giới hạn tần suất theo IP (bắt buộc làm ở Cloudflare)
 Máy chủ đã giới hạn theo từng tài khoản (bảng `rate_limits`), nhưng **không giới hạn theo IP**: một kẻ tạo hàng loạt tài khoản vẫn có thể dội yêu cầu. Hãy đặt luật *Rate limiting rules* (Security → WAF) cho tên miền của Worker. Gợi ý khởi điểm, chỉnh theo lưu lượng thật:
 
@@ -22,6 +30,8 @@ Máy chủ đã giới hạn theo từng tài khoản (bảng `rate_limits`), nh
 | Chung | mọi đường dẫn của API | 120 yêu cầu / phút / IP | Chặn 1 phút |
 | Ghi dữ liệu | phương thức POST hoặc PUT | 30 yêu cầu / phút / IP | Chặn 10 phút |
 | Nhạy cảm | `/session/claim`, `/orders`, `/me/delete`, `/me/export` | 10 yêu cầu / 10 phút / IP | Chặn 1 giờ |
+
+Loại trừ `/webhooks/sepay` khỏi các luật trên (hoặc cho phép dải IP của SePay), kẻo giao dịch thật bị chặn nhầm.
 
 Số luật và thời gian chặn được phép phụ thuộc gói Cloudflare; nếu gói miễn phí giới hạn, ưu tiên luật "Ghi dữ liệu". Cũng nên bật *Bot Fight Mode* và để chế độ bảo vệ DDoS mặc định của Cloudflare.
 
@@ -49,7 +59,7 @@ Tài khoản admin duyệt đơn và cộng Xu, nên là mục tiêu lớn nhấ
 - Đặt cảnh báo chi phí/hạn mức trên Cloudflare và Google Cloud.
 
 ## 6. Việc chưa làm được bằng mã (cần quyết định của bạn)
-- **Nạp tiền tự động:** hiện admin duyệt tay từng đơn. Để tự động cần nối webhook ngân hàng (SePay, Casso...) vào Worker; chưa có.
+- **Nạp tiền tự động:** chỉ đơn nạp Xu VND qua SePay được tự duyệt (mục 1); đơn mua hàng, Premium và KRW vẫn do admin duyệt tay. Casso hoặc ngân hàng khác chưa có.
 - **Bảng giá do máy chủ giữ:** admin hiện quyết định quyền lợi khi duyệt đơn; máy chủ chỉ đặt trần. Một tài khoản admin bị chiếm vẫn có thể cộng Xu trong trần cho phép.
 - **Kết quả game và tiến độ nhiệm vụ** do trình duyệt báo lên, nên chỉ chặn được ở mức hạn mức/ngày; chip kiếm trong game không đáng tin tuyệt đối.
 - **Nhân bản mã thiết bị:** khóa phiên do máy chủ cấp đã làm khó, nhưng không thể chặn hoàn toàn.

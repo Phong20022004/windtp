@@ -11,6 +11,13 @@ const dayKey = (now) => new Date(now + E.VN_OFFSET_MS).toISOString().slice(0, 10
 /** Tra bảng chỉ theo khóa riêng của đối tượng: chặn "constructor", "__proto__"... đi vào Object.prototype. */
 const own = (table, key) => (typeof key === 'string' && Object.hasOwn(table, key) ? table[key] : undefined);
 const q = (db, sql, ...args) => db.prepare(sql).bind(...args);
+/** So sánh chuỗi bí mật không rò độ dài khớp qua thời gian (so từng byte của cả hai, độ dài khác vẫn tốn thời gian như nhau). */
+function timingSafeEqual(a, b) {
+  const x = new TextEncoder().encode(String(a)), y = new TextEncoder().encode(String(b));
+  let diff = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return diff === 0;
+}
 const isInt = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
 
 /** Giới hạn tần suất theo người dùng (cửa sổ cố định, lưu ở D1). Giới hạn theo IP vẫn cần luật Rate limiting của Cloudflare. */
@@ -143,6 +150,44 @@ export function createApi({ verify, now = () => Date.now() }) {
     if (!text) return {};
     try { const v = JSON.parse(text); if (v && typeof v === 'object') return v; } catch { /* rơi xuống lỗi */ }
     throw bad('bad-json');
+  }
+
+  // Webhook SePay (https://docs.sepay.vn): tự duyệt đơn NẠP XU (VND) khi nội dung chuyển khoản chứa đúng mã đơn và số tiền khớp chính xác.
+  // Mọi trường hợp khác (sai số tiền, trùng mã, không thấy mã, đơn mua hàng) chỉ được ghi vào bảng bank_events để admin đối soát tay.
+  async function sepayWebhook(request, env) {
+    const key = env.SEPAY_API_KEY;
+    if (!key || key.length < 16) throw new HttpError(503, 'not-configured');
+    const given = (request.headers.get('authorization') || '').replace(/^Apikey\s+/i, '');
+    if (!timingSafeEqual(given, key)) throw new HttpError(401, 'unauthorized');
+    const body = await readBody(request, 16384);
+    const bankId = String(body.id ?? '');
+    const amount = Number(body.transferAmount);
+    const content = typeof body.content === 'string' ? body.content.slice(0, 300) : '';
+    if (!/^\d{1,20}$/.test(bankId) || !Number.isInteger(amount) || amount <= 0) throw bad('bad-event');
+    const t = now(), db = env.DB;
+    if (body.transferType !== 'in') return { success: true, ignored: 'not-incoming' };
+    const ins = await q(db, "INSERT OR IGNORE INTO bank_events (bank_id, amount, content, result, created_at) VALUES (?, ?, ?, 'received', ?)", bankId, amount, content, t).run();
+    if (!ins.meta.changes) return { success: true, duplicate: true }; // SePay gửi lại khi chưa nhận được 200: không xử lý hai lần
+    const memo = (/WIND[23]\d{4}/i.exec(`${body.code ?? ''} ${content}`) || [''])[0].toUpperCase();
+    let result = 'no-code', orderId = null;
+    if (memo) {
+      const rows = (await q(db, "SELECT id, amount FROM orders WHERE kind = 'topup' AND currency = 'VND' AND status = 'pending' AND UPPER(code) = ? LIMIT 3", memo).all()).results;
+      if (rows.length === 0) result = 'no-order';
+      else if (rows.length > 1) result = 'ambiguous';
+      else if (rows[0].amount !== amount) { result = 'amount-mismatch'; orderId = rows[0].id; }
+      else {
+        orderId = rows[0].id;
+        try {
+          await approveOrder({ db, t, reviewer: `bank:sepay:${bankId}`, orderId, body: {} });
+          result = 'approved';
+        } catch (e) {
+          if (!(e instanceof HttpError)) throw e;
+          result = e.code === 'not-pending' ? 'not-pending' : 'error';
+        }
+      }
+    }
+    await q(db, 'UPDATE bank_events SET result = ?, order_id = ? WHERE bank_id = ?', result, orderId, bankId).run();
+    return { success: true };
   }
 
   const routes = [];
@@ -306,7 +351,8 @@ export function createApi({ verify, now = () => Date.now() }) {
     return { orders: (await q(db, 'SELECT * FROM orders WHERE status = ? ORDER BY id LIMIT 200', status).all()).results };
   });
 
-  route('POST', '/admin/orders/:id/approve', 'admin', async ({ db, user, t, params, body }) => {
+  // Duyệt một đơn: dùng chung cho admin bấm duyệt và cho webhook ngân hàng (đơn nạp Xu khớp chính xác). extraStmts nằm cùng giao dịch nguyên tử.
+  async function approveOrder({ db, t, reviewer, orderId, body, extraStmts = [] }) {
     const grantItems = [];
     if (body.grants !== undefined) {
       if (!Array.isArray(body.grants) || body.grants.length > E.MAX_ORDER_GRANTS) throw bad('bad-grants');
@@ -320,14 +366,14 @@ export function createApi({ verify, now = () => Date.now() }) {
     // Quyền lợi bổ sung do admin quyết định (sau khi đối chiếu thanh toán), chỉ áp dụng cho đơn mua hàng và có trần.
     const extra = { xu: body.xu ?? 0, chips: body.chips ?? 0, months: body.premiumMonths ?? 0 };
     if (!isInt(extra.xu, 0, E.MAX_GRANT) || !isInt(extra.chips, 0, E.MAX_GRANT) || !isInt(extra.months, 0, E.MAX_PREMIUM_MONTHS_PER_ORDER)) throw bad('bad-grants');
-    const order = await q(db, 'SELECT * FROM orders WHERE id = ?', +params.id).first();
+    const order = await q(db, 'SELECT * FROM orders WHERE id = ?', orderId).first();
     if (!order) throw new HttpError(404, 'no-order');
     if (order.kind !== 'shop' && (extra.xu || extra.chips || extra.months)) throw bad('extras-shop-only');
     if (order.status !== 'pending') throw new HttpError(409, 'not-pending');
     await wallet(db, order.uid, t);
     const stmts = [
       q(db, 'INSERT INTO claims (uid, key, created_at) VALUES (?, ?, ?)', 'order', `order:${order.id}`, t), // chống duyệt trùng khi bấm đồng thời
-      q(db, "UPDATE orders SET status = 'approved', reviewed_at = ?, reviewed_by = ? WHERE id = ?", t, user.uid, order.id),
+      q(db, "UPDATE orders SET status = 'approved', reviewed_at = ?, reviewed_by = ? WHERE id = ?", t, reviewer, order.id),
     ];
     if (order.kind === 'topup') {
       stmts.push(credit(db, order.uid, order.xu, 0), txStmt(db, order.uid, 'topup', order.xu, 0, `Nạp Xu (${order.currency} ${order.amount})`, String(order.id), t));
@@ -386,9 +432,14 @@ export function createApi({ verify, now = () => Date.now() }) {
         referralRewarded = true;
       }
     }
-    await atomic(db, stmts);
+    await atomic(db, [...stmts, ...extraStmts]);
     return { ok: true, referralRewarded };
-  });
+  }
+  route('POST', '/admin/orders/:id/approve', 'admin', ({ db, user, t, params, body }) => approveOrder({ db, t, reviewer: user.uid, orderId: +params.id, body }));
+
+  route('GET', '/admin/bank-events', 'admin', async ({ db }) => ({
+    events: (await q(db, "SELECT bank_id AS bankId, amount, content, result, order_id AS orderId, created_at AS at FROM bank_events WHERE result != 'approved' ORDER BY created_at DESC LIMIT 100").all()).results,
+  }));
 
   route('POST', '/admin/orders/:id/reject', 'admin', async ({ db, user, t, params }) => {
     const r = await q(db, "UPDATE orders SET status = 'rejected', reviewed_at = ?, reviewed_by = ? WHERE id = ? AND status = 'pending'", t, user.uid, +params.id).run();
@@ -838,6 +889,7 @@ export function createApi({ verify, now = () => Date.now() }) {
       if (!origin) throw new HttpError(500, 'not-configured');
       const reqOrigin = request.headers.get('origin');
       if (reqOrigin && reqOrigin !== origin) throw new HttpError(403, 'bad-origin');
+      if (request.method === 'POST' && url.pathname === '/webhooks/sepay') return reply(200, await sepayWebhook(request, env));
       if (request.method === 'GET' && url.pathname.startsWith('/img/')) {
         // Ảnh sản phẩm: công khai, tên theo nội dung nên cache vĩnh viễn được.
         const key = url.pathname.slice(1);

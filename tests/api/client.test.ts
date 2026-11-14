@@ -330,3 +330,12 @@ describe("dữ liệu cá nhân và báo cáo", () => {
     assert.equal((await failure(client.report("post", 2, "Spam"))).code, "too-many");
   });
 });
+
+describe("đối soát ngân hàng", () => {
+  it("admin đọc danh sách tiền vào chưa khớp", async () => {
+    const { client, seen } = make([{ status: 200, body: { events: [{ bankId: "9", amount: 100000, content: "ck", result: "no-code", orderId: null, at: 1 }] } }]);
+    const events = await client.admin.bankEvents();
+    assert.equal(events[0]?.result, "no-code");
+    assert.equal(seen[0]?.url, "https://api.windtp.test/admin/bank-events");
+  });
+});
