@@ -241,6 +241,7 @@ export function createApi({ verify, now = () => Date.now() }) {
   route('POST', '/referral/redeem', 'user', async ({ db, user, t, body }) => {
     const code = String(body.code ?? '').toUpperCase().replace(/[\s-]/g, '');
     if (!/^[A-Z2-9]{8}$/.test(code)) throw bad('bad-code');
+    await rate(db, user, t, 'redeem', 10, 3600000); // chống dò mã mời
     const owner = await q(db, 'SELECT uid FROM ref_codes WHERE code = ?', code).first();
     if (!owner) throw new HttpError(404, 'no-code');
     if (owner.uid === user.uid) throw bad('self-referral');
@@ -770,6 +771,7 @@ export function createApi({ verify, now = () => Date.now() }) {
     return th;
   }
   route('POST', '/threads', 'user', async ({ db, user, t, body }) => {
+    await rate(db, user, t, 'thread-open', 40, 3600000);
     const l = await q(db, "SELECT id, uid, seller, title FROM listings WHERE id = ? AND status = 'approved'", +body.listingId).first();
     if (!l) throw new HttpError(404, 'not-found');
     if (l.uid === user.uid) throw bad('own-listing');
@@ -811,6 +813,7 @@ export function createApi({ verify, now = () => Date.now() }) {
 
   // Chặn / bỏ chặn người còn lại trong cuộc trò chuyện này (hai bên đều không gửi thêm được khi có người chặn).
   route('POST', '/threads/:id/block', 'user', async ({ db, user, t, params, body }) => {
+    await rate(db, user, t, 'block', 60, 3600000);
     const th = await myThread(db, user, params.id);
     if (body.block === false) await q(db, 'DELETE FROM thread_blocks WHERE thread_id = ? AND by_uid = ?', th.id, user.uid).run();
     else await q(db, 'INSERT OR IGNORE INTO thread_blocks (thread_id, by_uid, created_at) VALUES (?, ?, ?)', th.id, user.uid, t).run();
@@ -845,7 +848,8 @@ export function createApi({ verify, now = () => Date.now() }) {
     return { ok: true };
   });
   // Người đăng sửa cách liên hệ của tin mình (tin cũ chưa có thông tin liên hệ); admin sửa được mọi tin.
-  route('POST', '/listings/:id/contact', 'user', async ({ db, user, params, body }) => {
+  route('POST', '/listings/:id/contact', 'user', async ({ db, user, t, params, body }) => {
+    await rate(db, user, t, 'contact', 30, 3600000);
     const l = await q(db, "SELECT id, uid FROM listings WHERE id = ? AND status != 'deleted'", +params.id).first();
     if (!l || (l.uid !== user.uid && !user.admin)) throw new HttpError(404, 'not-found');
     const c = contactsFrom(body);

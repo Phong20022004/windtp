@@ -903,6 +903,13 @@ test('liên hệ: số điện thoại, Facebook, Zalo được chuẩn hóa và
   }
 });
 
+test('mã mời: dò mã bị giới hạn tần suất', async () => {
+  const app = await makeApp();
+  let last;
+  for (let i = 0; i < 11; i++) last = await app.call('POST', '/referral/redeem', { uid: 'guesser', body: { code: 'ABCDEFGH' } });
+  assert.equal(last.status, 429);
+});
+
 test('nhắn tin: chặn spam lặp nội dung và nhiều đường dẫn', async () => {
   const app = await makeApp();
   const id = await approvedListing(app);

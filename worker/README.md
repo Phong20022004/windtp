@@ -74,3 +74,6 @@ Khi người đăng chặn một người mua ở bất kỳ cuộc trò chuyệ
 
 ## Webhook ngân hàng (SePay)
 `POST /webhooks/sepay` (xác thực `Authorization: Apikey <SEPAY_API_KEY>`, so sánh thời gian cố định) tự duyệt đơn nạp Xu VND khi nội dung chuyển khoản có mã `WIND2xxxx`/`WIND3xxxx` của đúng một đơn đang chờ và số tiền bằng đúng số tiền đơn. Mỗi giao dịch ngân hàng chỉ xử lý một lần (`bank_events.bank_id`); các giao dịch không tự khớp được xem ở `GET /admin/bank-events`. Việc duyệt dùng chung hàm với nút duyệt của admin nên có cùng các bảo vệ (khóa chống duyệt trùng, giao dịch nguyên tử). Hướng dẫn cài đặt: `docs/DEPLOY.md`.
+
+## Giới hạn tần suất theo tài khoản (mới)
+Nhập mã mời đúng định dạng: 10 lần/giờ (chống dò mã). Mở chat: 40/giờ. Sửa liên hệ: 30/giờ. Chặn/bỏ chặn: 60/giờ. Vượt ngưỡng trả `429 rate-limited`.
