@@ -4,6 +4,7 @@
   "src/js/core/embedded-images.js",
   "src/js/core/boot.js",
   "src/js/core/catalog-and-identity.js",
+  "src/js/core/policy-text.js",
   "src/js/features/daily-review.js",
   "src/js/features/learning-book-lessons.js",
   "src/js/features/hanzi-writer-learn-ui.js",

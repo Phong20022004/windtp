@@ -64,12 +64,24 @@
   }
 
   /** Lấy lại ví từ máy chủ. Lỗi mạng thì giữ số liệu đang hiển thị. */
+  /** Báo cho người dùng khi đơn của họ đổi từ "chờ" sang đã duyệt hoặc bị từ chối (lần tải đầu chỉ ghi nhớ, không báo). */
+  function econNotifyOrders(orders) {
+    const prev = econ.orderStatus, next = {};
+    orders.forEach((o) => { next[o.id] = o.status; });
+    if (prev) orders.forEach((o) => {
+      if (prev[o.id] !== "pending" || o.status === "pending") return;
+      const name = o.code || "#" + o.id;
+      toast(o.status === "approved" ? "✅ Đơn " + name + " đã được duyệt" : "❌ Đơn " + name + " đã bị từ chối");
+    });
+    econ.orderStatus = next;
+  }
+  function econHasPendingOrder() { return !!econ.orderStatus && Object.keys(econ.orderStatus).some((id) => econ.orderStatus[id] === "pending"); }
   function econRefresh(quiet, timer) {
     if (!state.account || !window.WindtpApi) return Promise.resolve(false);
     // Vòng lặp định kỳ chỉ làm mới ví và hộp thư mỗi lần; dữ liệu cộng đồng và hồ sơ đồng bộ cứ 3 lần mới tải (hành động của người dùng vẫn tải ngay).
     econ.tick = (econ.tick || 0) + 1;
     const heavy = timer !== "tick" || econ.tick % 3 === 1 || !econ.socialAt;
-    return window.WindtpApi.wallet.refresh().then((me) => { econApplyWallet(me); econSyncBirth(me); if (heavy) econSocial(); econAutoRedeem(); if (heavy) econSyncPull(); econPollInbox(); return true; }, (e) => { econFail(e, quiet !== false); return false; });
+    return window.WindtpApi.wallet.refresh().then((me) => { econApplyWallet(me); econSyncBirth(me); if (heavy) econSocial(); else if (econHasPendingOrder() && !isAdmin()) econClient().myOrders().then(econNotifyOrders, () => { }); econAutoRedeem(); if (heavy) econSyncPull(); econPollInbox(); return true; }, (e) => { econFail(e, quiet !== false); return false; });
   }
 
   /** Ngày sinh đã khai trong Cài đặt được gửi một lần; sau đó máy chủ giữ và không cho đổi. */
@@ -85,6 +97,7 @@
     const api = econClient();
     return Promise.all([api.tasks(), api.myOrders(), api.posts(), isAdmin() ? api.admin.posts() : Promise.resolve([]), api.store(), api.listings(), isAdmin() ? api.admin.listings() : Promise.resolve([]), isAdmin() ? api.admin.reports() : Promise.resolve([])]).then(([tasks, orders, posts, pending, store, listings, pendingListings, reports]) => {
       econ.reports = reports; econ.socialAt = Date.now();
+      econNotifyOrders(orders);
       econApplyStore(store);
       // Bài đăng do máy chủ giữ; lượt thích và bình luận vẫn chỉ lưu trên máy này.
       state.posts = posts.map((p) => ({ id: "s" + p.id, author: p.author, tag: p.tag, text: p.text, ts: p.at, admin: p.admin || undefined, mine: p.mine, status: "approved", likes: p.likes, liked: p.liked, comments: p.comments.map((c) => ({ id: "s" + c.id, author: c.author, text: c.text, ts: c.at, mine: c.mine, admin: c.admin || undefined })) }))
@@ -107,7 +120,7 @@
     econClient().claimSession().then(go, (e) => { if (e && e.code === "device-limit") econFail(e); else go(); });
   }
   function econReset() {
-    econ.me = null; econ.chat = null; econ.inbox = null; econ.unread = 0; window.clearInterval(econ.chatTimer); econ.adminOrders = []; econ.myOrders = []; econ.ordersLoaded = false; econ.birthSent = ""; econ.syncReady = false; window.clearTimeout(econ.syncTimer);
+    econ.me = null; econ.chat = null; econ.inbox = null; econ.unread = 0; window.clearInterval(econ.chatTimer); econ.adminOrders = []; econ.myOrders = []; econ.orderStatus = null; econ.ordersLoaded = false; econ.birthSent = ""; econ.syncReady = false; window.clearTimeout(econ.syncTimer);
     if (window.WindtpApi) { window.WindtpApi.wallet.clear(); window.WindtpApi.clearSession(); }
   }
   window.setInterval(() => { if (document.visibilityState === "visible" && state.account) econRefresh(undefined, "tick"); }, ECON_REFRESH_MS);
@@ -330,8 +343,15 @@
     const o = econ.adminOrders.find((x) => String(x.id) === el.dataset.id);
     if (!o || o.status !== "pending") return;
     const g = econOrderGrant(o);
-    const extras = o.kind === "shop" ? { grants: g.grants, xu: g.xu, chips: g.chips, premiumMonths: g.months } : {};
-    const ok = await econRun("approve:" + o.id, async () => { await econClient().admin.approveOrder(o.id, extras); return true; });
+    // Quyền lợi do máy chủ tính theo bảng giá. Nếu số tiền khách khai khác bảng giá, lần bấm đầu chỉ cảnh báo; bấm lần nữa mới duyệt.
+    const extras = econ.forceApprove && econ.forceApprove[o.id] ? { acceptMismatch: true } : {};
+    const ok = await econRun("approve:" + o.id, async () => {
+      try { await econClient().admin.approveOrder(o.id, extras); return true; }
+      catch (e) {
+        if (e && e.code === "amount-mismatch") { (econ.forceApprove = econ.forceApprove || {})[o.id] = true; toast("Số tiền khách khai khác bảng giá. Hãy đối chiếu tiền thật rồi bấm xác nhận lần nữa để vẫn duyệt."); return false; }
+        throw e;
+      }
+    });
     if (!ok) return;
     toast(g.docs ? "Đã xác nhận. Nhớ gửi tài liệu cho khách." : "Đã xác nhận đơn");
     await econLoadOrders();
@@ -947,11 +967,17 @@
 
   // ===== Dữ liệu của tôi (xuất bản sao, xóa tài khoản) và báo cáo nội dung vi phạm =====
   function dataCard() {
-    if (!state.account || userId() === "WIND-guest") return "";
+    const links = `<div class="grid grid-cols-2 gap-2"><button data-action="open-doc" data-k="privacy" class="${btnGhost}">📄 Chính sách quyền riêng tư</button><button data-action="open-doc" data-k="terms" class="${btnGhost}">📄 Điều khoản sử dụng</button></div>`;
+    if (!state.account || userId() === "WIND-guest") return `<div class="rounded-2xl border border-slate-200 p-3 space-y-2"><p class="font-extrabold text-slate-800">🔒 Quyền riêng tư</p>${links}</div>`;
     return `<div class="rounded-2xl border border-slate-200 p-3 space-y-2"><p class="font-extrabold text-slate-800">🔒 Dữ liệu của tôi</p>
       <p class="text-[11px] text-slate-600">Bạn có thể tải về toàn bộ dữ liệu mình đã gửi lên máy chủ, hoặc xóa vĩnh viễn tài khoản.</p>
-      <div class="grid grid-cols-2 gap-2"><button data-action="export-data" class="${btnGhost}">⬇️ Tải bản sao dữ liệu</button><button data-action="open-delete-account" class="px-3 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-600">🗑 Xóa tài khoản</button></div></div>`;
+      <div class="grid grid-cols-2 gap-2"><button data-action="export-data" class="${btnGhost}">⬇️ Tải bản sao dữ liệu</button><button data-action="open-delete-account" class="px-3 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-600">🗑 Xóa tài khoản</button></div>${links}</div>`;
   }
+  function docModal() {
+    const k = ui.docKey, d = WINDTP_DOCS[k];
+    return d ? `${modalHead("📄 " + d.title)}<div class="p-5 space-y-3 text-xs">${docBodyHtml(k)}</div>` : "";
+  }
+  actions["open-doc"] = (el) => { if (!WINDTP_DOCS[el.dataset.k]) return; ui.docKey = el.dataset.k; openModal(docModal); };
   actions["export-data"] = async () => {
     const data = await econRun("export", () => econClient().exportData());
     if (!data) return;

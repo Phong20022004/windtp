@@ -29,6 +29,7 @@ with serve_dist() as URL, sync_playwright() as p, serve_api('%s://%s' % (urlpars
     pg.fill('#lg-email', 'q@b.vn')
     pg.fill('#lg-pw', 'secret1')
     pg.fill('#lg-pw2', 'secret1')
+    pg.check('#lg-terms')
     pg.click('#lg-submit')
     pg.wait_for_timeout(2500)  # để ví và dữ liệu máy chủ tải xong, tránh đồng bộ nền chen vào lúc mô phỏng
     toasts = lambda: pg.evaluate("document.body.innerText.split('Không lưu được dữ liệu').length - 1")

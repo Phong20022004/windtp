@@ -63,7 +63,7 @@ Tài khoản admin duyệt đơn và cộng Xu, nên là mục tiêu lớn nhấ
 
 ## 6. Việc chưa làm được bằng mã (cần quyết định của bạn)
 - **Nạp tiền tự động:** chỉ đơn nạp Xu VND qua SePay được tự duyệt (mục 1); đơn mua hàng, Premium và KRW vẫn do admin duyệt tay. Casso hoặc ngân hàng khác chưa có.
-- **Bảng giá do máy chủ giữ:** admin hiện quyết định quyền lợi khi duyệt đơn; máy chủ chỉ đặt trần. Một tài khoản admin bị chiếm vẫn có thể cộng Xu trong trần cho phép.
+- **Bảng giá do máy chủ giữ:** quyền lợi đơn mua hàng tính ở `worker/src/shop.js` từ danh sách dòng hàng (và chỉnh sửa giá của admin trong cấu hình cửa hàng). Sửa giá sản phẩm có sẵn phải sửa cả `shop.js` lẫn `src/js/core/languages-and-helpers.js`; test `tests/shop/pricing-sync.test.ts` báo lệch. Lệnh cộng tay `/admin/grant` bị giới hạn mỗi ngày bởi `ADMIN_DAILY_GRANT_LIMIT`.
 - **Kết quả game và tiến độ nhiệm vụ** do trình duyệt báo lên, nên chỉ chặn được ở mức hạn mức/ngày; chip kiếm trong game không đáng tin tuyệt đối.
 - **Nhân bản mã thiết bị:** khóa phiên do máy chủ cấp đã làm khó, nhưng không thể chặn hoàn toàn. Giới hạn 2 thiết bị/tháng chỉ chặn ở API Worker, không chặn ở bước đăng nhập Firebase; xóa dữ liệu trình duyệt tạo thiết bị mới (admin làm mới được).
 - **Chat:** cập nhật bằng cách hỏi lại mỗi 3 giây khi đang mở, chưa có thông báo đẩy hay thời gian thực. Muốn có cần Durable Objects/WebSocket hoặc dịch vụ push ngoài (Firebase Cloud Messaging); nên quyết định riêng vì tốn thêm chi phí và công sức.

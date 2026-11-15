@@ -94,6 +94,16 @@ with serve_dist() as URL, sync_playwright() as p:
         check(eventually(lambda: len(api_call(API, 'GET', '/admin/reports', admin_token, origin=ORIGIN)[1]['reports']) == 0), 'P6 báo cáo đã xử lý')
         check(all(x['id'] != post_id for x in api_call(API, 'GET', '/posts', admin_token, origin=ORIGIN)[1]['posts']), 'P7 bài bị gỡ không còn trên bảng tin')
 
+        # Thông báo khi đơn được duyệt: người dùng tạo đơn nạp, admin duyệt qua API, lần làm mới sau đó phải báo
+        usr.evaluate("window.dispatchEvent(new Event('online'))")
+        usr.wait_for_timeout(1500)
+        oid = usr.evaluate("window.WindtpApi.client.createOrder({kind:'topup',currency:'VND',amount:50000,code:'WIND29876',summary:'Nạp thử'}).then((r)=>r.id)")
+        usr.evaluate("window.dispatchEvent(new Event('online'))")  # ghi nhớ đơn đang chờ
+        usr.wait_for_timeout(1500)
+        api_call(API, 'POST', '/admin/orders/%d/approve' % oid, admin_token, {}, ORIGIN)
+        usr.evaluate("window.dispatchEvent(new Event('online'))")
+        check(eventually(lambda: 'đã được duyệt' in usr.locator('#toast-message').inner_text()), 'P7b người dùng được báo khi đơn đã duyệt')
+
         # Xuất dữ liệu
         click_action(usr, 'open-settings')
         usr.wait_for_selector('[data-action="export-data"]', timeout=5000)

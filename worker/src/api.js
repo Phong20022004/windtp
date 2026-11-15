@@ -1,5 +1,6 @@
 // API ví / đơn hàng / kiểm duyệt. Trình duyệt chỉ GỬI YÊU CẦU; mọi số tiền, giá, thưởng do máy chủ quyết định.
 import * as E from './economy.js';
+import { priceOrder } from './shop.js';
 import { sanitizeStore, sniffImage, IMAGE_TYPES, IMG_KEY, MAX_IMAGE_BYTES } from './store.js';
 
 class HttpError extends Error {
@@ -354,23 +355,26 @@ export function createApi({ verify, now = () => Date.now() }) {
 
   // Duyệt một đơn: dùng chung cho admin bấm duyệt và cho webhook ngân hàng (đơn nạp Xu khớp chính xác). extraStmts nằm cùng giao dịch nguyên tử.
   async function approveOrder({ db, t, reviewer, orderId, body, extraStmts = [] }) {
-    const grantItems = [];
-    if (body.grants !== undefined) {
-      if (!Array.isArray(body.grants) || body.grants.length > E.MAX_ORDER_GRANTS) throw bad('bad-grants');
-      for (const id of new Set(body.grants)) {
-        if (typeof id !== 'string') throw bad('bad-grants');
-        // access:<mã ngôn ngữ> = quyền học theo khóa (không bán lẻ, chỉ admin cấp kèm đơn); còn lại phải có trong catalog.
-        if (!/^access:[a-z]{2}$/.test(id) && !(await q(db, 'SELECT 1 AS x FROM catalog WHERE id = ?', id).first())) throw bad('bad-grants');
-        grantItems.push(id);
-      }
-    }
-    // Quyền lợi bổ sung do admin quyết định (sau khi đối chiếu thanh toán), chỉ áp dụng cho đơn mua hàng và có trần.
-    const extra = { xu: body.xu ?? 0, chips: body.chips ?? 0, months: body.premiumMonths ?? 0 };
-    if (!isInt(extra.xu, 0, E.MAX_GRANT) || !isInt(extra.chips, 0, E.MAX_GRANT) || !isInt(extra.months, 0, E.MAX_PREMIUM_MONTHS_PER_ORDER)) throw bad('bad-grants');
     const order = await q(db, 'SELECT * FROM orders WHERE id = ?', orderId).first();
     if (!order) throw new HttpError(404, 'no-order');
-    if (order.kind !== 'shop' && (extra.xu || extra.chips || extra.months)) throw bad('extras-shop-only');
     if (order.status !== 'pending') throw new HttpError(409, 'not-pending');
+    // Quyền lợi KHÔNG nhận từ admin: đơn mua hàng được tính theo bảng giá của máy chủ từ danh sách dòng hàng; các loại đơn khác có mức cố định.
+    if (['grants', 'xu', 'chips', 'premiumMonths'].some((k) => body[k] !== undefined)) throw bad('priced-by-server');
+    const grantItems = [];
+    let extra = { xu: 0, chips: 0, months: 0 }, paidTotal = order.amount;
+    if (order.kind === 'shop') {
+      let lines = [];
+      try { lines = JSON.parse(order.lines || '[]'); } catch { /* đơn cũ hỏng dữ liệu */ }
+      if (!Array.isArray(lines) || !lines.length) throw new HttpError(409, 'no-lines');
+      const storeRow = await q(db, 'SELECT json FROM store WHERE id = 1').first();
+      const priced = priceOrder(lines, order.currency, storeRow ? JSON.parse(storeRow.json) : {});
+      if (!priced) throw new HttpError(409, 'unknown-product');
+      // Số tiền khách khai khác bảng giá: dừng lại để admin đối chiếu tiền thật; chỉ duyệt tiếp khi admin xác nhận rõ.
+      if (priced.total !== order.amount && body.acceptMismatch !== true) throw new HttpError(409, 'amount-mismatch');
+      extra = { xu: priced.xu, chips: priced.chips, months: priced.months };
+      grantItems.push(...priced.grants);
+      paidTotal = Math.min(order.amount, priced.total); // thưởng mua sắm theo số tiền thấp hơn: khai khống số tiền không tăng thưởng
+    }
     await wallet(db, order.uid, t);
     const stmts = [
       q(db, 'INSERT INTO claims (uid, key, created_at) VALUES (?, ?, ?)', 'order', `order:${order.id}`, t), // chống duyệt trùng khi bấm đồng thời
@@ -392,7 +396,7 @@ export function createApi({ verify, now = () => Date.now() }) {
       if (task.xu || task.chips) stmts.push(credit(db, order.uid, task.xu, task.chips), txStmt(db, order.uid, 'task', task.xu, task.chips, `Thưởng nhiệm vụ: ${task.title}`.slice(0, 80), String(order.id), t));
     } else {
       // Đơn mua hàng: thưởng nhiệm vụ mua sắm, mỗi loại một lần/ngày (máy chủ biết đơn có thật vì chính admin duyệt).
-      const vnd = order.amount * E.TOPUP_RATE[order.currency];
+      const vnd = paidTotal * E.TOPUP_RATE[order.currency];
       const day = dayKey(t);
       const bonus = [['shop', E.SHOP_TASK]];
       if (vnd >= E.BIG_SHOP_TASK.thresholdVnd) bonus.push(['bigshop', E.BIG_SHOP_TASK]);
@@ -454,7 +458,7 @@ export function createApi({ verify, now = () => Date.now() }) {
   });
 
   // Admin cộng thưởng thủ công cho một người dùng (thay cho cơ chế `credits` lưu ở trình duyệt). Mọi lần cộng đều có dòng sổ ghi người cộng.
-  route('POST', '/admin/grant', 'admin', async ({ db, user, t, body }) => {
+  route('POST', '/admin/grant', 'admin', async ({ db, env, user, t, body }) => {
     let uid = typeof body.uid === 'string' ? body.uid.trim() : '';
     if (!uid && typeof body.email === 'string' && body.email.trim()) {
       const hit = await q(db, 'SELECT uid FROM wallets WHERE lower(email) = ?', body.email.trim().toLowerCase()).first();
@@ -465,6 +469,10 @@ export function createApi({ verify, now = () => Date.now() }) {
     const chips = body.chips === undefined ? 0 : body.chips;
     if (!uid || uid.length > 128 || !isInt(xu, 0, E.MAX_GRANT) || !isInt(chips, 0, E.MAX_GRANT) || xu + chips === 0) throw bad('bad-grant');
     const note = typeof body.note === 'string' && body.note.trim() ? body.note.trim().slice(0, 80) : 'Admin cộng thưởng';
+    // Hạn mức cộng tay mỗi admin trong 24 giờ (Xu + chip): tài khoản admin bị chiếm cũng không rút được vô hạn. Đổi bằng biến môi trường ADMIN_DAILY_GRANT_LIMIT.
+    const limit = Number.isInteger(+env.ADMIN_DAILY_GRANT_LIMIT) && +env.ADMIN_DAILY_GRANT_LIMIT > 0 ? +env.ADMIN_DAILY_GRANT_LIMIT : E.ADMIN_DAILY_GRANT_LIMIT;
+    const used = await q(db, 'SELECT COALESCE(SUM(delta + chips_delta), 0) AS n FROM tx WHERE ref = ? AND created_at > ?', `admin:${user.uid}`, t - 86400000).first();
+    if (used.n + xu + chips > limit) throw new HttpError(429, 'grant-budget');
     await wallet(db, uid, t);
     await atomic(db, [credit(db, uid, xu, chips), txStmt(db, uid, 'grant', xu, chips, note, `admin:${user.uid}`, t)]);
     return { ok: true };

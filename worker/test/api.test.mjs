@@ -105,14 +105,14 @@ test('từ chối đơn không cộng gì; không duyệt lại đơn đã từ 
 
 test('đơn mua hàng: thưởng nhiệm vụ một lần/ngày, ưu đãi lớn theo ngưỡng', async () => {
   const app = await makeApp();
-  const mk = async (amount) => (await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'shop', currency: 'VND', amount } })).json.id;
+  const mk = async (amount) => (await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'shop', currency: 'VND', amount, lines: [{ id: 'docm-en', qty: 1 }] } })).json.id;
   const a = await mk(20000), b = await mk(60000);
-  await app.call('POST', `/admin/orders/${a}/approve`, { uid: 'boss', admin: true });
+  await app.call('POST', `/admin/orders/${a}/approve`, { uid: 'boss', admin: true, body: { acceptMismatch: true } });
   assert.deepEqual({ ...app.balance('u1') }, { balance: 10000, chips: 10000, p: 0 });
-  await app.call('POST', `/admin/orders/${b}/approve`, { uid: 'boss', admin: true });
+  await app.call('POST', `/admin/orders/${b}/approve`, { uid: 'boss', admin: true, body: { acceptMismatch: true } });
   assert.equal(app.balance('u1').balance, 10000 + 40000); // t-shop đã nhận hôm nay, chỉ thêm bigshop
   const c = await mk(60000);
-  await app.call('POST', `/admin/orders/${c}/approve`, { uid: 'boss', admin: true });
+  await app.call('POST', `/admin/orders/${c}/approve`, { uid: 'boss', admin: true, body: { acceptMismatch: true } });
   assert.equal(app.balance('u1').balance, 50000); // không nhận lại trong ngày
 });
 
@@ -256,48 +256,80 @@ test('admin cộng thưởng theo email đã xác thực; email lạ trả 404',
   assert.equal((await grant({ email: 'khong@co.vn', xu: 5 })).status, 404);
 });
 
-test('duyệt đơn kèm quyền lợi: chỉ mã có trong catalog, không trùng, tất cả hoặc không gì cả', async () => {
-  const app = await makeApp();
-  await app.call('PUT', '/admin/catalog', { uid: 'boss', admin: true, body: { items: [{ id: 'doc-en', kind: 'doc', name: 'Tài liệu EN', price: 80000 }, { id: 'course-1', kind: 'course', name: 'Khóa 1', price: 1 }] } });
-  const order = async () => (await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'shop', currency: 'VND', amount: 100000 } })).json.id;
-  const approve = (id, body) => app.call('POST', `/admin/orders/${id}/approve`, { uid: 'boss', admin: true, body });
-  const first = await order();
-  assert.equal((await approve(first, { grants: ['doc-en', 'ma-gia'] })).status, 400);
-  assert.equal((await app.call('GET', '/me', { uid: 'u1' })).json.owned.length, 0, 'lỗi thì không cấp gì');
-  assert.equal((await approve(first, { grants: 'doc-en' })).status, 400);
-  assert.equal((await approve(first, { grants: ['doc-en', 'doc-en', 'course-1'] })).status, 200);
-  assert.deepEqual((await app.call('GET', '/me', { uid: 'u1' })).json.owned.sort(), ['course-1', 'doc-en']);
-  assert.equal((await approve(await order(), { grants: Array.from({ length: 11 }, (_, i) => 'x' + i) })).status, 400);
-});
+const shopOrder = (app, uid, lines, amount, currency = 'VND') => app.call('POST', '/orders', { uid, body: { kind: 'shop', currency, amount, lines } }).then((r) => r.json.id);
+const approveShop = (app, id, body = {}) => app.call('POST', `/admin/orders/${id}/approve`, { uid: 'boss', admin: true, body });
 
-test('đơn mua hàng: admin kèm Xu/chip/Premium có trần; loại đơn khác từ chối; lỗi thì không đổi gì', async () => {
+test('duyệt đơn mua hàng: quyền lợi do bảng giá máy chủ quyết định, mọi quyền lợi admin gửi lên bị từ chối', async () => {
   const app = await makeApp();
-  const shop = async (body = {}) => (await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'shop', currency: 'VND', amount: 60000, lines: [{ id: 'p1', qty: 2 }, { id: '', qty: 1 }, { id: 'p2', qty: 0 }, { id: 'p3', qty: 100 }], ...body } })).json.id;
-  const approve = (id, body, uid = 'boss') => app.call('POST', `/admin/orders/${id}/approve`, { uid, admin: true, body });
-  const id = await shop();
-  const stored = (await app.call('GET', '/admin/orders', { uid: 'boss', admin: true })).json.orders[0];
-  assert.deepEqual(JSON.parse(stored.lines), [{ id: 'p1', qty: 2 }], 'chỉ giữ dòng hợp lệ');
-  for (const bad of [{ xu: -1 }, { xu: 1e9 }, { chips: 1.5 }, { premiumMonths: 1201 }, { premiumMonths: '3' }]) assert.equal((await approve(id, bad)).status, 400, JSON.stringify(bad));
-  assert.equal(app.balance('u1'), undefined, 'lỗi thì ví không đổi');
-  assert.equal((await approve(id, { xu: 5000, chips: 300, premiumMonths: 3 })).status, 200);
+  const id = await shopOrder(app, 'u1', [{ id: 'cr-en-3m', qty: 1 }, { id: 'docm-ko', qty: 1 }], 385000);
+  for (const bad of [{ grants: ['access:ko'] }, { xu: 5 }, { chips: 5 }, { premiumMonths: 1 }]) assert.equal((await approveShop(app, id, bad)).status, 400, JSON.stringify(bad));
+  assert.equal(app.balance('u1'), undefined, 'bị từ chối thì ví không đổi');
+  assert.equal((await approveShop(app, id)).status, 200);
+  assert.deepEqual((await app.call('GET', '/me', { uid: 'u1' })).json.owned.sort(), ['access:en', 'doc-ko']);
   const w = app.balance('u1');
-  assert.equal(w.balance, 5000 + 50000, 'Xu admin kèm + thưởng mua hàng tự động (đơn từ 50.000đ nhận cả thưởng đơn lớn)');
-  assert.equal(w.chips, 300 + 50000);
-  assert.ok(w.p >= app.state.t + 3 * 30 * 86400000);
+  assert.equal(w.chips, 30000 + 50000, 'chip của gói 3 tháng + thưởng mua hàng tự động');
+  assert.ok(w.p >= app.state.t + 3 * 30 * 86400000 && w.p < app.state.t + 4 * 30 * 86400000, 'Premium 3 tháng');
   const topup = (await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'topup', currency: 'VND', amount: 50000 } })).json.id;
-  assert.equal((await approve(topup, { xu: 999999 })).status, 400, 'đơn nạp Xu do máy chủ tính, admin không đổi được');
-  assert.equal((await approve(topup, {})).status, 200);
+  assert.equal((await approveShop(app, topup, { xu: 999999 })).status, 400, 'đơn nạp Xu do máy chủ tính, admin không đổi được');
+  assert.equal((await approveShop(app, topup)).status, 200);
 });
 
-test('quyền học theo khóa access:<ngôn ngữ> chỉ cấp được qua admin duyệt đơn, không mua lẻ được', async () => {
+test('đơn mua hàng: số tiền lệch bảng giá phải được admin xác nhận rõ; dòng lạ hoặc thiếu dòng thì không duyệt; thưởng theo số tiền thấp hơn', async () => {
   const app = await makeApp();
-  const id = (await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'shop', currency: 'VND', amount: 1000 } })).json.id;
-  const approve = (grants) => app.call('POST', `/admin/orders/${id}/approve`, { uid: 'boss', admin: true, body: { grants } });
-  assert.equal((await approve(['access:english'])).status, 400);
-  assert.equal((await approve(['access:EN'])).status, 400);
-  assert.equal((await approve(['access:en', 'access:ko'])).status, 200);
-  assert.deepEqual((await app.call('GET', '/me', { uid: 'u1' })).json.owned.sort(), ['access:en', 'access:ko']);
+  const stored = async () => (await app.call('GET', '/admin/orders', { uid: 'boss', admin: true })).json.orders;
+  const id = (await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'shop', currency: 'VND', amount: 60000, lines: [{ id: 'docm-en', qty: 2 }, { id: '', qty: 1 }, { id: 'p2', qty: 0 }, { id: 'p3', qty: 100 }] } })).json.id;
+  assert.deepEqual(JSON.parse((await stored())[0].lines), [{ id: 'docm-en', qty: 2 }], 'chỉ giữ dòng hợp lệ');
+  const r = await approveShop(app, id);
+  assert.equal(r.status, 409); assert.equal(r.json.error, 'amount-mismatch');
+  assert.equal(app.balance('u1'), undefined, 'chưa duyệt thì chưa cộng gì');
+  assert.equal((await approveShop(app, id, { acceptMismatch: true })).status, 200);
+  assert.equal(app.balance('u1').balance, 10000 + 40000, 'thưởng theo số tiền thấp hơn (60.000 < 200.000) nên vẫn đạt ngưỡng đơn lớn');
+  const noLines = (await app.call('POST', '/orders', { uid: 'u2', body: { kind: 'shop', currency: 'VND', amount: 1000 } })).json.id;
+  assert.equal((await approveShop(app, noLines, { acceptMismatch: true })).json.error, 'no-lines');
+  const unknown = await shopOrder(app, 'u3', [{ id: 'san-pham-khong-co', qty: 1 }], 1000);
+  assert.equal((await approveShop(app, unknown, { acceptMismatch: true })).json.error, 'unknown-product');
+  // Khai khống số tiền lớn cho hàng rẻ: thưởng tính theo bảng giá, không theo số khách khai.
+  const cheat = await shopOrder(app, 'u4', [{ id: 'docm-en', qty: 1 }], 15000000);
+  assert.equal((await approveShop(app, cheat, { acceptMismatch: true })).status, 200);
+  assert.equal(app.balance('u4').balance, 10000 + 40000, '100.000 đạt ngưỡng, nhưng không hơn vì số khai khống');
+});
+
+test('bảng giá máy chủ áp chỉnh sửa của admin: giá, thưởng, sản phẩm tự thêm; KRW tính riêng; chặn trần', async () => {
+  const app = await makeApp();
+  const store = { customProducts: [{ id: 'cp-1', custom: true, name: 'Bút', desc: '', price: { VND: 20000, KRW: 1000, JPY: 100 }, rewardXu: 7000, rewardChips: 300, cat: 'study', sub: '', emoji: '', ts: 0 }], productEdits: { 'docm-en': { price: { VND: 80000 }, rewardXu: 500 } }, hiddenProducts: [], customCats: [] };
+  assert.equal((await app.call('PUT', '/admin/store', { uid: 'boss', admin: true, body: store })).status, 200);
+  const a = await shopOrder(app, 'u1', [{ id: 'cp-1', qty: 2 }, { id: 'docm-en', qty: 1 }], 120000);
+  assert.equal((await approveShop(app, a)).status, 200, 'giá khớp bảng giá đã chỉnh');
+  assert.ok(app.balance('u1').balance >= 2 * 7000 + 500, 'thưởng của sản phẩm tự thêm và bản chỉnh sửa');
+  const k = await shopOrder(app, 'u2', [{ id: 'cr-ja-1m', qty: 1 }], 5300, 'KRW');
+  assert.equal((await approveShop(app, k)).status, 200, 'KRW = 100.000 / 19 làm tròn trăm');
+  const life = await shopOrder(app, 'u3', [{ id: 'cr-fr-life', qty: 9 }], 2000000 * 9);
+  assert.equal((await approveShop(app, life)).status, 200);
+  assert.ok(app.balance('u3').p < app.state.t + 1201 * 30 * 86400000, 'Premium bị chặn ở 1200 tháng');
+});
+
+test('quyền học theo khóa access:<ngôn ngữ> chỉ có từ đơn khóa học đã duyệt, không mua lẻ được', async () => {
+  const app = await makeApp();
+  const doc = await shopOrder(app, 'u1', [{ id: 'docm-en', qty: 1 }], 100000);
+  await approveShop(app, doc);
+  assert.deepEqual((await app.call('GET', '/me', { uid: 'u1' })).json.owned, ['doc-en'], 'mua tài liệu không cấp quyền học');
+  const course = await shopOrder(app, 'u1', [{ id: 'cr-ko-1m', qty: 1 }, { id: 'cr-zh-1m', qty: 1 }], 200000);
+  assert.equal((await approveShop(app, course)).status, 200);
+  assert.deepEqual((await app.call('GET', '/me', { uid: 'u1' })).json.owned.sort(), ['access:ko', 'access:zh', 'doc-en']);
   assert.equal((await app.call('POST', '/purchase', { uid: 'u2', body: { itemId: 'access:en' } })).status, 404, 'không có trong catalog nên không mua được');
+});
+
+test('admin cộng tay có hạn mức 24 giờ; vượt thì từ chối, qua ngày được lại; hạn mức đổi được bằng biến môi trường', async () => {
+  const app = await makeApp();
+  const grant = (xu, uid = 'boss') => app.call('POST', '/admin/grant', { uid, admin: true, body: { uid: 'u1', xu } });
+  assert.equal((await grant(600000)).status, 200);
+  assert.equal((await grant(400000)).status, 200);
+  assert.equal((await grant(1)).status, 429, 'đã chạm 1.000.000 trong 24 giờ');
+  assert.equal((await grant(1, 'boss2')).status, 200, 'hạn mức tính riêng từng admin');
+  app.state.t += 86400000 + 1000;
+  assert.equal((await grant(500000)).status, 200, 'qua 24 giờ thì tính lại');
+  app.env.ADMIN_DAILY_GRANT_LIMIT = '1000';
+  assert.equal((await grant(2000, 'boss3')).status, 429, 'biến môi trường hạ hạn mức');
 });
 
 test('thưởng chia sẻ Facebook: link hợp lệ, mỗi kỳ một lần, link không dùng lại, từ chối thì nộp lại được, thưởng do máy chủ định', async () => {
@@ -351,8 +383,8 @@ test('nội dung trả phí: cần Premium còn hạn và khóa học của đú
   assert.equal((await get('u1', '../../x')).status, 404);
   assert.equal((await get('u1', 'xx')).status, 404);
   // Admin duyệt đơn: Premium 1 tháng + khóa tiếng Anh
-  const o = (await app.call('POST', '/orders', { uid: 'u1', body: { kind: 'shop', currency: 'VND', amount: 1000 } })).json.id;
-  assert.equal((await app.call('POST', `/admin/orders/${o}/approve`, { uid: 'boss', admin: true, body: { grants: ['access:en'], premiumMonths: 1 } })).status, 200);
+  const o = await shopOrder(app, 'u1', [{ id: 'cr-en-1m', qty: 1 }], 100000);
+  assert.equal((await approveShop(app, o)).status, 200);
   const ok = await get('u1', 'en');
   assert.equal(ok.status, 200);
   assert.equal(ok.json['Sach|0'].length, 2, 'bản đầy đủ có nhiều bài');
@@ -677,9 +709,10 @@ test('thiết bị: danh sách thiết bị trong tháng; admin làm mới cho n
 
 // ===== Mã mời =====
 const course = async (app, uid, grants = ['access:en']) => {
-  const o = await app.call('POST', '/orders', { uid, body: { kind: 'shop', currency: 'VND', amount: 500000 } });
+  const lines = grants.map((g) => ({ id: g.startsWith('doc-') ? `docm-${g.slice(4)}` : `cr-${g.slice(7)}-1m`, qty: 1 }));
+  const o = await app.call('POST', '/orders', { uid, body: { kind: 'shop', currency: 'VND', amount: 100000 * lines.length, lines } });
   assert.equal(o.status, 200);
-  return app.call('POST', `/admin/orders/${o.json.id}/approve`, { uid: 'boss', admin: true, body: { grants } });
+  return app.call('POST', `/admin/orders/${o.json.id}/approve`, { uid: 'boss', admin: true, body: {} });
 };
 
 test('mã mời: mỗi người đúng một mã 8 ký tự, ổn định, khác nhau giữa các người; tạo song song vẫn một mã', async () => {
@@ -717,7 +750,7 @@ test('mã mời: người mời chỉ nhận 10.000 Xu + 7.000 chip SAU KHI ngư
   await app.call('POST', '/referral/redeem', { uid: 'B', body: { code: codeA } });
   assert.deepEqual([app.balance('A').balance, app.balance('A').chips], [0, 0]); // nhập mã chưa có thưởng
   await topup(app, 'B'); // nạp tiền không phải mua khóa học
-  const shopNoCourse = await course(app, 'B', []);
+  const shopNoCourse = await course(app, 'B', ['doc-en']); // mua tài liệu không phải khóa học
   assert.equal(shopNoCourse.json.referralRewarded, false);
   assert.equal(app.balance('A').balance, 0);
   const first = await course(app, 'B', ['access:en']);
@@ -737,8 +770,8 @@ test('mã mời: hai đơn khóa học của người được mời duyệt son
   const codeA = (await app.call('GET', '/referral', { uid: 'A' })).json.code;
   await app.call('POST', '/referral/redeem', { uid: 'B', body: { code: codeA } });
   const ids = [];
-  for (let i = 0; i < 2; i++) ids.push((await app.call('POST', '/orders', { uid: 'B', body: { kind: 'shop', currency: 'VND', amount: 500000 } })).json.id);
-  await Promise.all(ids.map((id) => app.call('POST', `/admin/orders/${id}/approve`, { uid: 'boss', admin: true, body: { grants: ['access:en'] } })));
+  for (let i = 0; i < 2; i++) ids.push((await app.call('POST', '/orders', { uid: 'B', body: { kind: 'shop', currency: 'VND', amount: 100000, lines: [{ id: 'cr-en-1m', qty: 1 }] } })).json.id);
+  await Promise.all(ids.map((id) => app.call('POST', `/admin/orders/${id}/approve`, { uid: 'boss', admin: true, body: {} })));
   assert.deepEqual([app.balance('A').balance, app.balance('A').chips], [10000, 7000]);
 });
 
@@ -759,9 +792,9 @@ test('mã mời: đơn bị từ chối không thưởng; người thường kh�
   const app = await makeApp();
   const codeA = (await app.call('GET', '/referral', { uid: 'A' })).json.code;
   await app.call('POST', '/referral/redeem', { uid: 'B', body: { code: codeA } });
-  const o = await app.call('POST', '/orders', { uid: 'B', body: { kind: 'shop', currency: 'VND', amount: 500000 } });
+  const o = await app.call('POST', '/orders', { uid: 'B', body: { kind: 'shop', currency: 'VND', amount: 100000, lines: [{ id: 'cr-en-1m', qty: 1 }] } });
   await app.call('POST', `/admin/orders/${o.json.id}/reject`, { uid: 'boss', admin: true });
-  assert.equal((await app.call('POST', `/admin/orders/${o.json.id}/approve`, { uid: 'B', body: { grants: ['access:en'] } })).status, 403);
+  assert.equal((await app.call('POST', `/admin/orders/${o.json.id}/approve`, { uid: 'B', body: {} })).status, 403);
   assert.equal(app.db.sqlite.prepare("SELECT COUNT(*) AS n FROM tx WHERE kind = 'referral'").get().n, 0);
 });
 

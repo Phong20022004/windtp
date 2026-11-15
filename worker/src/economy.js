@@ -86,3 +86,6 @@ export function displayName(user) {
 export const REPORT_REASON_MAX = 200;
 export const MAX_REPORTS_PER_DAY = 20;
 export const FEED_COMMENTS_PER_POST = 30;
+
+/** Tổng Xu + chip một admin được cộng tay (POST /admin/grant) trong 24 giờ; có thể ghi đè bằng biến môi trường ADMIN_DAILY_GRANT_LIMIT. */
+export const ADMIN_DAILY_GRANT_LIMIT = 1_000_000;

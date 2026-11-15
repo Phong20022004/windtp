@@ -36,6 +36,7 @@ with serve_dist() as URL, sync_playwright() as p:
     pg.fill('#lg-email', 'c@b.vn')
     pg.fill('#lg-pw', 'secret1')
     pg.fill('#lg-pw2', 'secret1')
+    pg.check('#lg-terms')
     pg.click('#lg-submit')
     pg.wait_for_timeout(800)
 

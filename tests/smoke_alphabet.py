@@ -35,6 +35,7 @@ with serve_dist() as URL, sync_playwright() as p, serve_api('%s://%s' % (urlpars
     pg.fill('#lg-email', 'al@b.vn')
     pg.fill('#lg-pw', 'secret1')
     pg.fill('#lg-pw2', 'secret1')
+    pg.check('#lg-terms')
     pg.click('#lg-submit')
     pg.wait_for_timeout(2500)
     txt = lambda: pg.evaluate("document.querySelector('#tab-learn').innerText")
@@ -106,8 +107,8 @@ with serve_dist() as URL, sync_playwright() as p, serve_api('%s://%s' % (urlpars
     open_alpha('ko')
     act(pg, 'alpha-mode', m='duel')
     check('Premium' in txt() and pg.locator('[data-action="alpha-d-send"]').count() == 0, 'duel: chưa có Premium thì bị chặn và dẫn tới gói khóa học')
-    oid = pg.evaluate("window.WindtpApi.client.createOrder({kind:'shop',currency:'VND',amount:1000,summary:'Premium'}).then(r=>r.id)")
-    status, _ = api_call(API, 'POST', '/admin/orders/%d/approve' % oid, admin_token, {'grants': ['access:ko'], 'premiumMonths': 1}, ORIGIN)
+    oid = pg.evaluate("window.WindtpApi.client.createOrder({kind:'shop',currency:'VND',amount:100000,summary:'Premium',lines:[{id:'cr-ko-1m',qty:1}]}).then(r=>r.id)")
+    status, _ = api_call(API, 'POST', '/admin/orders/%d/approve' % oid, admin_token, {}, ORIGIN)
     check(status == 200, 'duel: admin cấp Premium theo đơn')
     pg.evaluate("window.dispatchEvent(new Event('online'))")
     for _ in range(40):

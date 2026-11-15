@@ -99,7 +99,7 @@
       <div class="lg-field"><label class="lg-l" for="lg-email" id="lg-email-l">Email</label><input id="lg-email" type="text" inputmode="email" autocomplete="email" placeholder="example@email.com"></div>
       <div id="lg-pwgrid" class="lg-g2"><div class="lg-field"><label class="lg-l" for="lg-pw" id="lg-pw-l">Mật khẩu</label><div class="lg-pw"><input id="lg-pw" type="password" autocomplete="new-password" placeholder="••••••••">${eye("lg-pw")}</div></div>
         <div class="lg-field" data-m="register forgot"><label class="lg-l" for="lg-pw2">Xác nhận mật khẩu</label><div class="lg-pw"><input id="lg-pw2" type="password" autocomplete="new-password" placeholder="••••••••">${eye("lg-pw2")}</div></div></div>
-      <label class="lg-check" data-m="register"><input id="lg-terms" type="checkbox" checked><span>Tôi đồng ý với <button type="button" class="lg-a" data-info="Điều khoản sử dụng: WINDTP dùng cho mục đích học tập, không đăng nội dung vi phạm.">Điều khoản sử dụng</button> và <button type="button" class="lg-a" data-info="Chính sách bảo mật: dữ liệu của bạn chỉ lưu trong trình duyệt này.">Chính sách bảo mật</button>.</span></label>
+      <label class="lg-check" data-m="register"><input id="lg-terms" type="checkbox"><span>Tôi đồng ý với <button type="button" class="lg-a" data-doc="terms">Điều khoản sử dụng</button> và <button type="button" class="lg-a" data-doc="privacy">Chính sách quyền riêng tư</button>.</span></label>
       <p class="lg-err" id="lg-err" role="alert"></p>
       <button type="submit" class="lg-submit" id="lg-submit"></button>
       <div class="lg-meta" data-m="register login"><label><input id="lg-remember" type="checkbox"> Ghi nhớ đăng nhập</label><button type="button" class="lg-a" id="lg-forgot">Quên mật khẩu?</button></div>
@@ -110,6 +110,16 @@
     lgAutoTheme(d);
     const q = (id) => d.querySelector("#" + id), err = q("lg-err");
     const showErr = (m) => { err.textContent = m; err.style.display = m ? "block" : "none"; };
+    // Điều khoản/chính sách hiển thị ngay trong màn đăng nhập (chưa có modal của app ở bước này).
+    const showDoc = (key) => {
+      const doc = WINDTP_DOCS[key]; if (!doc || q("lg-doc")) return;
+      const o = document.createElement("div");
+      o.id = "lg-doc"; o.setAttribute("role", "dialog"); o.setAttribute("aria-modal", "true"); o.setAttribute("aria-label", doc.title);
+      o.style.cssText = "position:fixed;inset:0;z-index:10001;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px";
+      o.innerHTML = `<div style="background:#fff;color:#0f172a;border-radius:20px;max-width:440px;width:100%;max-height:85vh;overflow:auto;padding:20px;font-size:13px;display:flex;flex-direction:column;gap:12px"><h2 style="font-size:16px;font-weight:800">${doc.title}</h2>${docBodyHtml(key).replace(/class="text-slate-800"/g, "").replace(/<div>/g, '<div style="margin-bottom:8px">')}<button type="button" id="lg-doc-close" class="lg-submit">ĐÓNG</button></div>`;
+      d.appendChild(o);
+      const b = o.querySelector("#lg-doc-close"); if (b) b.focus();
+    };
     let mode = "register";
     const T = {
       register: { t: "Tạo tài khoản WINDTP", s: "Tham gia và khám phá WINDTP", b: "ĐĂNG KÝ", sw: 'Đã có tài khoản? <button type="button" class="lg-a" data-mode="login">Đăng nhập ngay</button>', el: "Email", ph: "example@email.com" },
@@ -132,7 +142,8 @@
       if (!t) return;
       if (t.dataset.mode) { setMode(t.dataset.mode); return; }
       if (t.dataset.eye) { const i = q(t.dataset.eye); i.type = i.type === "password" ? "text" : "password"; return; }
-      if (t.dataset.info) { toast(t.dataset.info); return; }
+      if (t.dataset.doc) { showDoc(t.dataset.doc); return; }
+      if (t.id === "lg-doc-close") { const o = q("lg-doc"); if (o) o.remove(); return; }
       if (t.id === "lg-forgot") { setMode("forgot"); return; }
       if (t.id === "lg-google") { googleSignIn(); return; }
     });

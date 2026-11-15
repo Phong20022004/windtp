@@ -122,12 +122,10 @@ export interface AdminOrder {
   created_at: number;
 }
 
-/** Quyền lợi admin kèm khi duyệt đơn mua hàng (sau khi đối chiếu thanh toán); máy chủ giới hạn mức tối đa. */
+/** Tùy chọn khi duyệt đơn. Quyền lợi (Xu, chip, Premium, quyền học) do bảng giá máy chủ tính, admin không gửi được. */
 export interface ApprovalExtras {
-  grants?: string[];
-  xu?: number;
-  chips?: number;
-  premiumMonths?: number;
+  /** Duyệt dù số tiền khách khai khác bảng giá (admin đã đối chiếu tiền thật). */
+  acceptMismatch?: boolean;
 }
 
 export interface PublicComment {
@@ -205,6 +203,9 @@ export type ApiErrorCode =
   | "age-required"
   | "birth-locked"
   | "not-pending"
+  | "amount-mismatch"
+  | "no-lines"
+  | "unknown-product"
   | "too-many"
   | "too-large"
   | "premium-required"
@@ -236,6 +237,9 @@ export const API_MESSAGES: Readonly<Record<ApiErrorCode, string>> = {
   "age-required": "Bạn cần khai ngày sinh (từ 12 tuổi) để dùng tính năng này",
   "birth-locked": "Ngày sinh chỉ được đặt một lần",
   "not-pending": "Mục này đã được xử lý trước đó",
+  "amount-mismatch": "Số tiền khách khai khác bảng giá của máy chủ",
+  "no-lines": "Đơn không có dòng hàng nên không tính được quyền lợi",
+  "unknown-product": "Đơn có sản phẩm không còn trong bảng giá",
   "too-many": "Bạn thao tác quá nhiều, hãy thử lại sau",
   "too-large": "Nội dung quá lớn",
   "premium-required": "Bài này cần Premium còn hạn, hãy gia hạn để học tiếp",
