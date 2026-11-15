@@ -96,8 +96,8 @@ Trên máy của bạn (cần Node 20 trở lên), tại thư mục gốc dự �
 ### Đưa trang web lên Firebase Hosting (miễn phí, không cần thẻ quốc tế)
 Địa chỉ trang sẽ là `https://windtp-49e64.web.app` (đã điền vào `ALLOWED_ORIGIN`). Trên máy bạn, tại thư mục dự án:
 1. `npm install`
-2. Tạo file `firebase.config.json` ở thư mục gốc: Firebase Console > Project settings > Your apps > thêm Web app (biểu tượng `</>`) > sao chép đối tượng `firebaseConfig` thành JSON. Đây là cấu hình công khai theo thiết kế nên có thể lưu trong file.
-3. `WINDTP_API_URL=https://windtp.windlord20022004.workers.dev npm run build` (kết quả trong `dist/`).
+2. `firebase.config.json` (cấu hình web công khai của Firebase) và `api.config.json` (địa chỉ Worker) đã có sẵn trong kho; không cần tạo.
+3. `npm run build` (kết quả trong `dist/`).
 4. `npx firebase-tools login` rồi `npx firebase-tools deploy --only hosting` (dự án đã có sẵn trong `.firebaserc`).
 5. Firebase Console > Authentication > Settings > Authorized domains: đảm bảo có `windtp-49e64.web.app`.
 6. Deploy lại Worker để áp `ALLOWED_ORIGIN`: `cd worker && npx --yes wrangler@3 deploy`.
