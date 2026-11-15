@@ -1179,10 +1179,17 @@ test('webhook SePay: tự duyệt đơn nạp Xu khi mã và số tiền khớp;
   assert.equal(result(6), 'ambiguous', 'trùng mã không tự duyệt');
   const o5 = await order('E', 70000, 'WIND11111', 'shop');
   await hook(ev(7, 70000, 'WIND11111'));
-  assert.equal(status(o5).status, 'pending', 'đơn mua hàng luôn do admin duyệt'); assert.equal(result(7), 'no-code', 'chỉ mã đơn nạp Xu (WIND2/WIND3) được nhận diện');
+  assert.equal(status(o5).status, 'pending', 'đơn mua hàng luôn do admin duyệt'); assert.equal(result(7), 'no-order', 'đơn mua hàng không nằm trong diện tự duyệt');
+
+  const plan = (await app.call('POST', '/orders', { uid: 'F', body: { kind: 'plan', planId: '1m', code: 'WIND13333', summary: 'Premium 1 tháng' } })).json.id;
+  await hook(ev(9, 99000, 'WIND13333'));
+  assert.equal(status(plan).status, 'pending', 'sai số tiền gói Premium không tự duyệt');
+  await hook(ev(10, 100000, 'ck WIND13333 premium'));
+  assert.deepEqual(status(plan), { status: 'approved', by: 'bank:sepay:10' });
+  assert.ok(app.balance('F').p > 0, 'Premium được cấp');
 
   const list = (await app.call('GET', '/admin/bank-events', { uid: 'boss', admin: true })).json.events;
-  assert.deepEqual(list.map((e) => e.bankId).sort(), ['2', '3', '4', '6', '7']);
+  assert.deepEqual(list.map((e) => e.bankId).sort(), ['2', '3', '4', '6', '7', '9']);
   assert.equal((await app.call('GET', '/admin/bank-events', { uid: 'A' })).status, 403);
   assert.equal((await app.call('POST', `/admin/orders/${o2}/approve`, { uid: 'boss', admin: true, body: {} })).status, 200, 'admin vẫn duyệt tay được');
 

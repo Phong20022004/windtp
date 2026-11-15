@@ -16,7 +16,7 @@ Tài liệu này là danh sách việc **bạn phải tự làm** (cần tài kh
 `ALLOWED_ORIGIN` trong `wrangler.toml` phải đúng địa chỉ trang (không có dấu `/` cuối), nếu không trình duyệt sẽ chặn mọi lời gọi API.
 
 ### Nạp tiền tự động qua SePay (tùy chọn)
-Máy chủ có sẵn webhook `POST /webhooks/sepay`. Khi tiền VND vào tài khoản có nội dung chuyển khoản chứa mã đơn nạp Xu (`WIND2xxxx` hoặc `WIND3xxxx`) và **số tiền khớp chính xác**, đơn được duyệt tự động (người duyệt ghi là `bank:sepay:<mã giao dịch>`). Đơn mua hàng, đơn Premium, tiền KRW và mọi trường hợp lệch (sai số tiền, thiếu mã, trùng mã) **không** tự duyệt, chỉ hiện trong khung "Tiền vào chưa tự khớp" ở màn Đơn hàng của admin để bạn đối chiếu và duyệt tay.
+Máy chủ có sẵn webhook `POST /webhooks/sepay`. Khi tiền VND vào tài khoản có nội dung chuyển khoản chứa mã đơn nạp Xu hoặc đơn Premium (`WIND1xxxx`, `WIND2xxxx`, `WIND3xxxx`) và **số tiền khớp chính xác**, đơn được duyệt tự động (người duyệt ghi là `bank:sepay:<mã giao dịch>`). Đơn mua hàng (số tiền do trình duyệt báo), tiền KRW và mọi trường hợp lệch (sai số tiền, thiếu mã, trùng mã) **không** tự duyệt, chỉ hiện trong khung "Tiền vào chưa tự khớp" ở màn Đơn hàng của admin để bạn đối chiếu và duyệt tay.
 1. Đăng ký SePay, liên kết tài khoản Techcombank đang nhận tiền.
 2. Tạo khóa bí mật dài ngẫu nhiên (từ 16 ký tự, nên 32+), lưu vào Worker: `wrangler secret put SEPAY_API_KEY`.
 3. Trong SePay thêm webhook: URL `https://<địa-chỉ-worker>/webhooks/sepay`, kiểu chứng thực *API Key* (SePay gửi tiêu đề `Authorization: Apikey <khóa>`), chỉ gửi giao dịch tiền vào.

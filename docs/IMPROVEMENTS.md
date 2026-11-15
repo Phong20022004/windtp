@@ -27,7 +27,7 @@ Khi xong một mục, đổi ký hiệu và ghi ngày. Việc triển khai xem `
 | B5 | Gộp code trùng lặp: (a) hàm/khóa bị ghi đè giữa các file, đã xóa 14 hàm và 3 hành động chết, ESLint chặn tái phạm ✅; (b) trùng giữa các player bài học và chế độ Everest ⬜ |
 | B6 | Chuyển `worker/src` sang TypeScript (nhỏ, xử lý tiền và quyền) | ⬜ |
 | B7 | Máy chủ tự tính kết quả game/nhiệm vụ thay vì tin trình duyệt (việc lớn; hiện chỉ có hạn mức theo ngày) | ⬜ |
-| B8 | Tự duyệt đơn mua hàng/Premium qua webhook (cần B1 trước) | ⬜ |
+| B8 | Tự duyệt đơn Premium qua webhook SePay khi mã và số tiền khớp giá gói do máy chủ giữ ✅ 2026-11-15; đơn mua hàng vẫn duyệt tay vì số tiền do trình duyệt báo | ✅ |
 | B9 | Luồng KRW qua Toss Payments (cần A9 và khóa API của bạn) | ⬜ |
 | B10 | Chuyển phần giao diện sang TypeScript | ⬜ Không khuyên làm lúc này |
 

@@ -169,10 +169,10 @@ export function createApi({ verify, now = () => Date.now() }) {
     if (body.transferType !== 'in') return { success: true, ignored: 'not-incoming' };
     const ins = await q(db, "INSERT OR IGNORE INTO bank_events (bank_id, amount, content, result, created_at) VALUES (?, ?, ?, 'received', ?)", bankId, amount, content, t).run();
     if (!ins.meta.changes) return { success: true, duplicate: true }; // SePay gửi lại khi chưa nhận được 200: không xử lý hai lần
-    const memo = (/WIND[23]\d{4}/i.exec(`${body.code ?? ''} ${content}`) || [''])[0].toUpperCase();
+    const memo = (/WIND[123]\d{4}/i.exec(`${body.code ?? ''} ${content}`) || [''])[0].toUpperCase();
     let result = 'no-code', orderId = null;
     if (memo) {
-      const rows = (await q(db, "SELECT id, amount FROM orders WHERE kind = 'topup' AND currency = 'VND' AND status = 'pending' AND UPPER(code) = ? LIMIT 3", memo).all()).results;
+      const rows = (await q(db, "SELECT id, amount FROM orders WHERE kind IN ('topup', 'plan') AND currency = 'VND' AND status = 'pending' AND UPPER(code) = ? LIMIT 3", memo).all()).results;
       if (rows.length === 0) result = 'no-order';
       else if (rows.length > 1) result = 'ambiguous';
       else if (rows[0].amount !== amount) { result = 'amount-mismatch'; orderId = rows[0].id; }
