@@ -1156,3 +1156,14 @@ test('webhook SePay: tự duyệt đơn nạp Xu khi mã và số tiền khớp;
   delete app.env.SEPAY_API_KEY;
   assert.equal((await hook(ev(8, 1, 'x'), 'bat-ky-khoa-nao-123')).status, 503, 'chưa cấu hình khóa thì từ chối');
 });
+
+test('health và dọn dữ liệu hết hạn', async () => {
+  const app = await makeApp();
+  const h = await app.call('GET', '/health');
+  assert.deepEqual([h.status, h.json.ok], [200, true]);
+  await app.db.prepare("INSERT INTO rate_limits (uid, bucket, window_start, n) VALUES ('x', 'old', 1, 1), ('x', 'new', ?, 1)").bind(app.state.t).run();
+  const out = await app.handle.cleanup(app.db, app.state.t + 2 * 86400000);
+  assert.equal(out.rate, 2);
+  const out2 = await app.handle.cleanup(app.db, app.state.t + 2 * 86400000);
+  assert.equal(out2.rate, 0);
+});

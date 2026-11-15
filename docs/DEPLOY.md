@@ -54,9 +54,10 @@ Tài khoản admin duyệt đơn và cộng Xu, nên là mục tiêu lớn nhấ
 - Khi người dùng yêu cầu xóa dữ liệu, nhớ rằng bản sao lưu cũ vẫn còn dữ liệu đó; ghi rõ thời hạn lưu bản sao trong chính sách quyền riêng tư và xóa bản sao cũ theo hạn.
 
 ## 5. Giám sát
+- Worker tự dọn dữ liệu hết hạn mỗi ngày (cron trong `wrangler.toml`, tự bật khi `wrangler deploy`): bảng giới hạn tần suất cũ, lịch sử thiết bị quá 3 tháng, báo cáo chat đã xử lý quá 90 ngày.
 - Bật *Workers Logs / Observability* cho Worker và xem tỷ lệ lỗi 5xx, 429.
 - Tạo *Notifications* trong Cloudflare (tăng lỗi Worker, hết hạn mức D1/Workers).
-- Dùng một dịch vụ kiểm tra tình trạng bên ngoài mỗi 5 phút gọi một đường dẫn của API khi chưa đăng nhập (ví dụ `GET /store`, kỳ vọng phản hồi 401 dạng JSON; nếu timeout hoặc 5xx thì báo) và gửi email khi lỗi.
+- Dùng một dịch vụ kiểm tra tình trạng bên ngoài mỗi 5 phút gọi một đường dẫn của API khi chưa đăng nhập `GET /health` (kỳ vọng 200 `{"ok":true}`, có kiểm tra cả D1; nếu timeout hoặc 5xx thì báo) và gửi email khi lỗi.
 - Theo dõi hàng đợi: số đơn `pending` quá lâu, số báo cáo nội dung đang mở (màn Kiểm duyệt của admin).
 - Đặt cảnh báo chi phí/hạn mức trên Cloudflare và Google Cloud.
 

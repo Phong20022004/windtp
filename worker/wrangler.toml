@@ -6,6 +6,10 @@ compatibility_date = "2025-01-01"
 FIREBASE_PROJECT_ID = "THAY-BANG-PROJECT-ID-FIREBASE"
 ALLOWED_ORIGIN = "https://THAY-BANG-TRANG-WINDTP"
 
+# Dọn dữ liệu hết hạn mỗi ngày lúc 02:17 giờ Việt Nam (19:17 UTC).
+[triggers]
+crons = ["17 19 * * *"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "windtp"

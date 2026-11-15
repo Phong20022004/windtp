@@ -874,7 +874,17 @@ export function createApi({ verify, now = () => Date.now() }) {
     return row ? { ...JSON.parse(row.json), updatedAt: row.updated_at } : { customProducts: [], productEdits: {}, hiddenProducts: [], customCats: [], updatedAt: 0 };
   });
 
-  return async function handle(request, env) {
+  // Dọn dữ liệu hết hạn (chạy theo lịch hằng ngày): giới hạn tần suất cũ, lịch sử thiết bị quá 3 tháng, báo cáo chat đã xử lý quá 90 ngày.
+  async function cleanup(db, t = now()) {
+    const day = 86400000;
+    const out = {};
+    out.rate = (await q(db, 'DELETE FROM rate_limits WHERE window_start < ?', t - day).run()).meta.changes;
+    out.devices = (await q(db, 'DELETE FROM device_months WHERE first_seen < ?', t - 93 * day).run()).meta.changes;
+    out.reports = (await q(db, "DELETE FROM thread_reports WHERE status != 'open' AND created_at < ?", t - 90 * day).run()).meta.changes;
+    return out;
+  }
+
+  const handle = async function handle(request, env) {
     const url = new URL(request.url);
     const origin = env.ALLOWED_ORIGIN || '';
     const headers = {
@@ -893,6 +903,7 @@ export function createApi({ verify, now = () => Date.now() }) {
       if (!origin) throw new HttpError(500, 'not-configured');
       const reqOrigin = request.headers.get('origin');
       if (reqOrigin && reqOrigin !== origin) throw new HttpError(403, 'bad-origin');
+      if (request.method === 'GET' && url.pathname === '/health') { await q(env.DB, 'SELECT 1 AS ok').first(); return reply(200, { ok: true }); }
       if (request.method === 'POST' && url.pathname === '/webhooks/sepay') return reply(200, await sepayWebhook(request, env));
       if (request.method === 'GET' && url.pathname.startsWith('/img/')) {
         // Ảnh sản phẩm: công khai, tên theo nội dung nên cache vĩnh viễn được.
@@ -936,4 +947,6 @@ export function createApi({ verify, now = () => Date.now() }) {
       return reply(500, { error: 'internal' });
     }
   };
+  handle.cleanup = cleanup;
+  return handle;
 }
