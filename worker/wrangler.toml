@@ -16,6 +16,11 @@ database_name = "windtp-db"
 database_id = "46d73132-62ff-4eaa-ab37-651a026e7ea8"
 migrations_dir = "migrations"
 
+# Kho nội dung thay R2: Workers KV (không cần thẻ quốc tế). Tạo: wrangler kv namespace create CONTENT_KV, rồi điền id vào dòng dưới và bỏ dấu #.
+# [[kv_namespaces]]
+# binding = "CONTENT_KV"
+# id = "THAY-BANG-ID-KV"
+
 # R2 chưa tạo (Cloudflare yêu cầu thẻ quốc tế). Khi nào tạo được: wrangler r2 bucket create windtp-content
 # rồi bỏ dấu # ở 3 dòng dưới và deploy lại. Chưa có R2 thì máy chủ vẫn chạy, chỉ chưa phát nội dung trả phí/ảnh tải lên.
 # [[r2_buckets]]

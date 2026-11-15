@@ -81,3 +81,11 @@ Tài khoản admin duyệt đơn và cộng Xu, nên là mục tiêu lớn nhấ
 | R2 | chưa tạo, binding `CONTENT` đang tắt trong `worker/wrangler.toml` |
 
 Còn phải điền trong `worker/wrangler.toml`: `database_id` (lấy ở Cloudflare > D1 > windtp-db), `FIREBASE_PROJECT_ID`, `ALLOWED_ORIGIN` (địa chỉ trang web, không có dấu `/` cuối). Nếu Cloudflare build từ gốc kho thì phải đặt **Root directory = `worker`** (Settings > Build) để dùng đúng `wrangler.toml`. Sau khi deploy chạy: `wrangler d1 migrations apply windtp-db --remote`, rồi mở `/health`.
+
+### Thay R2 bằng Workers KV (không cần thẻ quốc tế)
+Máy chủ tự dùng KV khi không có R2. Các bước (làm một lần):
+1. `cd worker && npx wrangler kv namespace create CONTENT_KV` (hoặc Cloudflare > Storage & Databases > KV > Create). Sao chép **id**.
+2. Trong `worker/wrangler.toml` bỏ dấu `#` ở khối `[[kv_namespaces]]` và dán id vào `id = ...`. Deploy lại.
+3. Tải nội dung từ vựng đầy đủ lên (mỗi ngôn ngữ một lệnh, ví dụ tiếng Anh): `npx wrangler kv key put --binding CONTENT_KV --remote "vocab/en.json" --path ../data/vocab/en.json`. Làm tương tự cho `de, es, fr, ja, ko, zh`. File lớn nhất 8 MB, dưới giới hạn 25 MB của KV.
+4. Ảnh gian hàng do admin tải lên trong app sẽ tự lưu vào KV.
+Lưu ý: KV nhất quán sau vài chục giây giữa các vùng, nên ảnh/nội dung mới tải lên có thể chưa hiện ngay.

@@ -60,6 +60,17 @@ function ageFromBirth(birth, now) {
   return age >= 0 && age <= 120 ? age : -1;
 }
 
+// Kho nội dung: R2 (binding CONTENT) nếu có, nếu không dùng Workers KV (binding CONTENT_KV, không cần thẻ quốc tế; mỗi giá trị tối đa 25 MB).
+async function blobGet(env, key) {
+  if (env.CONTENT) return env.CONTENT.get(key);
+  if (env.CONTENT_KV) { const body = await env.CONTENT_KV.get(key, 'stream'); return body ? { body } : null; }
+  return null;
+}
+async function blobPut(env, key, bytes, contentType) {
+  if (env.CONTENT) await env.CONTENT.put(key, bytes, { httpMetadata: { contentType } });
+  else await env.CONTENT_KV.put(key, bytes);
+}
+
 export function createApi({ verify, now = () => Date.now() }) {
   const txStmt = (db, uid, kind, delta, chips, title, ref, t) =>
     q(db, 'INSERT INTO tx (uid, kind, delta, chips_delta, title, ref, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)', uid, kind, delta, chips, title, ref ?? null, t);
@@ -681,7 +692,7 @@ export function createApi({ verify, now = () => Date.now() }) {
       const own = await q(db, 'SELECT 1 AS x FROM entitlements WHERE uid = ? AND item_id = ?', user.uid, `access:${params.lang}`).first();
       if (!own) throw new HttpError(403, 'course-required');
     }
-    const obj = env.CONTENT ? await env.CONTENT.get(`vocab/${params.lang}.json`) : null;
+    const obj = await blobGet(env, `vocab/${params.lang}.json`);
     if (!obj) throw new HttpError(404, 'no-content');
     return new Response(obj.body);
   });
@@ -916,7 +927,7 @@ export function createApi({ verify, now = () => Date.now() }) {
       if (request.method === 'GET' && url.pathname.startsWith('/img/')) {
         // Ảnh sản phẩm: công khai, tên theo nội dung nên cache vĩnh viễn được.
         const key = url.pathname.slice(1);
-        const obj = IMG_KEY.test(key) && env.CONTENT ? await env.CONTENT.get(key) : null;
+        const obj = IMG_KEY.test(key) ? await blobGet(env, key) : null;
         if (!obj) throw new HttpError(404, 'not-found');
         return new Response(obj.body, { headers: { 'content-type': IMAGE_TYPES[key.split('.').pop()], 'cache-control': 'public, max-age=31536000, immutable', 'x-content-type-options': 'nosniff', 'cross-origin-resource-policy': 'cross-origin', 'content-security-policy': "default-src 'none'; sandbox" } });
       }
@@ -929,8 +940,8 @@ export function createApi({ verify, now = () => Date.now() }) {
         if (!ext) throw new HttpError(400, 'bad-image');
         const digest = await crypto.subtle.digest('SHA-256', bytes);
         const key = `img/${[...new Uint8Array(digest)].slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('')}.${ext}`;
-        if (!env.CONTENT) throw new HttpError(500, 'not-configured');
-        await env.CONTENT.put(key, bytes, { httpMetadata: { contentType: IMAGE_TYPES[ext] } });
+        if (!env.CONTENT && !env.CONTENT_KV) throw new HttpError(500, 'not-configured');
+        await blobPut(env, key, bytes, IMAGE_TYPES[ext]);
         return reply(200, { ok: true, key });
       }
       const match = routes.map((r) => ({ r, m: r.method === request.method ? r.re.exec(url.pathname) : null })).find((x) => x.m);

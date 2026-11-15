@@ -1207,3 +1207,15 @@ test('health và dọn dữ liệu hết hạn', async () => {
   const out2 = await app.handle.cleanup(app.db, app.state.t + 2 * 86400000);
   assert.equal(out2.rate, 0);
 });
+
+test('kho nội dung dùng Workers KV khi không có R2', async () => {
+  const app = await makeApp();
+  const store = new Map([['vocab/en.json', '{"S|0":[[1,[["a"]]]]}']]);
+  delete app.env.CONTENT;
+  app.env.CONTENT_KV = { get: async (key) => store.get(key) ?? null, put: async (key, bytes) => { store.set(key, bytes); } };
+  const res = await app.call('GET', '/content/vocab/en', { uid: 'adm', admin: true });
+  assert.equal(res.status, 200);
+  assert.ok(JSON.stringify(res.json).includes('S|0'));
+  app.env.CONTENT_KV.get = async () => null;
+  assert.equal((await app.call('GET', '/content/vocab/en', { uid: 'adm', admin: true })).status, 404);
+});
