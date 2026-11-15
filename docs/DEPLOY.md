@@ -94,10 +94,10 @@ Lưu ý: KV nhất quán sau vài chục giây giữa các vùng, nên ảnh/n�
 Trên máy của bạn (cần Node 20 trở lên), tại thư mục gốc dự án: `git pull` rồi `bash tools/setup-cloudflare.sh`. Script sẽ đăng nhập Cloudflare (bấm Allow trong trình duyệt), tạo bảng D1, tải 7 file từ vựng lên KV và deploy Worker. Chạy xong mở `<địa chỉ Worker>/health`. Chỉ chạy cho D1 mới; nếu bảng đã tồn tại thì dùng riêng `migrations apply`.
 
 ### Đưa trang web lên Firebase Hosting (miễn phí, không cần thẻ quốc tế)
-Địa chỉ trang sẽ là `https://windtp-49e64.web.app` (đã điền vào `ALLOWED_ORIGIN`). Trên máy bạn, tại thư mục dự án:
+Địa chỉ trang sẽ là `https://windtp.web.app` (đã điền vào `ALLOWED_ORIGIN`). Trên máy bạn, tại thư mục dự án:
 1. `npm install`
 2. `firebase.config.json` (cấu hình web công khai của Firebase) và `api.config.json` (địa chỉ Worker) đã có sẵn trong kho; không cần tạo.
 3. `npm run build` (kết quả trong `dist/`).
 4. `npx firebase-tools login` rồi `npx firebase-tools deploy --only hosting` (dự án đã có sẵn trong `.firebaserc`).
-5. Firebase Console > Authentication > Settings > Authorized domains: đảm bảo có `windtp-49e64.web.app`.
+5. Firebase Console > Authentication > Settings > Authorized domains: đảm bảo có `windtp.web.app`.
 6. Deploy lại Worker để áp `ALLOWED_ORIGIN`: `cd worker && npx --yes wrangler@3 deploy`.

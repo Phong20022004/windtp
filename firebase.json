@@ -3,6 +3,7 @@
     "rules": "firestore.rules"
   },
   "hosting": {
+    "site": "windtp",
     "public": "dist",
     "ignore": [
       "firebase.json",
