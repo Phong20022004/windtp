@@ -1,4 +1,4 @@
-name = "windtp-api"
+name = "windtp"
 main = "src/index.js"
 compatibility_date = "2025-01-01"
 
@@ -12,11 +12,12 @@ crons = ["17 19 * * *"]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "windtp"
+database_name = "windtp-db"
 database_id = "THAY-BANG-ID-SAU-KHI-TAO-D1"
 migrations_dir = "migrations"
 
-# Kho chứa nội dung trả phí (bản đầy đủ của từ vựng). Tạo bằng: wrangler r2 bucket create windtp-content
-[[r2_buckets]]
-binding = "CONTENT"
-bucket_name = "windtp-content"
+# R2 chưa tạo (Cloudflare yêu cầu thẻ quốc tế). Khi nào tạo được: wrangler r2 bucket create windtp-content
+# rồi bỏ dấu # ở 3 dòng dưới và deploy lại. Chưa có R2 thì máy chủ vẫn chạy, chỉ chưa phát nội dung trả phí/ảnh tải lên.
+# [[r2_buckets]]
+# binding = "CONTENT"
+# bucket_name = "windtp-content"

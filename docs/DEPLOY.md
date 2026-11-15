@@ -5,8 +5,8 @@ Tài liệu này là danh sách việc **bạn phải tự làm** (cần tài kh
 ## 1. Thứ tự triển khai
 1. **Firebase** (đăng nhập): tạo dự án, bật Authentication với Email/Password và Google, thêm tên miền trang WINDTP vào danh sách *Authorized domains*. Lấy cấu hình web app và lưu vào `firebase.config.json` hoặc biến môi trường `WINDTP_FIREBASE_CONFIG`.
 2. **Cloudflare Worker + D1 + R2**: làm theo `worker/README.md` mục "Triển khai". Khác biệt quan trọng:
-   - **Cài mới:** `wrangler d1 execute windtp --remote --file=schema.sql`.
-   - **Cơ sở dữ liệu đang chạy:** `wrangler d1 migrations apply windtp --remote` (áp các file trong `worker/migrations/` theo thứ tự). Mỗi thay đổi cấu trúc DB phải có migration mới **và** được phản ánh trong `schema.sql`; có test kiểm tra hai bên cho cùng cấu trúc.
+   - **Cài mới:** `wrangler d1 execute windtp-db --remote --file=schema.sql`.
+   - **Cơ sở dữ liệu đang chạy:** `wrangler d1 migrations apply windtp-db --remote` (áp các file trong `worker/migrations/` theo thứ tự). Mỗi thay đổi cấu trúc DB phải có migration mới **và** được phản ánh trong `schema.sql`; có test kiểm tra hai bên cho cùng cấu trúc.
    - Chạy `npm run test:worker` trước khi `wrangler deploy`.
 3. **Cấp quyền admin:** `npm run admin:grant -- <email>` (đặt custom claim `admin` trong Firebase; cần file service account qua `GOOGLE_APPLICATION_CREDENTIALS`, không commit file đó). Máy chủ chỉ tin cờ này trong token đã được ký.
 4. **Build trang:** đặt `WINDTP_API_URL` (địa chỉ Worker) rồi `npm run build`; đưa thư mục `dist/` (kèm `assets/` và `data/`) lên nơi lưu trang. Sau đó `npm run content:upload` để đưa nội dung trả phí lên R2.
@@ -71,3 +71,13 @@ Tài khoản admin duyệt đơn và cộng Xu, nên là mục tiêu lớn nhấ
 - **Số dư cũ trong localStorage** (từ trước khi có máy chủ) đã không còn hiệu lực; cần quyết định có bồi hoàn thủ công cho ai không.
 - **Nội dung bảng chữ cái** (ví dụ, cách đọc, Hán Việt của 214 bộ thủ) do AI soạn; nên nhờ người bản ngữ/giáo viên rà soát trước khi bán.
 - **Chính sách quyền riêng tư và điều khoản**: xem `docs/privacy-policy.md` (bản nháp, cần luật sư xem).
+
+## Cấu hình Cloudflare hiện tại (theo dữ liệu 12/11/2026)
+| Mục | Giá trị |
+| --- | --- |
+| Worker | `windtp`, https://windtp.windlord20022004.workers.dev, nối GitHub `Phong20022004/windtp` nhánh `main` |
+| D1 | `windtp-db`, binding `DB` (chưa xác nhận đã chạy migration) |
+| Biến build | `WINDTP_API_URL` = địa chỉ Worker ở trên |
+| R2 | chưa tạo, binding `CONTENT` đang tắt trong `worker/wrangler.toml` |
+
+Còn phải điền trong `worker/wrangler.toml`: `database_id` (lấy ở Cloudflare > D1 > windtp-db), `FIREBASE_PROJECT_ID`, `ALLOWED_ORIGIN` (địa chỉ trang web, không có dấu `/` cuối). Nếu Cloudflare build từ gốc kho thì phải đặt **Root directory = `worker`** (Settings > Build) để dùng đúng `wrangler.toml`. Sau khi deploy chạy: `wrangler d1 migrations apply windtp-db --remote`, rồi mở `/health`.
