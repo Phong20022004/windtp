@@ -112,21 +112,6 @@
     </div>
   </div>`;
   }
-  function postListingModal() {
-    return `${modalHead("\u{1F4DD} \u0110\u0103ng tin m\u1EDBi")}
-  <div class="p-5 space-y-3">
-    <div><label class="text-xs font-bold text-slate-600" for="pl-cat">Danh m\u1EE5c</label>
-      <select id="pl-cat" class="${field} mt-1"><option value="market">Ch\u1EE3 \u0111\u1ED3 c\u0169</option><option value="jobs">Vi\u1EC7c l\xE0m HS/SV</option><option value="housing">T\xECm &amp; nh\u01B0\u1EE3ng ph\xF2ng</option>${state.customCats.map((c) => `<option value="${c.id}" ${ui.utilCat === c.id ? "selected" : ""}>${c.emoji} ${esc(c.name)}</option>`).join("")}</select></div>
-    <div><label class="text-xs font-bold text-slate-600" for="pl-title">Ti\xEAu \u0111\u1EC1 (t\u1ED1i thi\u1EC3u 5 k\xFD t\u1EF1)</label><input id="pl-title" maxlength="80" class="${field} mt-1"></div>
-    <div class="grid grid-cols-2 gap-2">
-      <div><label class="text-xs font-bold text-slate-600" for="pl-price">Gi\xE1 / m\u1EE9c l\u01B0\u01A1ng</label><input id="pl-price" maxlength="40" placeholder="V\xED d\u1EE5 2,000,000 VN\u0110" class="${field} mt-1"></div>
-      <div><label class="text-xs font-bold text-slate-600" for="pl-loc">Khu v\u1EF1c</label><input id="pl-loc" maxlength="40" placeholder="Qu\u1EADn, th\xE0nh ph\u1ED1" class="${field} mt-1"></div>
-    </div>
-    <div class="grid grid-cols-2 gap-2"><div><label class="text-xs font-bold text-slate-600" for="pl-country">Quốc gia</label><input id="pl-country" maxlength="40" value="Việt Nam" placeholder="Việt Nam / Vietnam" class="${field} mt-1"></div><div><label class="text-xs font-bold text-slate-600" for="pl-region">Miền</label><div class="mt-1">${regionSelect("pl-region", "")}</div></div></div>
-    <div><label class="text-xs font-bold text-slate-600" for="pl-desc">M\xF4 t\u1EA3</label><textarea id="pl-desc" rows="3" maxlength="400" class="${field} mt-1 resize-none"></textarea></div>
-    <button data-action="submit-listing" class="w-full ${btnPrimary}">\u0110\u0103ng tin</button>
-  </div>`;
-  }
   var CATEGORY_EMOJIS = ["\u{1F4CC}", "\u{1F381}", "\u{1F4DA}", "\u{1F3B5}", "\u{1F35C}", "\u{1F697}", "\u{1F4A1}", "\u{1F43E}"];
   function moderationModal() {
     const pendingPosts = state.posts.filter((p) => p.status === "pending");
@@ -869,14 +854,6 @@
     "settings-contact-save": () => { saveContact("st-", ["address", "phone", "docEmail", "bank", "bankName", "holder"]); toast("Đã lưu thông tin"); },
     "ut-geo-run": () => { ui.ug = { q: val("ug-q"), country: val("ug-country"), region: val("ug-region") }; renderUtilities(); },
     "ut-geo-clear": () => { ui.ug = null; renderUtilities(); },
-    "open-orders": () => { if (isAdmin()) openModal(ordersModal); },
-    "admin-confirm": (el) => {
-      if (!isAdmin()) return;
-      const o = state.orders.find((x) => x.id === el.dataset.id); if (!o || o.status !== "pending") return;
-      const xu = val("ao-xu-" + o.id), chip = val("ao-chip-" + o.id);
-      o.status = "done"; creditTo(o.uid || userId(), xu, chip, o.kind === "topup" ? "Nạp WIND Coin đã xác nhận" : "Thưởng khi mua hàng WIND Store");
-      commit(); refreshModal(); toast("Đã xác nhận đơn");
-    },
     "admin-credit": () => { if (!isAdmin()) return; const id = (val("ac-id") || "").trim(); if (!/^WIND-.+/.test(id)) { toast("ID phải có dạng WIND-tên"); return; } toast(creditTo(id, val("ac-xu"), val("ac-chip"), "Admin cộng thưởng") ? "Đã cộng thưởng cho " + id : "Nhập số Xu hoặc chip"); refreshModal(); },
     "payout-done": (el) => { const p = (state.payouts || []).find((x) => x.id === el.dataset.id); if (p) { p.status = "done"; commit(); refreshModal(); } },
     "open-task-add": () => { if (isAdmin()) openModal(taskModal); },
@@ -889,16 +866,6 @@
       (state.customTasks = state.customTasks || []).unshift(t); commit(); closeModal(); renderTasks(); toast("Đã đăng nhiệm vụ");
     },
     "task-del": (el) => { if (!isAdmin()) return; state.customTasks = (state.customTasks || []).filter((x) => x.id !== el.dataset.id); commit(); renderTasks(); },
-    "ctask-claim": (el) => {
-      const t = (state.customTasks || []).find((x) => x.id === el.dataset.id); if (!t) return;
-      if ((state.customDone || []).includes(t.id)) return;
-      if (t.money > 0 && needContact("bank", () => { closeModal(); actions["ctask-claim"](el); })) return;
-      (state.customDone = state.customDone || []).push(t.id);
-      if (t.xu) earn(t.xu, "Thưởng nhiệm vụ: " + t.title);
-      if (t.chips) state.chips = (state.chips || 0) + t.chips;
-      if (t.money) { const c = contact(); (state.payouts = state.payouts || []).unshift({ id: uid("po"), ts: Date.now(), uid: userId(), title: t.title, money: t.money, cur: t.cur, bank: c.bank, bankName: c.bankName, holder: c.holder, status: "pending" }); }
-      commit(); renderTasks(); toast("Đã nhận thưởng" + (t.money ? ", tiền sẽ được chuyển vào tài khoản của bạn" : ""));
-    },
     "open-orders": () => openModal(ordersModal),
     "ord-tab": (el) => { ui.ordTab = el.dataset.t === "done" ? "done" : "pending"; refreshModal(); },
     "admin-confirm": (el) => {

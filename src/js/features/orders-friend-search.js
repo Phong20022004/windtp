@@ -22,13 +22,6 @@
     (o.lines || []).forEach((l) => { g.xu += (l.xu || 0) * (l.qty || 1); g.chips += (l.chips || 0) * (l.qty || 1); if (l.plan) g.courses.push({ name: l.name, plan: l.plan, lang: l.lang }); if (l.doc) g.doc = true; if (l.docCode) g.docs.push(l.docCode); });
     return g;
   }
-  function creditTo(id, xu, chips, note, courses, shop, docs) {
-    xu = Math.max(0, Math.floor(Number(xu) || 0)); chips = Math.max(0, Math.floor(Number(chips) || 0)); courses = courses || []; docs = docs || [];
-    if (!xu && !chips && !courses.length && !docs.length) return false;
-    if (!state.credits) state.credits = {};
-    (state.credits[id] = state.credits[id] || []).push({ xu, chips, courses, docs, shop: shop || null, note: note || "Admin cộng thưởng", ts: Date.now() });
-    applyCredits(); commit(); return true;
-  }
   function applyCredits() {
     const q = state.credits && state.credits[userId()];
     if (!q || !q.length) return;
@@ -48,18 +41,6 @@
       ${admin && o.kind !== "topup" ? `<p class="text-[11px] text-slate-600">Địa chỉ: ${esc(c.address || "—")} · SĐT: ${esc(c.phone || "—")} · Gmail: ${esc(c.docEmail || "—")}</p>` : ""}
       ${docNote}${give && (admin || done) ? `<p class="text-[11px] font-bold text-amber-700">${done ? "Đã cộng" : "Sẽ cộng"}: ${give}</p>` : ""}
       ${admin && !done ? `<button data-action="admin-confirm" data-id="${o.id}" class="w-full ${btnPrimary}">Xác nhận đã thanh toán${give ? " và cộng thưởng" : ""}</button>` : ""}</div>`;
-  }
-  function ordersModal() {
-    const adm = isAdmin(), tab = ui.ordTab || "pending", me = userId();
-    const all = (state.orders || []).filter((o) => adm || o.uid === me);
-    const list = all.filter((o) => (tab === "pending") === (o.status !== "done")), po = adm ? (state.payouts || []) : [];
-    const tb = (k, t) => `<button data-action="ord-tab" data-t="${k}" class="flex-1 py-2 rounded-xl text-xs font-bold ${tab === k ? "bg-sky-600 text-white keep-white" : "bg-slate-100 text-slate-600"}">${t} (${all.filter((o) => (k === "pending") === (o.status !== "done")).length})</button>`;
-    return `${modalHead(adm ? "📦 Đơn hàng đã đặt (máy chủ)" : "📋 Đơn hàng đã đặt")}<div class="p-5 space-y-3 text-xs">
-      <div class="flex gap-2">${tb("pending", "Đang chờ xử lý")}${tb("done", "Đã xử lý")}</div>
-      ${list.length ? list.map((o) => orderCard(o, adm)).join("") : '<p class="text-slate-500 text-center py-4">Chưa có đơn nào.</p>'}
-      ${adm ? `<div class="rounded-xl bg-sky-50 border border-sky-200 p-3 space-y-2"><p class="font-extrabold text-sky-900">Cộng thưởng theo ID</p><input id="ac-id" placeholder="WIND-tenGmail" class="${field}"><div class="grid grid-cols-2 gap-2"><input id="ac-xu" inputmode="numeric" placeholder="Xu" class="${field}"><input id="ac-chip" inputmode="numeric" placeholder="Chip" class="${field}"></div><button data-action="admin-credit" class="w-full ${btnPrimary}">Cộng thưởng</button></div>` : ""}
-      ${po.length ? `<p class="font-extrabold text-slate-800 pt-1">Thưởng tiền cần chuyển</p>${po.map((p) => `<div class="rounded-xl border border-amber-200 bg-amber-50 p-3"><p class="font-bold">${esc(p.title)} · ${money(p.money, p.cur)}</p><p class="text-[11px]">ID ${esc(p.uid)} · ${esc(p.bankName || "chưa có STK")} · ${esc(p.bank || "")} · ${esc(p.holder || "")}</p>${p.status === "pending" ? `<button data-action="payout-done" data-id="${p.id}" class="mt-1 ${btnGhost}">Đã chuyển tiền</button>` : '<p class="text-[11px] font-bold text-emerald-600">Đã chuyển</p>'}</div>`).join("")}` : ""}
-    </div>`;
   }
   /* friend search */
 

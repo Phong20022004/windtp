@@ -814,41 +814,8 @@ function renderWallet() {
     <button data-action="checkout" class="flex-1 ${btnPrimary}">Thanh to\xE1n ${money(total, cur)}</button></div>
   </div>` : ""}`;
   }
-  function payModal() {
-    const cur = state.settings.currency;
-    const total = cartTotal();
-    return `${modalHead("\u{1F4B3} Thanh to\xE1n \u0111\u01A1n h\xE0ng")}
-  <div class="p-5 space-y-4">
-    <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-1">
-      <p class="text-[11px] text-slate-500">${cartCount()} s\u1EA3n ph\u1EA9m \u2022 ${CURRENCIES[cur].flag} ${CURRENCIES[cur].name}</p>
-      <p class="text-2xl font-black text-slate-800">${money(total, cur)}</p>
-    </div>
-    <div><label class="text-xs font-bold text-slate-600" for="pay-method">Ph\u01B0\u01A1ng th\u1EE9c thanh to\xE1n</label>
-      <select id="pay-method" class="${field} mt-1">${CURRENCIES[cur].methods.map((m) => `<option>${m}</option>`).join("")}</select></div>
-    ${bankBox(cur, payCode("payCode"))}
-    <p class="text-[11px] text-slate-500">Xu kh\xF4ng th\u1EC3 d\xF9ng \u0111\u1EC3 thanh to\xE1n s\u1EA3n ph\u1EA9m WIND Store. Ch\u1EC9 b\u1EA5m "X\xE1c nh\u1EADn thanh to\xE1n" <b>sau khi \u0111\xE3 chuy\u1EC3n kho\u1EA3n xong</b>; \u0111\u01A1n s\u1EBD hi\u1EC7n "Ch\u1EDD x\u1EED l\xFD" cho \u0111\u1EBFn khi \u0111\u01B0\u1EE3c x\xE1c minh.</p>
-    <div class="flex gap-2"><button data-action="open-cart" class="${btnGhost}">Quay l\u1EA1i</button><button data-action="pay-order" class="flex-1 ${btnPrimary}">X\xE1c nh\u1EADn thanh to\xE1n</button></div>
-  </div>`;
-  }
   var FB_PAGE = "https://www.facebook.com/profile.php?id=61590914339438";
   function payCode(k) { if (!ui[k]) ui[k] = newOrderCode(k === "topupCode" ? ((ui.topup && (ui.topup.src === "game" || ui.topup.src === "chip")) ? "game" : "topup") : "store"); return ui[k]; }
-  function bankBox(cur, code) {
-    cur = cur || state.settings.currency;
-    const acc = cur === "VND" ? { bank: "Techcombank", num: "19072080970015" } : cur === "KRW" ? { bank: "Toss Bank (토스뱅크)", num: "1002-7308-5584" } : null;
-    const body = acc
-      ? `<p class="text-xs text-slate-700">Ngân hàng: <b>${acc.bank}</b></p>
-      <p class="text-xs text-slate-700 flex items-center gap-2 flex-wrap">Số tài khoản: <b class="text-sm tracking-wide">${acc.num}</b><button data-action="copy-acc" data-text="${acc.num}" class="px-2 py-0.5 rounded-lg bg-white border border-amber-300 text-[10px] font-bold text-amber-800">Sao chép</button></p>
-      <p class="text-xs text-slate-700">Chủ tài khoản: <b>LE THANH PHONG</b></p>`
-      : `<p class="text-xs text-slate-700">Tài khoản nhận tiền tại Nhật Bản: <b>sẽ được cập nhật sau</b>.</p>`;
-    const memo = code ? `<p class="text-xs text-slate-700 flex items-center gap-2 flex-wrap">Nội dung chuyển khoản (mã đơn): <b class="text-sm tracking-wide">${code}</b><button data-action="copy-acc" data-text="${code}" class="px-2 py-0.5 rounded-lg bg-white border border-amber-300 text-[10px] font-bold text-amber-800">Sao chép</button></p>` : "";
-    return `<div class="rounded-2xl bg-amber-50 border border-amber-200 p-4 space-y-1.5">
-      <p class="text-[11px] font-extrabold text-amber-800 uppercase tracking-wide">🏦 Thông tin chuyển khoản · ${CURRENCIES[cur].flag} ${CURRENCIES[cur].name}</p>
-      ${body}
-      ${memo}
-      <p class="text-[11px] text-rose-600 font-bold pt-1">⚠️ Trước khi chuyển khoản, hãy kiểm tra đúng tên chủ tài khoản và liên hệ trang Facebook để được hỗ trợ xác minh.</p>
-      <div class="flex gap-2 flex-wrap pt-1"><button data-action="open-fb" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white keep-white text-[11px] font-bold">💬 Liên hệ trang Facebook</button><button data-action="copy-acc" data-text="${FB_PAGE}" class="px-3 py-1.5 rounded-lg bg-white border border-blue-300 text-blue-700 text-[11px] font-bold">Sao chép link</button></div>
-    </div>`;
-  }
   var TOPUP_AMOUNTS = [5e4, 1e5, 2e5, 5e5, 1e6];
   var TOPUP_RATE = { VND: 1, KRW: 19, JPY: 160 };
   var MINPAY = { VND: 30000, KRW: 2000, JPY: 200 };
@@ -876,36 +843,4 @@ function renderWallet() {
     return box("#ecfdf5", "#a7f3d0", "✅ Từ 18 tuổi · " + a + " tuổi", "Chơi đầy đủ game bài và mua chip bằng tiền (đổi WIND Coin tối đa 5.000.000 chip/ngày). Chip chỉ để giải trí, không đổi thưởng.");
   }
   function topupState() { if (!ui.topup) ui.topup = { cur: state.settings.currency, amt: TOPUP_PRESETS[state.settings.currency][1], step: 1 }; return ui.topup; }
-  function topupModal() {
-    const t = topupState(), cur = t.cur, xu = topupXu(cur, t.amt), U = t.src === "chip" ? "chip" : "Xu";
-    if (t.step === 2) {
-      const code = payCode("topupCode");
-      return `${modalHead("\u{1FA99} Thanh to\xE1n n\u1EA1p Xu")}
-  <div class="p-5 space-y-4">
-    <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-1">
-      <p class="text-[11px] text-slate-500">${CURRENCIES[cur].flag} ${CURRENCIES[cur].name}</p>
-      <p class="text-2xl font-black text-slate-800">${money(t.amt, cur)}</p>
-      <p class="text-sm font-bold text-amber-700">\u2192 ${fmt(xu)} Xu</p>
-    </div>
-    ${bankBox(cur, code)}
-    <p class="text-[11px] text-slate-500">Ch\u1EC9 b\u1EA5m "X\xE1c nh\u1EADn thanh to\xE1n" <b>sau khi \u0111\xE3 chuy\u1EC3n kho\u1EA3n xong</b>. Xu s\u1EBD \u0111\u01B0\u1EE3c c\u1ED9ng sau khi \u0111\u01B0\u1EE3c x\xE1c minh.</p>
-    <div class="flex gap-2"><button data-action="topup-back" class="${btnGhost}">Quay l\u1EA1i</button><button data-action="submit-topup" class="flex-1 ${btnPrimary}">X\xE1c nh\u1EADn thanh to\xE1n</button></div>
-  </div>`;
-    }
-    const presets = TOPUP_PRESETS[cur];
-    return `${modalHead("\u{1FA99} N\u1EA1p Xu")}
-  <div class="p-5 space-y-4">
-    <div><p class="text-xs font-bold text-slate-600 mb-1.5">1. Ch\u1ECDn lo\u1EA1i ti\u1EC1n</p>
-      <div class="grid grid-cols-3 gap-2">${["VND", "KRW", "JPY"].map((c) => `<button data-action="topup-cur" data-cur="${c}" class="py-2 rounded-xl border text-xs font-bold ${c === cur ? "border-amber-500 bg-amber-50 text-amber-800" : "border-slate-200 text-slate-700"}">${CURRENCIES[c].flag} ${c}</button>`).join("")}</div></div>
-    <div><p class="text-xs font-bold text-slate-600 mb-1.5">2. Ch\u1ECDn s\u1ED1 ti\u1EC1n</p>
-      <div class="grid grid-cols-3 gap-2">${presets.map((a) => `<button data-action="topup-amt" data-amt="${a}" class="py-2.5 rounded-xl border text-xs font-bold ${Number(t.amt) === a ? "border-amber-500 bg-amber-50 text-amber-800" : "border-slate-200 text-slate-700"}">${money(a, cur)}</button>`).join("")}</div>
-      <label class="text-[11px] text-slate-500 mt-2 block" for="topup-custom">Ho\u1EB7c nh\u1EADp s\u1ED1 kh\xE1c (${CURRENCIES[cur].symbol})</label>
-      <input id="topup-custom" data-change="topup-custom" type="number" min="1" step="1" value="${presets.includes(Number(t.amt)) ? "" : esc(String(t.amt))}" placeholder="V\xED d\u1EE5 ${presets[1]}" class="${field} mt-1"></div>
-    <div class="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-center">
-      <p class="text-[11px] text-slate-500">Quy \u0111\u1ED5i: 1 ${CURRENCIES[cur].symbol} = ${TOPUP_RATE[cur]} Xu</p>
-      <p class="text-xl font-black text-amber-700">${money(t.amt || 0, cur)} \u2192 ${fmt(xu)} Xu</p>
-    </div>
-    <button data-action="topup-next" class="w-full ${btnPrimary}">Ti\u1EBFp t\u1EE5c \u0111\u1EBFn thanh to\xE1n</button>
-  </div>`;
-  }
 

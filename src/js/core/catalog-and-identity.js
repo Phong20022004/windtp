@@ -431,12 +431,12 @@
       "emerald-600":"#059669", "teal-400":"#2dd4bf", "blue-800":"#1e40af", "sky-500":"#0ea5e9",
       "violet-700":"#6d28d9", "indigo-400":"#818cf8", "amber-500":"#f59e0b", "orange-300":"#fdba74",
       "slate-700":"#334155", "slate-500":"#64748b", "blue-700":"#1d4ed8", "sky-400":"#38bdf8",
-      "cyan-700":"#0e7490", "teal-400":"#2dd4bf", "orange-600":"#ea580c", "amber-300":"#fcd34d",
+      "cyan-700":"#0e7490", "orange-600":"#ea580c", "amber-300":"#fcd34d",
       "emerald-700":"#047857", "lime-400":"#a3e635", "fuchsia-400":"#e879f9", "sky-700":"#0369a1",
       "rose-700":"#be123c", "pink-400":"#f472b6", "indigo-700":"#4338ca", "purple-400":"#c084fc",
-      "red-700":"#b91c1c", "red-400":"#f87171", "violet-400":"#a78bfa", "pink-400":"#f472b6",
-      "orange-500":"#f97316", "yellow-300":"#fde047", "blue-400":"#60a5fa", "sky-700":"#0369a1",
-      "fuchsia-400":"#e879f9", "rose-400":"#fb7185", "cyan-400":"#22d3ee", "teal-400":"#2dd4bf"
+      "red-700":"#b91c1c", "red-400":"#f87171", "violet-400":"#a78bfa",
+      "orange-500":"#f97316", "yellow-300":"#fde047", "blue-400":"#60a5fa",
+      "rose-400":"#fb7185"
     };
     const m = String(tokens || "").match(/from-([\w-]+)\s+to-([\w-]+)/);
     if (!m) return "linear-gradient(135deg,#4f46e5,#0ea5e9)";

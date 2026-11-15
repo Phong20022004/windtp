@@ -307,26 +307,6 @@
     const f = friendById(t.id);
     return f ? { title: "💬 " + f.name, sub: friendOnline(f) ? "● Đang online" : "○ Offline · bạn ấy sẽ thấy tin khi online", names: false, f } : null;
   }
-  function chatModal() {
-    const m = chatMeta();
-    if (!m) return `${modalHead("💬 Tin nhắn")}<div class="p-5 text-xs text-slate-500">Không tìm thấy cuộc trò chuyện.</div>`;
-    const list = socialState().msgs[chatKey(ui.chat)] || [];
-    const nameOf = (from) => from === "f" && m.f ? m.f.name : (friendById(from) || { name: "Bạn bè" }).name;
-    const invCard = (x, mine) => {
-      const v = x.inv, nm = esc(v.name || "Game bài"), ok = v.st === "ok";
-      return `<div class="flex ${mine ? "justify-end" : "justify-start"}"><div style="max-width:86%;min-width:210px;border-radius:16px;padding:10px 12px;font-size:12px;background:linear-gradient(135deg,#0f3d33,#0b2a3a);color:#e8fff6;border:1px solid #2fd6a6;box-shadow:0 2px 10px rgba(16,185,129,.25)">
-        <p style="font-weight:800;margin:0 0 2px">🎮 Lời mời chơi bài ${ok ? '<span style="font-size:10px;background:#16a34a;color:#fff;border-radius:99px;padding:1px 7px;margin-left:4px">Bạn bè đã nhận lời</span>' : '<span style="font-size:10px;background:#b45309;color:#fff;border-radius:99px;padding:1px 7px;margin-left:4px">Đang chờ</span>'}</p>
-        <p style="margin:0;opacity:.9">${nm} · bàn ${v.n} người · cược ${fmt(v.b)} chip</p>
-        <p style="margin:2px 0 8px">ID bàn: <b style="letter-spacing:.08em;font-size:14px;color:#ffe08a">${esc(v.id)}</b></p>
-        <div style="display:flex;gap:6px;flex-wrap:wrap"><button data-action="join-room" data-room="${esc(v.id)}|${esc(v.g)}|${Number(v.n) || 0}|${Number(v.b) || 0}" style="background:linear-gradient(#34d399,#059669);color:#fff;border:0;border-radius:10px;padding:6px 12px;font-weight:800;font-size:11px">▶ Vào bàn</button><button data-action="copy-acc" data-text="${esc(v.id)}" style="background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:6px 10px;font-weight:700;font-size:11px">Sao chép ID</button>${v.url ? `<button data-action="copy-acc" data-text="${esc(v.url + "#room=" + v.id + "&c=" + v.g + "-" + v.n + "-" + v.b)}" style="background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:6px 10px;font-weight:700;font-size:11px">Sao chép link</button>` : ""}</div></div></div>`;
-    };
-    const bubbles = list.length ? list.map((x) => x.inv ? invCard(x, x.from === "me") : x.from === "me"
-      ? (x.adm ? `<div class="flex justify-end"><div class="max-w-[80%]"><p class="text-[10px] font-extrabold text-amber-600 text-right mb-0.5">👑 BigBoss</p><div class="adm-bubble px-3 py-2 rounded-2xl text-xs text-white keep-white break-words${Date.now() - x.ts < 4000 ? " adm-pop" : ""}">${esc(x.t)}</div></div></div>` : `<div class="flex justify-end"><div class="max-w-[80%] px-3 py-2 rounded-2xl text-xs bg-sky-600 text-white keep-white break-words">${esc(x.t)}</div></div>`)
-      : `<div class="flex justify-start"><div class="max-w-[80%]">${m.names ? `<p class="text-[10px] font-bold text-slate-500 mb-0.5">${esc(nameOf(x.from))}</p>` : ""}<div class="px-3 py-2 rounded-2xl text-xs bg-slate-100 text-slate-800 break-words">${esc(x.t)}</div></div></div>`).join("") : `<p class="text-center text-[11px] text-slate-400 py-6">Chưa có tin nhắn. Hãy nói xin chào!</p>`;
-    return `${modalHead(esc(m.title))}<div class="p-4 space-y-3"><div class="flex items-start justify-between gap-2"><p class="text-[11px] font-bold text-slate-500">${esc(m.sub)}</p>${m.g ? `<button data-action="grp-del" data-id="${m.g.id}" class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-600">🗑 Xóa nhóm</button>` : ""}</div>
-      <div id="chat-log" class="space-y-2 max-h-[45vh] overflow-y-auto">${bubbles}</div>
-      <div class="flex gap-2"><input id="msg-input" data-autofocus maxlength="300" autocomplete="off" placeholder="Nhập tin nhắn..." class="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-800"><button data-action="msg-send" class="px-4 py-2 rounded-xl text-xs font-extrabold bg-sky-600 text-white keep-white">Gửi</button></div></div>`;
-  }
   function sendChat(text) {
     const t = ui.chat, m = chatMeta(), body = String(text || "").trim().slice(0, 300);
     if (!t || !m || !body) return false;

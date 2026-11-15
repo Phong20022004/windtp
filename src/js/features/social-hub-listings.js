@@ -16,14 +16,6 @@
       <div class="wd-tabs" role="tablist">${tabs.map(([k, i, l]) => `<button role="tab" aria-selected="${k === t}" data-action="hub-tab" data-t="${k}" class="wd-tab ${k === t ? "on" : ""}"><span>${i}</span>${l}</button>`).join("")}</div>
       <div id="hub-body" class="wd-hub-body">${hubBody()}</div>`;
   }
-  function refreshFriends() {
-    const el = $("#friends-card");
-    if (el && ui.tab === "community" && !ui.renderModal) el.innerHTML = friendsCard();
-    const hb = $("#hub-body");
-    if (hb && ui.tab === "entertainment" && !ui.renderModal && (ui.hubTab === "mine" || ui.hubTab === "groups")) { const h = hubBody(); if (hb.dataset.h !== h) { hb.innerHTML = h; hb.dataset.h = h; } }
-    const dc = $("#duel-card");
-    if (dc && ui.tab === "entertainment" && !ui.renderModal) { const h = duelCard(); if (dc.dataset.h !== h) { dc.innerHTML = h; dc.dataset.h = h; } }
-  }
   /* listing form per category */
   function plStash() { ui.plv = ui.plv || {}; document.querySelectorAll('#modal-host [id^="pl-"]').forEach((e) => { ui.plv[e.id] = e.value; }); }
   function plv(id, d) { const v = (ui.plv || {})[id]; return esc(v === undefined ? (d || "") : v); }

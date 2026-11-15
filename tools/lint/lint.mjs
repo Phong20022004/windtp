@@ -14,14 +14,12 @@ let line = 1;
 for (const f of files) { starts.push({ line, f }); line += fs.readFileSync(path.join(root, f), "utf8").split("\n").length - 1; }
 const where = (n) => { let hit = starts[0]; for (const s of starts) if (s.line <= n) hit = s; return `${hit.f}:${n - hit.line + 1}`; };
 
-// Cố ý chưa bật no-redeclare, no-dupe-keys, no-func-assign: các file sau ghi đè hàm/khóa của file trước (ordersModal, creditTo, open-orders...).
-// Gỡ dần khi làm B5 (dọn mã trùng), rồi bật lại ba luật này.
 const eslint = new ESLint({
   overrideConfigFile: true,
   overrideConfig: [{
     languageOptions: { ecmaVersion: 2022, sourceType: "script", globals: { ...globals.browser } },
     rules: {
-      "no-undef": "error", "no-dupe-args": "error", "no-unreachable": "error",
+      "no-undef": "error", "no-redeclare": "error", "no-dupe-keys": "error", "no-dupe-args": "error", "no-unreachable": "error",
       "no-self-assign": "error", "no-unsafe-negation": "error", "use-isnan": "error", "valid-typeof": "error",
       "no-const-assign": "error", "no-dupe-else-if": "error", "no-duplicate-case": "error",
       "no-unsafe-finally": "error", "no-sparse-arrays": "error", "no-cond-assign": ["error", "except-parens"],

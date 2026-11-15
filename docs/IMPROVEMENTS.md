@@ -23,8 +23,8 @@ Khi xong một mục, đổi ký hiệu và ghi ngày. Việc triển khai xem `
 | B1 | Bảng giá do máy chủ giữ: máy chủ tự tính quyền lợi đơn mua hàng và Premium khi duyệt, admin không tự quyết số tiền | ✅ |
 | B2 | Trang chính sách/điều khoản hiển thị trong app, có liên kết ở màn đăng ký và Cài đặt (nội dung cần luật sư rà soát, xem A4) | ✅ |
 | B3 | Thông báo cho người dùng khi đơn được duyệt hoặc bị từ chối | ✅ |
-| B4 | Kiểm tra kiểu nhẹ (`checkJs`/JSDoc hoặc ESLint) cho phần JS, chạy trong `npm test` (`npm run lint`: ESLint bắt biến chưa khai báo, mã không tới được... trên bản nối các file JS; ba luật về khai báo trùng đang tắt, bật lại sau B5) | ✅ |
-| B5 | Gộp code trùng lặp giữa các player bài học và chế độ Everest | ⬜ |
+| B4 | Kiểm tra kiểu nhẹ (`checkJs`/JSDoc hoặc ESLint) cho phần JS, chạy trong `npm test` (`npm run lint`: ESLint bắt biến chưa khai báo, mã không tới được... trên bản nối các file JS) | ✅ |
+| B5 | Gộp code trùng lặp: (a) hàm/khóa bị ghi đè giữa các file, đã xóa 14 hàm và 3 hành động chết, ESLint chặn tái phạm ✅; (b) trùng giữa các player bài học và chế độ Everest ⬜ |
 | B6 | Chuyển `worker/src` sang TypeScript (nhỏ, xử lý tiền và quyền) | ⬜ |
 | B7 | Máy chủ tự tính kết quả game/nhiệm vụ thay vì tin trình duyệt (việc lớn; hiện chỉ có hạn mức theo ngày) | ⬜ |
 | B8 | Tự duyệt đơn mua hàng/Premium qua webhook (cần B1 trước) | ⬜ |
