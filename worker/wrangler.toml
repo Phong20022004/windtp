@@ -4,7 +4,7 @@ compatibility_date = "2025-01-01"
 
 [vars]
 FIREBASE_PROJECT_ID = "windtp-49e64"
-ALLOWED_ORIGIN = "https://THAY-BANG-TRANG-WINDTP"
+ALLOWED_ORIGIN = "https://windtp-49e64.web.app"
 
 # Dọn dữ liệu hết hạn mỗi ngày lúc 02:17 giờ Việt Nam (19:17 UTC).
 [triggers]
