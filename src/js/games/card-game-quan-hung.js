@@ -127,7 +127,7 @@
           if (inv) { const m0 = a.find((x) => x.ts === msg.ts && x.inv); if (m0) m0.inv.st = "ok"; }
           a.push({ from: f.id, t: bank[Math.floor(Math.random() * bank.length)], ts: Date.now() });
           commit(); notify("🎮", `${f.name} đã nhận lời mời chơi bài`);
-          if (ui.renderModal === chatModal && ui.chat && ui.chat.type === "dm" && ui.chat.id === id) { refreshModal(); scrollChat(); }
+          if (ui.renderModal === socialChatModal && ui.chat && ui.chat.type === "dm" && ui.chat.id === id) { refreshModal(); scrollChat(); }
         }, 2000 + Math.random() * 3000);
       }
       return true;

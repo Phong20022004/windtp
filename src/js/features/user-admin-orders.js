@@ -8,9 +8,16 @@
     if (kind === "bank") return (c.bank || "").length >= 6 && (c.bankName || "").length >= 2 && (c.holder || "").length >= 2;
     return (c.address || "").trim().length >= 6 && /^[0-9+\s-]{8,15}$/.test(c.phone || "");
   }
+  function orderContactModal() {
+    const k = (ui.afterContact && ui.afterContact.kind) || "ship";
+    return `${modalHead("Thông tin của bạn")}<div class="p-5 space-y-3 text-xs">
+      <p class="text-slate-600">${CT_WHY[k]}</p>
+      ${CT_KEYS[k].map((x) => ctField(x, "ct-")).join("")}
+      <button data-action="contact-save" class="w-full ${btnPrimary}">Lưu và tiếp tục</button></div>`;
+  }
   function needContact(kind, next) {
     if (contactOk(kind)) return false;
-    ui.afterContact = { kind, next }; openModal(contactModal); return true;
+    ui.afterContact = { kind, next }; openModal(orderContactModal); return true;
   }
   var CT_LABEL = { address: "Địa chỉ nhận hàng", phone: "Số điện thoại", docEmail: "Gmail nhận tài liệu", bank: "Số tài khoản nhận tiền", bankName: "Ngân hàng", holder: "Tên chủ tài khoản" };
   function ctField(k, pre) {
