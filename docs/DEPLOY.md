@@ -89,3 +89,6 @@ Máy chủ tự dùng KV khi không có R2. Các bước (làm một lần):
 3. Tải nội dung từ vựng đầy đủ lên (mỗi ngôn ngữ một lệnh, ví dụ tiếng Anh): `npx wrangler kv key put --binding CONTENT_KV --remote "vocab/en.json" --path ../data/vocab/en.json`. Làm tương tự cho `de, es, fr, ja, ko, zh`. File lớn nhất 8 MB, dưới giới hạn 25 MB của KV.
 4. Ảnh gian hàng do admin tải lên trong app sẽ tự lưu vào KV.
 Lưu ý: KV nhất quán sau vài chục giây giữa các vùng, nên ảnh/nội dung mới tải lên có thể chưa hiện ngay.
+
+### Cách nhanh: một lệnh làm hết
+Trên máy của bạn (cần Node 20 trở lên), tại thư mục gốc dự án: `git pull` rồi `bash tools/setup-cloudflare.sh`. Script sẽ đăng nhập Cloudflare (bấm Allow trong trình duyệt), tạo bảng D1, tải 7 file từ vựng lên KV và deploy Worker. Chạy xong mở `<địa chỉ Worker>/health`. Chỉ chạy cho D1 mới; nếu bảng đã tồn tại thì dùng riêng `migrations apply`.
