@@ -13,7 +13,7 @@ crons = ["17 19 * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "windtp-db"
-database_id = "THAY-BANG-ID-SAU-KHI-TAO-D1"
+database_id = "46d73132-62ff-4eaa-ab37-651a026e7ea8"
 migrations_dir = "migrations"
 
 # R2 chưa tạo (Cloudflare yêu cầu thẻ quốc tế). Khi nào tạo được: wrangler r2 bucket create windtp-content
