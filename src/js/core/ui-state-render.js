@@ -160,7 +160,7 @@
     el.innerHTML = `
   <div class="flex items-center justify-between gap-3">
     <div>
-      <h2 class="text-lg font-extrabold text-slate-800">\u{1F6D2} WINDTP Official Shop</h2>
+      <h2 class="text-lg font-extrabold text-slate-800">\u{1F3EA} WINDTP Official Shop</h2>
       ${isAdmin() ? '<button data-action="open-add-product" class="mb-1 px-3 py-1 rounded-lg text-[11px] font-extrabold text-white keep-white bg-gradient-to-r from-emerald-500 to-teal-600">➕ Đăng sản phẩm</button>' : ""}
       <p class="text-xs text-slate-500">5 gian hàng: thời trang, mỹ phẩm &amp; phụ kiện; đồ ăn &amp; thực phẩm; thiết bị công nghệ; thuốc &amp; thực phẩm chức năng; khóa học &amp; tài liệu.</p>
     </div>
@@ -318,7 +318,7 @@
     el.innerHTML = `
       <div class="rounded-3xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 p-5 text-white keep-white shadow-lg">
         <p class="text-xs uppercase tracking-wider font-extrabold opacity-90">WINDTP Rewards</p>
-        <h2 class="text-2xl font-black mt-1">Nhiệm vụ hằng ngày</h2>
+        <h2 class="text-2xl font-black mt-1">🎯 Nhiệm vụ hằng ngày</h2>
         <p class="text-sm mt-2 opacity-95">Học tập, mua sắm tại WIND Shop và nhận thưởng WIND Coin.</p>
         <div class="mt-4 flex items-center gap-2"><span class="wind-coin-mark" role="img" aria-label="WIND Coin"><span class="wind-coin-mark__w">W</span></span><span class="text-sm font-bold">Thưởng minh bạch · Làm mới mỗi ngày</span></div>
       </div>
@@ -456,19 +456,19 @@ function renderWallet() {
     const totalOut = recent.filter((h) => h.kind === "out").reduce((s, h) => s + h.amount, 0);
     const list = state.history.filter((h) => ui.historyFilter === "all" || h.kind === ui.historyFilter).slice(0, 60);
     el.innerHTML = `
-  <div class="p-5 rounded-3xl bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 text-white keep-white shadow-lg relative overflow-hidden">
+  <div class="wallet-hero p-5 rounded-3xl text-white keep-white shadow-lg relative overflow-hidden">
     <div class="absolute -right-6 -bottom-6 text-8xl opacity-20 select-none">\u{1FA99}</div>
     <div class="flex items-center gap-2">
       <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center"><span class="wind-coin-letter wind-coin-letter--white" aria-hidden="true">W</span></div>
-      <p class="text-xs text-amber-100 font-bold uppercase tracking-wider">S\u1ED1 D\u01B0 V\xED Bi\u1EC3u T\u01B0\u1EE3ng Xu</p>
+      <p class="text-xs wallet-hero__label font-bold uppercase tracking-wider">S\u1ED1 D\u01B0 V\xED Bi\u1EC3u T\u01B0\u1EE3ng Xu</p>
     </div>
-    <div class="text-3xl font-black mt-2">${fmt(state.balance)} <span class="text-lg font-bold text-amber-200">WIND Coin</span></div>
-    <p class="text-xs text-amber-100 mt-1">🎰 Chip game: <b>${fmt(state.chips || 0)}</b></p>
-    <p class="text-[11px] text-amber-100 mt-1">Xu d\xF9ng \u0111\u1EC3 mua t\xE0i li\u1EC7u, avatar v\xE0 khung avatar. Xu c\xF3 th\u1EC3 nh\u1EADn \u0111\u01B0\u1EE3c khi ho\xE0n th\xE0nh nhi\u1EC7m v\u1EE5.</p>
+    <div class="text-3xl font-black mt-2">${fmt(state.balance)} <span class="text-lg font-bold wallet-hero__unit">WIND Coin</span></div>
+    <p class="text-xs wallet-hero__text mt-1">🎰 Chip game: <b>${fmt(state.chips || 0)}</b></p>
+    <p class="text-[11px] wallet-hero__text mt-1">Xu d\xF9ng \u0111\u1EC3 mua t\xE0i li\u1EC7u, avatar v\xE0 khung avatar. Xu c\xF3 th\u1EC3 nh\u1EADn \u0111\u01B0\u1EE3c khi ho\xE0n th\xE0nh nhi\u1EC7m v\u1EE5.</p>
     <button data-action="open-lb" data-k="coin" class="lb-btn relative w-full mt-3 px-3 py-2 rounded-xl text-xs font-extrabold bg-white/20 hover:bg-white/30 border border-white/40 text-white keep-white transition-all"><span class="lb-tr">🏆</span> Bảng xếp hạng Top 50 WIND Coin</button>
     <div class="flex flex-wrap gap-3 mt-3 relative">
       <button data-action="open-topup" class="px-4 py-2 bg-white keep-white text-amber-900 rounded-xl text-xs font-extrabold shadow-md hover:bg-amber-50 transition-all">\u{1FA99} N\u1EA1p Xu</button>
-      <button data-action="spend-xu" class="px-4 py-2 bg-emerald-600/80 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all">\u{1F3EA} Chi ti\xEAu</button>
+      <button data-action="spend-xu" class="px-4 py-2 wallet-hero__spend text-white rounded-xl text-xs font-bold transition-all">\u{1F3EA} Chi ti\xEAu</button>
       <button data-action="goto" data-tab="tasks" class="px-4 py-2 bg-white/20 hover:bg-white/25 border border-white/40 text-white keep-white rounded-xl text-xs font-extrabold transition-all">\u{1F3AF} Ki\u1EBFm WIND Coin</button>
     </div>
   </div>

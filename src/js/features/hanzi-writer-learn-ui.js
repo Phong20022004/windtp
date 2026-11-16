@@ -45,31 +45,64 @@
     }
     return h;
   }
-  function strokeCard(ch, tab, i) {
+  function strokeCard(ch, tab, i, done) {
     var fav = strokeFavs().indexOf(ch) >= 0;
     var ctl = tab === "steps" ? "" :
       '<div class="st-ctl"><button data-st="play" title="Xem lại nét">▶</button>' +
       (tab === "quiz" ? '<button data-st="quiz" title="Luyện viết" class="on">✍</button><button data-st="outline" title="Ẩn/hiện nét mờ">👁</button>' : "") +
       '<button data-st="speak" title="Đọc">🔊</button><button data-st="info" title="Thông tin">ℹ</button><button data-st="fav" title="Yêu thích" class="st-fav' + (fav ? " on" : "") + '">' + (fav ? "♥" : "♡") + '</button></div>';
     var body = tab === "steps" ? '<div class="st-steps" data-st-body>Đang tải nét…</div>' : '<div class="st-box">' + STROKE_GRID + '<div class="st-canvas" data-st-body></div><span class="st-wm">WINDTP</span></div>';
-    return '<div class="st-card" data-ch="' + ch + '" data-i="' + i + '"><div class="st-title">' + ch + '<small data-st-count></small></div>' + body + ctl + '<p class="st-msg" data-st-msg></p></div>';
+    return '<div class="st-card" data-ch="' + ch + '" data-i="' + i + '"><div class="st-title' + (done ? " st-done" : "") + '">' + ch + '<small data-st-count></small></div>' + body + ctl + '<p class="st-msg" data-st-msg></p></div>';
   }
   function renderStrokes(el, lang) {
     var ja = lang.code === "ja", code = lang.code;
+    // Chế độ luyện viết theo bài (giáo trình đầu tiên của tiếng Trung / tiếng Nhật), bật từ danh sách bài.
+    var LS = ui.strokeLesson && ui.strokeLesson.code === code && typeof lwChars === "function" ? ui.strokeLesson : null;
+    var lessonAll = LS ? (lwChars(code, LS.l) || []) : null;
+    if (LS && !lessonAll.length) { ui.strokeLesson = LS = null; }
     if (ui.strokeText == null) ui.strokeText = ja ? "漢字を書く" : "写汉字";
     if (!ui.strokeTab) ui.strokeTab = "quiz";
-    el.innerHTML = '<div class="space-y-4 st-page"><button data-action="learn-back-menu" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700">← Quay lại không gian học</button>' +
-      '<div class="wl-banner st-banner rounded-3xl p-5 text-white keep-white"><span class="wl-wrap wl-corner">' + windLogo(56) + '</span><p class="text-xs font-bold opacity-90">WINDTP · BÚT THUẬN ' + (ja ? "KANJI · KANA" : "HÁN NGỮ") + '</p><h2 class="text-xl font-black mt-1">' + lang.flag + ' Xem nét · Ảnh động · Luyện viết</h2><p class="text-sm mt-1 opacity-90">Nhập chữ ' + (ja ? "Kanji / Hiragana / Katakana" : "Hán") + ' cần xem nét (tối đa 12 chữ khác nhau).</p></div>' +
-      '<label class="block text-sm font-bold text-slate-700" for="st-input">Chữ ' + (ja ? "Nhật" : "Hán") + ' cần xem nét</label>' +
-      '<input id="st-input" class="st-input" type="text" lang="' + (ja ? "ja" : "zh") + '" autocomplete="off" value="' + esc(ui.strokeText) + '">' +
-      '<div class="st-tabs" role="tablist">' + [["steps", "Xem nét"], ["gif", "Ảnh GIF"], ["quiz", "Luyện tập"]].map(function (t) { return '<button role="tab" data-st-tab="' + t[0] + '" class="' + (ui.strokeTab === t[0] ? "on" : "") + '">' + t[1] + '</button>'; }).join("") + '</div>' +
-      '<div id="st-list" class="st-list"></div></div>';
+    var tabsHtml = '<div class="st-tabs" role="tablist">' + [["steps", "Xem nét"], ["gif", "Ảnh GIF"], ["quiz", "Luyện tập"]].map(function (t) { return '<button role="tab" data-st-tab="' + t[0] + '" class="' + (ui.strokeTab === t[0] ? "on" : "") + '">' + t[1] + '</button>'; }).join("") + '</div>';
+    var pages = 1;
+    if (LS) {
+      pages = Math.max(1, Math.ceil(lessonAll.length / LW_PAGE));
+      LS.page = Math.min(pages - 1, Math.max(0, LS.page | 0));
+      var info = lwInfo(code, LS.g, LS.v, LS.l), nLessons = lwLessonCount(code, LS.g, LS.v);
+      var pager = '<div class="lw-pager"><button type="button" data-action="lesson-write-page" data-d="-1"' + (LS.page <= 0 ? " disabled" : "") + '>‹ Trang trước</button><span>Trang ' + (LS.page + 1) + '/' + pages + ' · ' + lessonAll.length + ' chữ</span><button type="button" data-action="lesson-write-page" data-d="1"' + (LS.page >= pages - 1 ? " disabled" : "") + '>Trang sau ›</button></div>' +
+        '<div class="lw-pager"><button type="button" data-action="lesson-write-go" data-d="-1"' + (LS.l <= 0 ? " disabled" : "") + '>← Bài trước</button><button type="button" data-action="lesson-write-back">Danh sách bài</button><button type="button" data-action="lesson-write-go" data-d="1"' + (LS.l >= nLessons - 1 ? " disabled" : "") + '>Bài sau →</button></div>';
+      el.innerHTML = '<div class="space-y-4 st-page"><button data-action="lesson-write-back" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700">← Danh sách bài</button>' +
+        '<div class="wl-banner st-banner rounded-3xl p-5 text-white keep-white"><span class="wl-wrap wl-corner">' + windLogo(56) + '</span><p class="text-xs font-bold opacity-90">WINDTP · LUYỆN VIẾT · ' + esc(info.book.toUpperCase()) + ' · ' + esc(String(info.vol).toUpperCase()) + '</p><h2 class="text-xl font-black mt-1">' + lang.flag + ' Bài ' + esc(String(info.no)) + ' · Luyện viết ' + (ja ? "Kanji" : "chữ Hán") + '</h2><p class="text-sm mt-1 opacity-90" id="lw-count"></p><div class="lw-bar" aria-hidden="true"><i id="lw-fill"></i></div></div>' +
+        tabsHtml + '<div id="st-list" class="st-list"></div>' + pager + '</div>';
+    } else {
+      el.innerHTML = '<div class="space-y-4 st-page"><button data-action="learn-back-menu" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700">← Quay lại không gian học</button>' +
+        '<div class="wl-banner st-banner rounded-3xl p-5 text-white keep-white"><span class="wl-wrap wl-corner">' + windLogo(56) + '</span><p class="text-xs font-bold opacity-90">WINDTP · BÚT THUẬN ' + (ja ? "KANJI · KANA" : "HÁN NGỮ") + '</p><h2 class="text-xl font-black mt-1">' + lang.flag + ' Xem nét · Ảnh động · Luyện viết</h2><p class="text-sm mt-1 opacity-90">Nhập chữ ' + (ja ? "Kanji / Hiragana / Katakana" : "Hán") + ' cần xem nét (tối đa 12 chữ khác nhau).</p></div>' +
+        '<label class="block text-sm font-bold text-slate-700" for="st-input">Chữ ' + (ja ? "Nhật" : "Hán") + ' cần xem nét</label>' +
+        '<input id="st-input" class="st-input" type="text" lang="' + (ja ? "ja" : "zh") + '" autocomplete="off" value="' + esc(ui.strokeText) + '">' +
+        tabsHtml + '<div id="st-list" class="st-list"></div></div>';
+    }
     var list = el.querySelector("#st-list"), input = el.querySelector("#st-input");
+    function lessonProgress() {
+      if (!LS) return;
+      var done = lwDone(code, LS.l).filter(function (c) { return lessonAll.indexOf(c) >= 0; }).length, total = lessonAll.length;
+      var cnt = el.querySelector("#lw-count"), fill = el.querySelector("#lw-fill");
+      if (cnt) cnt.textContent = "Đã viết " + done + "/" + total + " chữ" + (done >= total ? " · 🎉 Hoàn thành bài này!" : " · viết đúng hết nét để tính là xong");
+      if (fill) fill.style.width = Math.round(done / total * 100) + "%";
+    }
+    function finished(card) {
+      var msg = card.querySelector("[data-st-msg]");
+      if (msg) msg.textContent = "Hoàn thành! 🎉";
+      if (!LS) return;
+      lwMark(code, LS.l, card.dataset.ch);
+      var t = card.querySelector(".st-title"); if (t) t.classList.add("st-done");
+      lessonProgress();
+    }
     function build() {
       strokeWriters.forEach(function (w) { try { w.cancelQuiz(); } catch (e) {} }); strokeWriters = [];
-      var chars = strokeChars(ui.strokeText, code);
+      var chars = LS ? lessonAll.slice(LS.page * LW_PAGE, (LS.page + 1) * LW_PAGE) : strokeChars(ui.strokeText, code);
       if (!chars.length) { list.innerHTML = '<p class="st-empty">Hãy nhập ít nhất một chữ ' + (ja ? "Nhật" : "Hán") + '.</p>'; return; }
-      list.innerHTML = chars.map(function (c, i) { return strokeCard(c, ui.strokeTab, i); }).join("");
+      var doneNow = LS ? lwDone(code, LS.l) : [];
+      list.innerHTML = chars.map(function (c, i) { return strokeCard(c, ui.strokeTab, i, doneNow.indexOf(c) >= 0); }).join("");
+      lessonProgress();
       loadHanziWriter().catch(function () { return null; }).then(function (HW) {
         list.querySelectorAll(".st-card").forEach(function (card) {
           var ch = card.dataset.ch, body = card.querySelector("[data-st-body]"), msg = card.querySelector("[data-st-msg]"), cnt = card.querySelector("[data-st-count]");
@@ -86,21 +119,21 @@
             });
             card._w = w; strokeWriters.push(w);
             if (ui.strokeTab === "gif") w.loopCharacterAnimation();
-            else w.quiz({ showHintAfterMisses: 2, highlightOnComplete: true, onComplete: function () { msg.textContent = "Hoàn thành! 🎉"; } });
+            else w.quiz({ showHintAfterMisses: 2, highlightOnComplete: true, onComplete: function () { finished(card); } });
           }).catch(fail);
         });
       });
     }
     el.querySelector(".st-tabs").onclick = function (e) { var b = e.target.closest("[data-st-tab]"); if (!b) return; ui.strokeTab = b.dataset.stTab; renderStrokes(el, lang); };
-    input.oninput = function () { ui.strokeText = input.value; clearTimeout(strokeTimer); strokeTimer = setTimeout(build, 450); };
+    if (input) input.oninput = function () { ui.strokeText = input.value; clearTimeout(strokeTimer); strokeTimer = setTimeout(build, 450); };
     list.onclick = function (e) {
       var b = e.target.closest("[data-st]"); if (!b) return; var card = b.closest(".st-card"), w = card._w, ch = card.dataset.ch, msg = card.querySelector("[data-st-msg]"), a = b.dataset.st;
       if (a === "speak") speak(ch, ja ? "ja-JP" : "zh-CN");
       else if (a === "fav") { var on = strokeToggleFav(ch); b.classList.toggle("on", on); b.textContent = on ? "♥" : "♡"; }
       else if (a === "info") msg.textContent = card._n ? ch + " có " + card._n + " nét. Viết theo thứ tự nét đã hiển thị." : "Chưa có dữ liệu nét.";
       else if (!w) return;
-      else if (a === "play") { try { w.cancelQuiz(); } catch (er) {} w.hideCharacter(); w.animateCharacter({ onComplete: function () { if (ui.strokeTab === "quiz") { w.hideCharacter(); w.quiz({ showHintAfterMisses: 2, highlightOnComplete: true }); } } }); }
-      else if (a === "quiz") { msg.textContent = ""; w.hideCharacter(); w.quiz({ showHintAfterMisses: 2, highlightOnComplete: true, onComplete: function () { msg.textContent = "Hoàn thành! 🎉"; } }); }
+      else if (a === "play") { try { w.cancelQuiz(); } catch (er) {} w.hideCharacter(); w.animateCharacter({ onComplete: function () { if (ui.strokeTab === "quiz") { w.hideCharacter(); w.quiz({ showHintAfterMisses: 2, highlightOnComplete: true, onComplete: function () { finished(card); } }); } } }); }
+      else if (a === "quiz") { msg.textContent = ""; w.hideCharacter(); w.quiz({ showHintAfterMisses: 2, highlightOnComplete: true, onComplete: function () { finished(card); } }); }
       else if (a === "outline") { card._ol = !card._ol; card._ol ? w.hideOutline() : w.showOutline(); b.classList.toggle("on", !!card._ol); }
     };
     build();
@@ -112,7 +145,7 @@
     const known = lang ? (state.known[lang.code] ?? []).length : 0;
     // v15-5: vào khóa học chưa mua vẫn xem trang bình thường; chỉ khóa từng quyển Premium trong thư viện.
     if (ui.learnStage === "language" || !lang) {
-      el.innerHTML = `<div class="glass-card p-5 rounded-3xl"><div class="text-center mb-5"><div class="flex justify-center">${windLogo(64)}</div><h2 class="text-xl font-black text-slate-800 mt-2">Chọn ngôn ngữ học tập</h2><p class="text-sm text-slate-500 mt-1">Chọn một ngôn ngữ để mở không gian học riêng.</p></div><div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">${LANGUAGES.map(l => `<button data-action="select-lang" data-code="${l.code}" class="rounded-2xl border border-slate-200 bg-white p-4 hover:border-sky-400 hover:shadow-md transition-all flex flex-col items-center gap-2"><span class="text-3xl">${l.flag}</span><span class="text-xs font-extrabold text-slate-700">${l.name}</span></button>`).join("")}</div></div>`;
+      el.innerHTML = `<div class="glass-card p-5 rounded-3xl"><div class="text-center mb-5"><div class="flex justify-center">${windLogo(64)}</div><h2 class="text-xl font-black text-slate-800 mt-2">📖 Chọn ngôn ngữ học tập</h2><p class="text-sm text-slate-500 mt-1">Chọn một ngôn ngữ để mở không gian học riêng.</p></div><div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">${LANGUAGES.map(l => `<button data-action="select-lang" data-code="${l.code}" class="rounded-2xl border border-slate-200 bg-white p-4 hover:border-sky-400 hover:shadow-md transition-all flex flex-col items-center gap-2"><span class="text-3xl">${l.flag}</span><span class="text-xs font-extrabold text-slate-700">${l.name}</span></button>`).join("")}</div></div>`;
       return;
     }
     if (ui.learnStage === "menu") {

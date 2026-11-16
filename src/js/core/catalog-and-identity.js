@@ -196,7 +196,7 @@
     { tab: "shop", icon: "\u{1F3EA}", label: "Store" },
     { tab: "entertainment", icon: "\u{1F3AE}", label: "Gi\u1EA3i tr\xED" },
     { tab: "tasks", icon: "\u{1F3AF}", label: "Nhi\u1EC7m v\u1EE5" },
-    { tab: "utilities", icon: "\u{1F9F0}", label: "Ti\u1EC7n \xEDch" },
+    { tab: "utilities", icon: "\u{1F6E0}\uFE0F", label: "Ti\u1EC7n \xEDch" },
     { tab: "community", icon: "\u{1F465}", label: "C\u1ED9ng \u0111\u1ED3ng" },
     { tab: "wallet", icon: "\u{1F45B}", label: "V\xED Xu" }
   ];
@@ -230,10 +230,10 @@
   }
   var BANNERS = [
     { cls: "hb-g1", tag: "Khóa học + Premium", title: "Mua sắm khóa học để mở khóa Premium và nhận chip", text: "7 ngôn ngữ, gói từ 1 tháng đến vĩnh viễn, tặng chip game theo từng gói.", btn: "Xem khóa học", btnCls: "text-fuchsia-700", act: "open-courses", emoji: "👑", sub: "text-pink-100", fx: ["🎰", "✨", "🪙"] },
-    { cls: "hb-g2", tag: "WIND Store", title: "Mua sắm mọi thứ ở WIND Store", text: "Thời trang, đồ ăn, công nghệ, thuốc và thực phẩm chức năng, khóa học, tài liệu.", btn: "Vào cửa hàng", btnCls: "text-rose-700", tab: "shop", emoji: "🛍️", sub: "text-orange-100", fx: ["🎁", "🛒", "✨"] },
+    { cls: "hb-g2", tag: "WIND Store", title: "Mua sắm mọi thứ ở WIND Store", text: "Thời trang, đồ ăn, công nghệ, thuốc và thực phẩm chức năng, khóa học, tài liệu.", btn: "Vào cửa hàng", btnCls: "text-rose-700", tab: "shop", emoji: "🏪", sub: "text-orange-100", fx: ["🎁", "🛒", "✨"] },
     { cls: "hb-g3", tag: "Giải trí và Kết bạn", title: "Giải trí và thách đấu cùng bạn bè", text: "Chơi game, tìm đồng đội cùng học và thách đấu bạn bè để lên hạng.", btn: "Chơi ngay", btnCls: "text-teal-700", tab: "entertainment", emoji: "🎮", sub: "text-emerald-100", fx: ["⚔️", "🏆", "🎵"] },
     { cls: "hb-g4", tag: "Nhiệm vụ mỗi ngày", title: "Hoàn thành nhiệm vụ để nhận ngay WIND Coin và chip", text: "Điểm danh, học bài, chơi game mỗi ngày để nhận thưởng.", btn: "Làm nhiệm vụ", btnCls: "text-orange-700", tab: "tasks", emoji: "🎯", sub: "text-amber-100", fx: ["🪙", "🎰", "⭐"] },
-    { cls: "hb-g5", tag: "Tiện ích", title: "Tìm kiếm việc làm, nhà ở và mua bán đồ cũ", text: "Đăng tin và tra cứu việc làm sinh viên, phòng trọ, chợ đồ cũ.", btn: "Tra cứu ngay", btnCls: "text-indigo-700", tab: "utilities", emoji: "🏠", sub: "text-indigo-100", fx: ["💼", "🛵", "🔍"] }
+    { cls: "hb-g5", tag: "Tiện ích", title: "Tìm kiếm việc làm, nhà ở và mua bán đồ cũ", text: "Đăng tin và tra cứu việc làm sinh viên, phòng trọ, chợ đồ cũ.", btn: "Tra cứu ngay", btnCls: "text-indigo-700", tab: "utilities", emoji: "🛠️", sub: "text-indigo-100", fx: ["💼", "🛵", "🔍"] }
   ];
   function bnAttr(b) { return b.act ? `data-action="${b.act}"` : `data-action="goto" data-tab="${b.tab}"${b.cat ? ` data-cat="${b.cat}"` : ""}`; }
   function bnFx(b) { return `<div class="hb-fx" aria-hidden="true">${b.fx.map((e, i) => `<span style="left:${18 + i * 26}%;bottom:${6 + (i % 2) * 14}%;animation-delay:${i * 1.3}s">${e}</span>`).join("")}</div><i class="hb-orb" style="width:70px;height:70px;right:-14px;top:-18px"></i><i class="hb-orb" style="width:44px;height:44px;left:38%;bottom:-16px;animation-delay:-2s"></i>`; }
@@ -242,7 +242,7 @@
     { tab: "shop", emoji: "\u{1F3EA}", label: "WIND Store", grad: "from-indigo-400 to-purple-500" },
     { tab: "entertainment", emoji: "\u{1F3AE}", label: "Gi\u1EA3i tr\xED", grad: "from-purple-400 to-pink-500" },
     { tab: "tasks", emoji: "\u{1F3AF}", label: "Nhi\u1EC7m v\u1EE5", grad: "from-emerald-400 to-teal-600" },
-    { tab: "utilities", emoji: "\u{1F9F0}", label: "Ti\u1EC7n \xEDch", grad: "from-teal-400 to-cyan-600" },
+    { tab: "utilities", emoji: "\u{1F6E0}\uFE0F", label: "Ti\u1EC7n \xEDch", grad: "from-teal-400 to-cyan-600" },
     { tab: "community", emoji: "\u{1F465}", label: "C\u1ED9ng \u0111\u1ED3ng", grad: "from-rose-400 to-pink-500" },
     { tab: "wallet", emoji: "\u{1FA99}", label: "V\xED Xu", grad: "from-amber-400 to-orange-500" }
   ];

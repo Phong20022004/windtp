@@ -377,8 +377,8 @@
       var cfg = ALPHA_DATA.get(lang.code), grid = el.querySelector(".grid");
       if (!grid) return;
       var card = '<button data-action="open-alphabet" class="text-left glass-card rounded-3xl p-5 border-0 shadow-lg hover:shadow-xl transition-all"><div class="flex items-center justify-between"><span class="wl-wrap" style="--ig:rgba(139,92,246,.55)">' + windLogo(54) + '</span><span class="rounded-full bg-gradient-to-r from-emerald-400 to-lime-300 text-emerald-950 px-3 py-1 text-[10px] font-black shadow">FREE</span></div><h3 class="text-lg font-black text-teal-600 mt-3">' + (cfg.kind === "radicals" ? "Học 214 bộ thủ" : "Học bảng chữ cái") + '</h3><p class="text-xs text-slate-600 mt-2">' + esc(cfg.title) + ' · 9 cách học: xem thẻ, nghe, viết, flashcard, trắc nghiệm, ghép cặp, gõ, ôn chữ hay sai.</p><p class="text-xs font-bold text-teal-600 mt-4">Vào học →</p></button>';
-      var stroke = grid.querySelector(".st-menu-card");
-      if (stroke) stroke.insertAdjacentHTML("beforebegin", card); else grid.insertAdjacentHTML("beforeend", card);
+      grid.insertAdjacentHTML("afterbegin", card);
+      grid.querySelectorAll(":scope > button h3").forEach(function (h, i) { h.textContent = (i + 1) + ". " + h.textContent.replace(/^\d+\.\s*/, ""); });
     }
   };
 

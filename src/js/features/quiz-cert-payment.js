@@ -370,10 +370,8 @@
     const th = BANNER_THEMES[ui.slide];
     const logo = $("#logo-circle");
     const ch = $("#logo-char");
-    const brand = $("#brand-text");
     if (logo) logo.className = `w-10 h-10 rounded-full bg-gradient-to-tr ${th.logo} p-0.5 shadow-md shadow-sky-200 group-hover:scale-105 transition-all duration-500 flex items-center justify-center`;
     if (ch) ch.className = `font-black ${th.char} text-lg transition-colors duration-500`;
-    if (brand) brand.className = `font-extrabold text-lg tracking-tight bg-gradient-to-r ${th.brand} bg-clip-text text-transparent transition-all duration-500`;
   }
   function makeQuestion(lang, item) {
     const others = shuffle(lang.vocab.filter((v) => v !== item)).slice(0, 3);
@@ -621,7 +619,7 @@
     "learn-back-menu": () => { ui.learnStage = "menu"; renderLearn(); },
     "open-daily-study": () => { ui.learnStage = "daily"; renderLearn(); },
     "open-book-library": () => { ui.learnStage = "library"; renderLearn(); },
-    "open-strokes": () => { ui.learnStage = "strokes"; renderLearn(); },
+    "open-strokes": () => { ui.strokeLesson = null; ui.learnStage = "strokes"; renderLearn(); },
     "focus-draft": () => { const t = document.getElementById("post-draft"); if (t) { t.scrollIntoView({ behavior: "smooth", block: "center" }); t.focus(); } },
     "open-vocab": () => {
       if (!state.lang) return;
