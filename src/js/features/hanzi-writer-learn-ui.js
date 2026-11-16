@@ -158,9 +158,9 @@
     return ui.shopCat === "study" && ui.shopSub === "Tài liệu";
   }
   function payNote() {
-    if (ui.shopCat === "study") return "Khóa học thanh toán bằng <b>tiền</b> (VND / KRW / JPY). Mỗi gói mở khóa <b>Premium</b> trong thời gian học và tặng <b>chip game</b>. Xu không dùng để mua khóa học.";
-    if (ui.shopCat === "all") return "Gian 1–4 chỉ thanh toán bằng tiền (VND / KRW / JPY). Gian 5 · Khóa học mua bằng tiền, Tài liệu mua bằng Xu hoặc tiền. Mua sắm xong, vào nhiệm vụ để nhận Xu thưởng.";
-    return "Gian này chỉ thanh toán bằng tiền (<b>VND / KRW / JPY</b>), không dùng Xu. Mua sắm xong, vào nhiệm vụ để nhận Xu thưởng.";
+    if (ui.shopCat === "study") return "Khóa học thanh toán bằng <b>tiền</b> (VND / KRW / JPY / TWD). Mỗi gói mở khóa <b>Premium</b> trong thời gian học và tặng <b>chip game</b>. Xu không dùng để mua khóa học.";
+    if (ui.shopCat === "all") return "Gian 1–4 chỉ thanh toán bằng tiền (VND / KRW / JPY / TWD). Gian 5 · Khóa học mua bằng tiền, Tài liệu mua bằng Xu hoặc tiền. Mua sắm xong, vào nhiệm vụ để nhận Xu thưởng.";
+    return "Gian này chỉ thanh toán bằng tiền (<b>VND / KRW / JPY / TWD</b>), không dùng Xu. Mua sắm xong, vào nhiệm vụ để nhận Xu thưởng.";
   }
   var STALL_SHORT = { fashion: "Thời trang & Mỹ phẩm", food: "Đồ ăn & Thực phẩm", tech: "Thiết bị công nghệ", supp: "Thuốc & TPCN", study: "Khóa học & Tài liệu" };
   function stallStrip() {

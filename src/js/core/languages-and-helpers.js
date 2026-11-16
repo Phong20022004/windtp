@@ -228,6 +228,7 @@
   var CURRENCIES = {
     VND: { symbol: "\u20AB", name: "Vi\u1EC7t Nam \u0111\u1ED3ng", flag: "\u{1F1FB}\u{1F1F3}", methods: ["Chuy\u1EC3n kho\u1EA3n ng\u00E2n h\u00E0ng", "V\u00ED \u0111i\u1EC7n t\u1EED"] },
     KRW: { symbol: "\u20A9", name: "Won H\xE0n Qu\u1ED1c", flag: "\u{1F1F0}\u{1F1F7}", methods: ["Th\u1EBB t\xEDn d\u1EE5ng / ghi n\u1EE3", "Kakao Pay", "Naver Pay"] },
+    TWD: { symbol: "NT$", name: "\u0110\u00E0i t\u1EC7 (T\xE2n \u0110\u00E0i Loan)", flag: "\u{1F1F9}\u{1F1FC}", methods: ["Th\u1EBB t\xEDn d\u1EE5ng / ghi n\u1EE3", "LINE Pay", "JKOPay", "Chuy\u1EC3n kho\u1EA3n ATM / c\u1EEDa h\xE0ng ti\u1EC7n l\u1EE3i"] },
     JPY: { symbol: "\xA5", name: "Y\xEAn Nh\u1EADt", flag: "\u{1F1EF}\u{1F1F5}", methods: ["Th\u1EBB t\xEDn d\u1EE5ng / ghi n\u1EE3", "PayPay", "LINE Pay"] }
   };
   function money(n, cur) {
@@ -257,14 +258,19 @@
       id: "cr-" + l.code + "-" + pl.id, plan: pl.id, lang: l.code, cat: "study", sub: "Khóa học", emoji: l.flag,
       name: "Khóa học " + l.name + " · " + pl.label,
       desc: (pl.life ? "Premium trọn đời" : "Premium " + pl.months + " tháng") + " + " + pl.chips.toLocaleString("en-US") + " chip",
-      price: { VND: pl.vnd, KRW: Math.max(100, Math.round(pl.vnd / 19 / 100) * 100), JPY: Math.max(10, Math.round(pl.vnd / 160 / 10) * 10) }
+      price: { VND: pl.vnd, KRW: Math.max(100, Math.round(pl.vnd / 19 / 100) * 100), JPY: Math.max(10, Math.round(pl.vnd / 160 / 10) * 10), TWD: Math.max(1, Math.round(pl.vnd / 800)) }
     })));
     LANGUAGES.forEach((l) => out.push({
       id: "docm-" + l.code, docOf: l.code, cat: "study", sub: "Tài liệu", emoji: l.flag,
       name: "Tài liệu tổng hợp " + l.name, desc: "Từ vựng và ngữ pháp " + l.name + " · file .txt",
-      price: { VND: DOC_PRICE, KRW: Math.max(100, Math.round(DOC_PRICE / 19 / 100) * 100), JPY: Math.max(10, Math.round(DOC_PRICE / 160 / 10) * 10) }
+      price: { VND: DOC_PRICE, KRW: Math.max(100, Math.round(DOC_PRICE / 19 / 100) * 100), JPY: Math.max(10, Math.round(DOC_PRICE / 160 / 10) * 10), TWD: Math.max(1, Math.round(DOC_PRICE / 800)) }
     }));
     return out;
+  }
+  // Sản phẩm do admin tạo/sửa chưa có giá Đài tệ: tự quy đổi từ VND (thuộc tính ẩn, không bị lưu lên máy chủ).
+  function ensureTwd(p) {
+    if (p && p.price && p.price.TWD === undefined) Object.defineProperty(p.price, "TWD", { value: Math.max(1, Math.round((Number(p.price.VND) || 0) / 800)), enumerable: false, configurable: true, writable: true });
+    return p;
   }
   var PRODUCTS = courseProducts();
   var COURSES = [];

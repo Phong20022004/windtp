@@ -27,6 +27,15 @@ export function mapFirebaseErrorCode(code: string): AuthErrorCode {
       return "popup-blocked";
     case "auth/requires-recent-login":
       return "recent-login";
+    case "auth/operation-not-allowed":
+    case "auth/admin-restricted-operation":
+      return "provider-disabled";
+    case "auth/unauthorized-domain":
+      return "domain-unauthorized";
+    case "auth/account-exists-with-different-credential":
+      return "account-exists";
+    case "auth/web-storage-unsupported":
+      return "storage-unsupported";
     default:
       return "unknown";
   }
@@ -41,5 +50,10 @@ export function readErrorCode(error: unknown): string {
 }
 
 export function toAuthFailure(error: unknown): AuthFailure {
-  return error instanceof AuthFailure ? error : new AuthFailure(mapFirebaseErrorCode(readErrorCode(error)));
+  if (error instanceof AuthFailure) return error;
+  const code = readErrorCode(error);
+  const mapped = mapFirebaseErrorCode(code);
+  // Ghi mã gốc ra console để chẩn đoán khi gặp lỗi chưa biết (không chứa dữ liệu cá nhân).
+  if (mapped === "unknown" && typeof console !== "undefined") console.warn("[WINDTP] Lỗi đăng nhập chưa phân loại:", code || error);
+  return new AuthFailure(mapped);
 }

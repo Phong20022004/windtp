@@ -15,6 +15,8 @@ function price(p, partial) {
     if (v === null) return null;
     out[c] = v;
   }
+  // Giá Đài tệ là tùy chọn: thiếu thì để máy chủ và trình duyệt tự quy đổi từ VND.
+  if (p.TWD !== undefined) { const v = int(p.TWD, 1, 1e9); if (v === null) return null; out.TWD = v; }
   return out;
 }
 

@@ -44,7 +44,7 @@
       <div><label class="font-bold text-slate-700" for="at-desc">Mô tả</label><textarea id="at-desc" rows="2" maxlength="200" class="${field} mt-1 resize-none"></textarea></div>
       <p class="font-bold text-slate-700">Mức thưởng (nhập 1 hoặc nhiều loại)</p>
       <div class="grid grid-cols-3 gap-2"><input id="at-xu" inputmode="numeric" placeholder="WIND Coin" class="${field}"><input id="at-chip" inputmode="numeric" placeholder="Chip" class="${field}"><input id="at-money" inputmode="numeric" placeholder="Tiền" class="${field}"></div>
-      <select id="at-cur" class="${field}"><option>VND</option><option>KRW</option><option>JPY</option></select>
+      <select id="at-cur" class="${field}"><option>VND</option><option>KRW</option><option>JPY</option><option>TWD</option></select>
       <p class="text-[11px] text-slate-500">Nếu có thưởng tiền, người dùng phải nhập số tài khoản khi nhận.</p>
       <button data-action="task-save" class="w-full ${btnPrimary}">Đăng nhiệm vụ</button></div>`;
   }

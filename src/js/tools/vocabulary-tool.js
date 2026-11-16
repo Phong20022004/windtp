@@ -3,7 +3,18 @@
   const $ = (id) => document.getElementById(id);
   const langNames = {vi:"Tiếng Việt",en:"Tiếng Anh",ko:"Tiếng Hàn",ja:"Tiếng Nhật","zh-CN":"Tiếng Trung",fr:"Tiếng Pháp",de:"Tiếng Đức",es:"Tiếng Tây Ban Nha"};
   const speechLang = {vi:"vi-VN",en:"en-US",ko:"ko-KR",ja:"ja-JP","zh-CN":"zh-CN",fr:"fr-FR",de:"de-DE",es:"es-ES"};
-  let lastTranslation = ""; let busy = false;
+  let lastTranslation = ""; let busy = false; let slowMode = false;
+  // Chấm điểm giọng đọc: ưu tiên giọng chất lượng cao (Google, Neural, Premium/Enhanced, Siri), tránh giọng robot/compact.
+  function voiceScore(v) {
+    const n = (v.name || "").toLowerCase();
+    let s = 0;
+    if (/google/.test(n)) s += 60;
+    if (/neural|natural|online|wavenet|premium|enhanced|siri/.test(n)) s += 50;
+    if (/microsoft/.test(n)) s += 30;
+    if (v.localService === false) s += 10;
+    if (/compact|espeak|robot|novelty|bad news|bells|boing|cellos|zarvox|trinoids|whisper/.test(n)) s -= 80;
+    return s;
+  }
   function showError(message) { const e=$("vocab-error"); if(e){e.textContent=message;e.classList.remove("hidden");} }
   function clearError(){const e=$("vocab-error");if(e){e.textContent="";e.classList.add("hidden");}}
   function speak(text, lang) {
@@ -17,12 +28,20 @@
         const url = "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=" +
           encodeURIComponent(langCode) + "&q=" + encodeURIComponent(phrase);
         if (window.__windtpTtsAudio) { window.__windtpTtsAudio.pause(); window.__windtpTtsAudio = null; }
-        const audio = new Audio(url);
+        const audio = new Audio(url); if (slowMode) audio.playbackRate = 0.75;
         window.__windtpTtsAudio = audio;
-        audio.onerror = () => showError("Không tải được âm thanh. Hãy kiểm tra kết nối Internet rồi thử lại.");
+        audio.onerror = () => { localFallback(); };
         audio.play().catch(() => showError("Không phát được âm thanh. Hãy kiểm tra kết nối Internet và âm lượng media."));
       } catch { showError("Không thể phát âm thanh trong trình duyệt này."); }
     };
+    function localFallback() {
+      const sy = window.speechSynthesis, Ut = window.SpeechSynthesisUtterance;
+      const vs = sy && sy.getVoices ? sy.getVoices().filter(v => (v.lang || "").toLowerCase().split(/[-_]/)[0] === langCode) : [];
+      if (!sy || !Ut || !vs.length) { showError("Không tải được âm thanh. Hãy kiểm tra kết nối Internet rồi thử lại."); return; }
+      vs.sort((x, y) => voiceScore(y) - voiceScore(x));
+      const u = new Ut(phrase); u.lang = targetLang; u.voice = vs[0]; u.rate = slowMode ? 0.6 : 0.78;
+      sy.cancel(); sy.speak(u);
+    }
     const synth = window.speechSynthesis || window.webkitSpeechSynthesis;
     const Utterance = window.SpeechSynthesisUtterance || window.webkitSpeechSynthesisUtterance;
     if (!synth || !Utterance) { remoteSpeak(); return; }
@@ -33,12 +52,16 @@
         if (completed) return;
         const voices = synth.getVoices ? synth.getVoices() : [];
         const wanted = targetLang.toLowerCase(), prefix = wanted.split("-")[0];
-        const voice = voices.find(v => (v.lang || "").toLowerCase() === wanted) ||
-          voices.find(v => (v.lang || "").toLowerCase().split("-")[0] === prefix);
-        if (!voice) { completed = true; remoteSpeak(); return; }
+        const norm = (v) => (v.lang || "").toLowerCase().replace("_", "-");
+        const exact = voices.filter(v => norm(v) === wanted), loose = voices.filter(v => norm(v).split("-")[0] === prefix);
+        const pool = (exact.length ? exact : loose).slice().sort((a, b) => voiceScore(b) - voiceScore(a));
+        const voice = pool[0];
+        // Ngôn ngữ ngoài Việt/Anh: nếu máy chỉ có giọng chất lượng thấp thì dùng giọng trực tuyến rõ hơn.
+        const needsRemote = prefix !== "vi" && prefix !== "en" && (!voice || voiceScore(voice) < 30);
+        if (!voice || needsRemote) { completed = true; remoteSpeak(); return; }
         completed = true;
         const u = new Utterance(phrase);
-        u.lang = targetLang; u.voice = voice; u.rate = 0.88; u.pitch = 1;
+        u.lang = targetLang; u.voice = voice; u.rate = slowMode ? 0.6 : (prefix === "vi" || prefix === "en" ? 0.88 : 0.78); u.pitch = 1;
         u.onerror = () => remoteSpeak();
         synth.speak(u);
         if (typeof synth.resume === "function") synth.resume();
@@ -75,6 +98,7 @@
     if(t.id==="vocab-clear"){const input=$("vocab-input"),out=$("vocab-result"),wrap=$("vocab-result-wrap");if(input)input.value="";if(out)out.textContent="";if(wrap)wrap.classList.add("hidden");lastTranslation="";clearError();return;}
     if(t.id==="vocab-speak-result"){const to=$("vocab-to");speak(lastTranslation,to?to.value:"en");}
   });
+  document.addEventListener("click", (ev) => { const t=ev.target.closest("#vocab-slow"); if(t){slowMode=!slowMode;t.setAttribute("aria-pressed",String(slowMode));t.textContent=slowMode?"🐢 Đọc chậm: Bật":"🐢 Đọc chậm: Tắt";} });
   document.addEventListener("click", (ev) => { const t=ev.target.closest("#vocab-speak-source"); if(t){const input=$("vocab-input"),from=$("vocab-from");speak(input?.value.trim(),from?.value||"vi");} });
   document.addEventListener("keydown", ev => { if(ev.target?.id==="vocab-input" && ev.key==="Enter" && (ev.ctrlKey||ev.metaKey)){ev.preventDefault();translate();} });
 })();

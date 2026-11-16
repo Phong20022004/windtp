@@ -1219,3 +1219,17 @@ test('kho nội dung dùng Workers KV khi không có R2', async () => {
   app.env.CONTENT_KV.get = async () => null;
   assert.equal((await app.call('GET', '/content/vocab/en', { uid: 'adm', admin: true })).status, 404);
 });
+
+test('Đài tệ (TWD): nạp Xu theo tỷ giá, tối thiểu, và giá sản phẩm tự quy đổi từ VND', async () => {
+  const app = await makeApp();
+  const low = await app.call('POST', '/orders', { uid: 'tw', body: { kind: 'topup', currency: 'TWD', amount: 10 } });
+  assert.equal(low.status, 400);
+  const o = await app.call('POST', '/orders', { uid: 'tw', body: { kind: 'topup', currency: 'TWD', amount: 100 } });
+  assert.equal(o.status, 200);
+  assert.equal((await app.call('POST', `/admin/orders/${o.json.id}/approve`, { uid: 'boss', admin: true })).status, 200);
+  assert.equal(app.balance('tw').balance, 100 * 800);
+  const { priceOrder } = await import('../src/shop.js');
+  const store = { customProducts: [{ id: 'cp-9', custom: true, name: 'Bút', desc: '', price: { VND: 40000, KRW: 2100, JPY: 250 }, rewardXu: 0, rewardChips: 0 }] };
+  assert.equal(priceOrder([{ id: 'cp-9', qty: 2 }], 'TWD', store).total, 100);
+  assert.equal(priceOrder([{ id: 'cr-en-1m', qty: 1 }], 'TWD', {}).total, 125);
+});

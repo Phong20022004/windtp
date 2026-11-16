@@ -23,6 +23,7 @@
     PRODUCTS.length = 0;
     window.__builtinProducts.forEach((p) => { if (hiddenProd(p.id)) return; const ed = (state.productEdits || {})[p.id]; PRODUCTS.push(ed ? Object.assign({}, p, ed, { price: Object.assign({}, p.price, ed.price || {}) }) : p); });
     (state.customProducts || []).slice().reverse().forEach((p) => PRODUCTS.unshift(p));
+    PRODUCTS.forEach(ensureTwd);
   }
   // Quyền admin chỉ đến từ custom claim `admin` trong ID token do Firebase ký; không đọc từ localStorage nên không thể tự gán bằng DevTools.
   function isAdmin() { return !!(state.account && window.WindtpAuth.isAdmin()); }
@@ -38,9 +39,7 @@
     const watch = new MutationObserver(() => { if (!d.isConnected) { if (mo) mo.disconnect(); if (mq) { if (mq.removeEventListener) mq.removeEventListener("change", apply); else if (mq.removeListener) mq.removeListener(apply); } watch.disconnect(); } });
     watch.observe(document.body, { childList: true });
   }
-  function lgBg() {
-    return `<svg class="lg-bg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><path d="M-40 520 C120 380 300 420 420 520 C300 470 180 500 120 640 Z" fill="#cfe3f5" opacity=".6"/><path d="M-60 600 C100 500 260 540 360 640 C240 600 140 620 80 720 Z" fill="#f8d9b8" opacity=".55"/><path d="M1040 120 C900 40 760 80 700 200 C780 130 900 130 960 240 Z" fill="#cfe3f5" opacity=".6"/><path d="M1060 260 C940 200 820 240 780 340 C860 290 940 300 990 380 Z" fill="#f8d9b8" opacity=".5"/><path d="M1040 520 C920 460 800 500 760 600 C840 540 940 560 1000 660 Z" fill="#cfe3f5" opacity=".5"/></svg>`;
-  }
+  function lgBg() { return ""; }
   function publicAccount(acct) { return { uid: acct.uid, email: acct.email, name: acct.name, admin: acct.admin === true }; }
   function startSession_(acct) {
     const nm = String(acct.name || String(acct.email).split("@")[0]).slice(0, 30), keep = {};

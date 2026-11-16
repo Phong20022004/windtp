@@ -21,6 +21,10 @@ export type AuthErrorCode =
   | "popup-closed"
   | "popup-blocked"
   | "recent-login"
+  | "provider-disabled"
+  | "domain-unauthorized"
+  | "account-exists"
+  | "storage-unsupported"
   | "unknown";
 
 /** Lỗi xác thực đã chuẩn hóa; `message` là tiếng Việt, hiển thị thẳng cho người dùng. */
@@ -47,6 +51,10 @@ export const AUTH_MESSAGES: Readonly<Record<AuthErrorCode, string>> = {
   "popup-closed": "Bạn đã đóng cửa sổ đăng nhập Google",
   "popup-blocked": "Trình duyệt đã chặn cửa sổ đăng nhập Google, hãy cho phép cửa sổ bật lên",
   "recent-login": "Cần đăng nhập lại để xác nhận thao tác này",
+  "provider-disabled": "Cách đăng nhập này chưa được bật. Quản trị viên cần bật trong Firebase (Authentication, Sign-in method)",
+  "domain-unauthorized": "Trang web này chưa được thêm vào danh sách tên miền cho phép đăng nhập (Firebase, Authorized domains)",
+  "account-exists": "Email này đã đăng ký bằng cách khác, hãy đăng nhập bằng email và mật khẩu",
+  "storage-unsupported": "Trình duyệt đang chặn lưu trữ nên không đăng nhập được, hãy tắt chế độ riêng tư hoặc cho phép cookie",
   unknown: "Có lỗi xảy ra, vui lòng thử lại",
 };
 

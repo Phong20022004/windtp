@@ -46,7 +46,7 @@
       toast("Nhớ chọn quyền xem bài viết là Công khai (Public).");
     },
     "fb-copy-caption": () => {
-      const t = "Mình đang học ngoại ngữ cùng WINDTP Super-App 🚀 Học từ vựng, thi thử, nhận thưởng mỗi ngày! #WINDTP #HocNgoaiNgu";
+      const t = "Mình đang học ngoại ngữ cùng WINDTP 🚀 Học từ vựng, thi thử, nhận thưởng mỗi ngày! #WINDTP #HocNgoaiNgu";
       try { navigator.clipboard.writeText(t).then(() => toast("Đã sao chép nội dung gợi ý"), () => window.prompt("Sao chép nội dung:", t)); } catch (e) { window.prompt("Sao chép nội dung:", t); }
     },
     "fb-submit": () => {

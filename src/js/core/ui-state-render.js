@@ -173,7 +173,7 @@
   <div class="glass-card rounded-2xl p-2 flex flex-wrap gap-2 items-center justify-between">
     <span class="text-[11px] font-extrabold text-slate-600 px-2">Quốc gia / tiền tệ</span>
     <div class="flex gap-2 flex-wrap">
-      ${[["VND","🇻🇳 Việt Nam"],["KRW","🇰🇷 Hàn Quốc"],["JPY","🇯🇵 Nhật Bản"]].map(([cur,label]) => `<button data-action="choose-store-currency" data-currency="${cur}" class="px-3 py-1.5 rounded-xl text-[11px] font-bold ${state.settings.currency === cur ? "bg-amber-500 text-white keep-white" : "bg-slate-100 text-slate-600"}">${label}</button>`).join("")}
+      ${[["VND","🇻🇳 Việt Nam"],["KRW","🇰🇷 Hàn Quốc"],["JPY","🇯🇵 Nhật Bản"],["TWD","🇹🇼 Đài Loan"]].map(([cur,label]) => `<button data-action="choose-store-currency" data-currency="${cur}" class="px-3 py-1.5 rounded-xl text-[11px] font-bold ${state.settings.currency === cur ? "bg-amber-500 text-white keep-white" : "bg-slate-100 text-slate-600"}">${label}</button>`).join("")}
     </div>
   </div>`}
   ${stallHeader()}
@@ -419,14 +419,16 @@
   }
   function lbList(kind) {
     const FN = ["Nguyễn","Trần","Lê","Phạm","Hoàng","Vũ","Đặng","Bùi","Đỗ","Ngô"], GN = ["An","Bình","Cường","Dũng","Hà","Hiếu","Linh","Mai","Nam","Phúc","Quân","Sơn","Trang","Uyên","Vy","Yến","Long","Hoa","Tuấn","Lan"];
-    let s = kind === "coin" ? 13 : 7; const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+    let s = kind === "coin" ? 13 : kind === "realm" ? 29 : 7; const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
     const top = kind === "coin" ? 6e6 : 18e5, R = CULTIVATION_RANKS.length, list = [];
+    const realmOfDays = (d) => { let r = 0; CULTIVATION_RANKS.forEach((x, j) => { if (d >= x.days) r = j; }); return r; };
     for (let i = 0; i < 150; i++) {
       const g = rnd() < .5 ? "nam" : "nu";
       list.push({ name: FN[Math.floor(rnd() * 10)] + (g === "nu" ? " Thị " : " Văn ") + GN[Math.floor(rnd() * 20)], avatarId: "default", gender: g, age: 14 + Math.floor(rnd() * 40),
         realm: Math.min(R - 1, Math.floor((150 - i) / 150 * R * (0.6 + rnd() * 0.6))), val: Math.round(top * Math.pow(.955, i) * (0.9 + rnd() * 0.2)) });
+      if (kind === "realm") { const days = Math.max(1, Math.round(420 * Math.pow(.965, i) * (0.9 + rnd() * 0.2))); list[list.length - 1].val = days; list[list.length - 1].realm = realmOfDays(days); }
     }
-    const me = { me: 1, name: state.userName || "Bạn", avatarId: state.avatarId, frameId: myFrameId(), gender: state.settings.gender, age: ageFromBirth(state.settings.birth), realm: cultivationIndex(), val: Number(kind === "coin" ? state.balance : state.chips) || 0 };
+    const me = { me: 1, name: state.userName || "Bạn", avatarId: state.avatarId, frameId: myFrameId(), gender: state.settings.gender, age: ageFromBirth(state.settings.birth), realm: cultivationIndex(), val: Number(kind === "realm" ? (state.loginStreak || 1) : kind === "coin" ? state.balance : state.chips) || 0 };
     list.push(me); list.sort((a, b) => b.val - a.val);
     return { list, me, rank: list.indexOf(me) + 1 };
   }
@@ -434,16 +436,16 @@
     const gs = p.gender === "nam" ? "♂" : p.gender === "nu" ? "♀" : p.gender === "khac" ? "⚧" : "";
     const pfp = p.me ? renderPfp(p.name, p.avatarId, p.frameId, 40, {}) : renderPfp(p.name, p.avatarId, "r-" + p.realm, 40, { realm: p.realm });
     const hl = p.me ? "background:linear-gradient(90deg,#fef3c7,#fde68a);box-shadow:0 0 0 2px #f59e0b,0 0 14px rgba(245,158,11,.7);color:#78350f" : "";
-    return `<div class="lb-row flex items-center gap-2 p-2 rounded-xl ${i < 3 ? "lb-r" + (i + 1) : ""} ${p.me ? "lb-me" : "bg-slate-50"}" style="--i:${Math.min(i, 30)};${hl}"><span class="w-7 text-center font-black text-sm shrink-0">${["🥇","🥈","🥉"][i] || (i + 1)}</span><div class="shrink-0">${pfp}</div><div class="flex-1 min-w-0"><p class="font-bold text-xs truncate">${esc(p.name)}${p.me ? " (Bạn)" : ""}</p><p class="text-[10px] opacity-70 truncate">${CULTIVATION_RANKS[p.realm].name}${gs ? " · " + gs : ""}${p.age >= 0 ? " · " + p.age + " tuổi" : ""}</p></div><b class="text-xs whitespace-nowrap">${fmt(p.val)} ${kind === "coin" ? "Xu" : "chip"}</b></div>`;
+    return `<div class="lb-row flex items-center gap-2 p-2 rounded-xl ${i < 3 ? "lb-r" + (i + 1) : ""} ${p.me ? "lb-me" : "bg-slate-50"}" style="--i:${Math.min(i, 30)};${hl}"><span class="w-7 text-center font-black text-sm shrink-0">${["🥇","🥈","🥉"][i] || (i + 1)}</span><div class="shrink-0">${pfp}</div><div class="flex-1 min-w-0"><p class="font-bold text-xs truncate">${esc(p.name)}${p.me ? " (Bạn)" : ""}</p><p class="text-[10px] opacity-70 truncate">${CULTIVATION_RANKS[p.realm].name}${gs ? " · " + gs : ""}${p.age >= 0 ? " · " + p.age + " tuổi" : ""}</p></div><b class="text-xs whitespace-nowrap">${fmt(p.val)} ${kind === "coin" ? "Xu" : kind === "realm" ? "ngày" : "chip"}</b></div>`;
   }
   function lbModal() {
-    const k = ui.lbTab === "coin" ? "coin" : "chips", d = lbList(k), TOPN = 50, top = d.list.slice(0, TOPN), inTop = d.rank <= TOPN;
+    const k = ui.lbTab === "coin" ? "coin" : ui.lbTab === "realm" ? "realm" : "chips", d = lbList(k), TOPN = 50, top = d.list.slice(0, TOPN), inTop = d.rank <= TOPN;
     const tab = (id, l) => `<button data-action="lb-tab" data-k="${id}" class="flex-1 px-3 py-2 rounded-xl text-xs font-bold ${k === id ? "bg-amber-500 text-white keep-white" : "bg-slate-100 text-slate-600"}">${l}</button>`;
-    const unit = k === "coin" ? "WIND Coin" : "Chip game";
+    const unit = k === "coin" ? "WIND Coin" : k === "realm" ? "Cảnh giới" : "Chip game";
     const rk = inTop ? "Xếp hạng của bạn: #" + d.rank + " · đang sáng trong bảng" : d.rank <= 100 ? "Xếp hạng của bạn: #" + d.rank + " (hạng 51–100)" : "Vô hạng (ngoài top 100)";
     const badge = d.rank <= 100 ? "#" + d.rank : "Vô hạng";
     const meRow = lbRow(d.me, d.rank - 1, k).replace(/<span class="w-7[^>]*>.*?<\/span>/, '<span class="min-w-[2.25rem] text-center font-black ' + (d.rank <= 100 ? "text-sm" : "text-[9px] leading-tight") + ' shrink-0">' + badge + "</span>").replace(/ lb-r[123] /, " ");
-    return `${modalHead("🏆 Top " + TOPN + " " + unit)}<div class="p-4 space-y-3"><div class="flex gap-2">${tab("chips", "🎰 Chip game")}${tab("coin", "🪙 WIND Coin")}</div><div class="lb-list space-y-1.5" style="max-height:52vh;overflow-y:auto;overscroll-behavior:contain;padding:2px">${top.map((p, i) => lbRow(p, i, k)).join("")}</div><div class="lb-mine rounded-2xl border border-slate-200 p-3 space-y-1.5"><p class="text-[11px] font-extrabold text-slate-500">Thông tin của bạn</p>${meRow}</div><p class="text-[10px] text-slate-400 text-center">Hiển thị top ${TOPN}. Thông tin của bạn luôn hiện thứ hạng (#1–#100), ngoài top 100 là "Vô hạng". Bảng cập nhật theo số dư hiện tại của bạn.</p></div>`;
+    return `${modalHead("🏆 Top " + TOPN + " " + unit)}<div class="p-4 space-y-3"><div class="flex gap-2">${tab("chips", "🎰 Chip game")}${tab("coin", "🪙 WIND Coin")}${tab("realm", "🌌 Cảnh giới")}</div><div class="lb-list space-y-1.5" style="max-height:52vh;overflow-y:auto;overscroll-behavior:contain;padding:2px">${top.map((p, i) => lbRow(p, i, k)).join("")}</div><div class="lb-mine rounded-2xl border border-slate-200 p-3 space-y-1.5"><p class="text-[11px] font-extrabold text-slate-500">Thông tin của bạn</p>${meRow}</div><p class="text-[10px] text-slate-400 text-center">Hiển thị top ${TOPN}. Thông tin của bạn luôn hiện thứ hạng (#1–#100), ngoài top 100 là "Vô hạng". ${k === "realm" ? "Xếp theo chuỗi ngày đăng nhập liên tiếp; chuỗi càng dài, cảnh giới càng cao." : "Bảng cập nhật theo số dư hiện tại của bạn."}</p></div>`;
   }
   function lbButton(k) { return `<button data-action="open-lb" data-k="${k}" class="w-full mt-2 px-3 py-2.5 rounded-xl text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 lb-btn"><span class="lb-tr">🏆</span> Bảng xếp hạng Top 50 ${k === "coin" ? "WIND Coin" : "Chip game"}</button>`; }
   
@@ -817,11 +819,11 @@ function renderWallet() {
   var FB_PAGE = "https://www.facebook.com/profile.php?id=61590914339438";
   function payCode(k) { if (!ui[k]) ui[k] = newOrderCode(k === "topupCode" ? ((ui.topup && (ui.topup.src === "game" || ui.topup.src === "chip")) ? "game" : "topup") : "store"); return ui[k]; }
   var TOPUP_AMOUNTS = [5e4, 1e5, 2e5, 5e5, 1e6];
-  var TOPUP_RATE = { VND: 1, KRW: 19, JPY: 160 };
-  var MINPAY = { VND: 30000, KRW: 2000, JPY: 200 };
-  var BIG_THR = { VND: 1000000, KRW: 52600, JPY: 6250 };
+  var TOPUP_RATE = { VND: 1, KRW: 19, JPY: 160, TWD: 800 };
+  var MINPAY = { VND: 30000, KRW: 2000, JPY: 200, TWD: 40 };
+  var BIG_THR = { VND: 1000000, KRW: 52600, JPY: 6250, TWD: 1250 };
   var CHIP_LIM = { minorDaily: 1e5, adultDaily: 5e6 }; // hạn mức đổi Xu → chip mỗi ngày (một nguồn duy nhất, game đọc qua WINDTP.chipLimit)
-  var TOPUP_PRESETS = { VND: [3e4, 5e4, 1e5, 2e5, 5e5, 1e6], KRW: [2e3, 5e3, 1e4, 2e4, 5e4, 1e5], JPY: [200, 500, 1e3, 2e3, 5e3, 1e4] };
+  var TOPUP_PRESETS = { VND: [3e4, 5e4, 1e5, 2e5, 5e5, 1e6], KRW: [2e3, 5e3, 1e4, 2e4, 5e4, 1e5], JPY: [200, 500, 1e3, 2e3, 5e3, 1e4], TWD: [40, 80, 150, 300, 800, 1500] };
   function topupTitle() { return topupState().src === "chip" ? "🎰 Mua chip trong game" : topupState().src === "game" ? "🪙 Mua xu trong game" : "🪙 Nạp WIND Coin"; }
   function topupXu(cur, amt) { return Math.round(Number(amt) * TOPUP_RATE[cur]); }
   /* v41: đổi tiền tệ giữ nguyên mức đã chọn (cùng bậc) hoặc quy đổi theo giá trị với số nhập tay */

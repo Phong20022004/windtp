@@ -15,7 +15,8 @@ export const DOC_PRICE = 100000;
 
 const krw = (vnd) => Math.max(100, Math.round(vnd / 19 / 100) * 100);
 const jpy = (vnd) => Math.max(10, Math.round(vnd / 160 / 10) * 10);
-const prices = (vnd) => ({ VND: vnd, KRW: krw(vnd), JPY: jpy(vnd) });
+const twd = (vnd) => Math.max(1, Math.round(vnd / 800));
+const prices = (vnd) => ({ VND: vnd, KRW: krw(vnd), JPY: jpy(vnd), TWD: twd(vnd) });
 
 /** Sản phẩm có sẵn theo mã: cr-<ngôn ngữ>-<gói> hoặc docm-<ngôn ngữ>; null nếu không phải. */
 export function builtinProduct(id) {
@@ -48,7 +49,9 @@ export function priceOrder(lines, currency, store) {
   const out = { total: 0, xu: 0, chips: 0, months: 0, grants: [], docs: false };
   for (const l of lines) {
     const p = resolveProduct(l.id, store);
-    const unit = p && p.price ? p.price[currency] : undefined;
+    let unit = p && p.price ? p.price[currency] : undefined;
+    // Sản phẩm admin tạo trước khi có Đài tệ chưa có giá TWD: quy đổi từ VND giống trình duyệt.
+    if (unit === undefined && currency === 'TWD' && p && p.price && Number.isInteger(p.price.VND)) unit = twd(p.price.VND);
     if (!p || !Number.isInteger(unit) || unit < 1) return null;
     out.total += unit * l.qty;
     out.xu += p.rewardXu * l.qty;

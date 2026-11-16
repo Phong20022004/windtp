@@ -305,7 +305,7 @@
           <option value="vi" selected>🇻🇳 Tiếng Việt</option><option value="en">🇺🇸 Tiếng Anh</option><option value="ko">🇰🇷 Tiếng Hàn</option><option value="ja">🇯🇵 Tiếng Nhật</option><option value="zh-CN">🇨🇳 Tiếng Trung</option><option value="fr">🇫🇷 Tiếng Pháp</option><option value="de">🇩🇪 Tiếng Đức</option><option value="es">🇪🇸 Tiếng Tây Ban Nha</option>
         </select>
       </label>
-      <button type="button" id="vocab-swap" class="rounded-xl border border-sky-200 bg-sky-50 text-sky-700 px-3 py-2.5 font-bold hover:bg-sky-100" aria-label="Đổi chiều dịch">⇄</button>
+      <button type="button" id="vocab-swap" class="rounded-xl border border-sky-300 bg-sky-100 text-sky-800 px-4 py-2.5 text-sm font-extrabold hover:bg-sky-200" aria-label="Đổi ngôn ngữ gốc và ngôn ngữ đích">⇄ Đổi chiều</button>
       <label class="block text-xs font-bold text-slate-600">Ngôn ngữ đích
         <select id="vocab-to" class="mt-1 w-full rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-300">
           <option value="vi">🇻🇳 Tiếng Việt</option><option value="en" selected>🇺🇸 Tiếng Anh</option><option value="ko">🇰🇷 Tiếng Hàn</option><option value="ja">🇯🇵 Tiếng Nhật</option><option value="zh-CN">🇨🇳 Tiếng Trung</option><option value="fr">🇫🇷 Tiếng Pháp</option><option value="de">🇩🇪 Tiếng Đức</option><option value="es">🇪🇸 Tiếng Tây Ban Nha</option>
@@ -318,6 +318,7 @@
     <div class="flex flex-wrap gap-2">
       <button type="button" id="vocab-translate" class="flex-1 min-w-[150px] rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm hover:brightness-105">🔎 Dịch ngay</button>
       <button type="button" id="vocab-speak-source" class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-sm font-bold text-sky-700">🔊 Nghe từ gốc</button>
+      <button type="button" id="vocab-slow" aria-pressed="false" class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-bold text-amber-800">🐢 Đọc chậm: Tắt</button>
       <button type="button" id="vocab-clear" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600">Xóa</button>
     </div>
     <div id="vocab-result-wrap" class="hidden rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 space-y-2">

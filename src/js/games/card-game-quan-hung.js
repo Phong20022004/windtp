@@ -69,7 +69,7 @@
     "birth-edit": () => { ui.birthEdit = 1; ui.birthPending = ""; refreshModal(); },
     "birth-edit-ok": () => { ui.birthEdit = 2; refreshModal(); },
     "birth-edit-cancel": () => { ui.birthEdit = 0; ui.birthPending = ""; refreshModal(); },
-    "open-lb": (el) => { ui.lbTab = el.dataset.k === "coin" ? "coin" : "chips"; openModal(lbModal); },
+    "open-lb": (el) => { ui.lbTab = el.dataset.k === "coin" ? "coin" : el.dataset.k === "realm" ? "realm" : "chips"; openModal(lbModal); },
     "lb-tab": (el) => { ui.lbTab = el.dataset.k; refreshModal(); },
     "join-room": (el) => {
       const p = String(el.dataset.room || "").split("|");

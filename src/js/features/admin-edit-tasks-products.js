@@ -7,7 +7,7 @@
       <div><label class="font-bold text-slate-700" for="et-desc">Mô tả</label><textarea id="et-desc" rows="2" maxlength="200" class="${field} mt-1 resize-none">${esc(t.desc || "")}</textarea></div>
       <p class="font-bold text-slate-700">Mức thưởng (để 0 nếu không dùng)</p>
       <div class="grid grid-cols-3 gap-2"><div><label class="text-[10px] text-slate-500" for="et-xu">WIND Coin</label><input id="et-xu" inputmode="numeric" value="${t.xu || 0}" class="${field}"></div><div><label class="text-[10px] text-slate-500" for="et-chip">Chip</label><input id="et-chip" inputmode="numeric" value="${t.chips || 0}" class="${field}"></div><div><label class="text-[10px] text-slate-500" for="et-money">Tiền</label><input id="et-money" inputmode="numeric" value="${t.money || 0}" class="${field}"></div></div>
-      <select id="et-cur" class="${field}">${["VND", "KRW", "JPY"].map((c) => `<option ${c === cur ? "selected" : ""}>${c}</option>`).join("")}</select>
+      <select id="et-cur" class="${field}">${["VND", "KRW", "JPY", "TWD"].map((c) => `<option ${c === cur ? "selected" : ""}>${c}</option>`).join("")}</select>
       <p class="text-[11px] text-slate-500">Thay đổi áp dụng cho các lần nhận thưởng sau. Người đã nhận trước đó không bị ảnh hưởng.</p>
       <button data-action="task-edit-save" class="w-full ${btnPrimary}">Lưu thay đổi</button></div>`;
   }

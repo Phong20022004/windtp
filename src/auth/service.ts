@@ -52,6 +52,8 @@ async function guarded<T>(task: () => Promise<T>): Promise<T> {
     return await task();
   } catch (error) {
     if (error instanceof AuthFailure) throw error;
+    // Lỗi sau khi Firebase đã đăng nhập (ví dụ máy chủ ví từ chối): ghi ra console để chẩn đoán.
+    if (typeof console !== "undefined") console.warn("[WINDTP] Lỗi sau đăng nhập:", error);
     throw new AuthFailure("unknown");
   }
 }

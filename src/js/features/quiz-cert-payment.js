@@ -3,7 +3,7 @@
     return `<span class="fbc"><small>Liên hệ</small><span class="flex gap-2 items-center"><button data-action="open-fb" class="fbc-btn">Facebook WINDTP</button><button data-action="copy-acc" data-text="${FB_PAGE}" class="px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-800 text-[11px] font-bold">Sao chép link</button></span></span>`;
   }
   function curChips(cur, kind) {
-    return `<div class="grid grid-cols-3 gap-2">${["VND", "KRW", "JPY"].map((c) => `<button data-action="pay-cur" data-kind="${kind}" data-cur="${c}" class="py-2 rounded-xl border text-xs font-bold ${c === cur ? "border-sky-500 bg-sky-50 text-sky-800" : "border-slate-200 text-slate-700"}">${CURRENCIES[c].flag} ${c}</button>`).join("")}</div>`;
+    return `<div class="grid grid-cols-4 gap-2">${["VND", "KRW", "JPY", "TWD"].map((c) => `<button data-action="pay-cur" data-kind="${kind}" data-cur="${c}" class="py-2 rounded-xl border text-xs font-bold ${c === cur ? "border-sky-500 bg-sky-50 text-sky-800" : "border-slate-200 text-slate-700"}">${CURRENCIES[c].flag} ${c}</button>`).join("")}</div>`;
   }
   function bankBox(cur, code) {
     cur = cur || state.settings.currency;
@@ -13,7 +13,7 @@
       ? `<p class="text-xs text-slate-700">Ngân hàng: <b>${acc.bank}</b></p>
       <p class="text-xs text-slate-700 flex items-center gap-2 flex-wrap">Số tài khoản: <b class="text-sm tracking-wide">${acc.num}</b>${cp(acc.num)}</p>
       <p class="text-xs text-slate-700">Chủ tài khoản: <b>LE THANH PHONG</b></p>`
-      : `<p class="text-xs text-slate-700">Tài khoản nhận tiền tại Nhật Bản: <b>sẽ được cập nhật sau</b>.</p>`;
+      : `<p class="text-xs text-slate-700">Tài khoản nhận tiền tại ${cur === "TWD" ? "Đài Loan" : "Nhật Bản"}: <b>sẽ được cập nhật sau</b>.</p>`;
     const memo = code ? `<p class="text-xs text-slate-700 flex items-center gap-2 flex-wrap">Nội dung chuyển khoản: <b class="text-sm tracking-wide">${code}</b>${cp(code)}</p>` : "";
     return `<div class="pay-box space-y-1.5">
       <p class="text-xs font-extrabold text-sky-900">🏦 Thông tin chuyển khoản · ${CURRENCIES[cur].flag} ${CURRENCIES[cur].name}</p>
@@ -225,7 +225,7 @@
     </div>
     ${tog("push", s.push, "Hi\u1EC7n ch\u1EA5m th\xF4ng b\xE1o")}
     <div><label class="font-bold text-slate-700" for="set-cur">\u0110\u01A1n v\u1ECB ti\u1EC1n \u1EDF WIND Store</label>
-      <select id="set-cur" data-change="currency" class="${field} mt-1"><option value="VND" ${s.currency === "VND" ? "selected" : ""}>\u{1F1FB}\u{1F1F3} \u20AB VND</option><option value="KRW" ${s.currency === "KRW" ? "selected" : ""}>\u{1F1F0}\u{1F1F7} \u20A9 Won</option><option value="JPY" ${s.currency === "JPY" ? "selected" : ""}>\u{1F1EF}\u{1F1F5} \xA5 Y\xEAn</option></select></div>
+      <select id="set-cur" data-change="currency" class="${field} mt-1"><option value="VND" ${s.currency === "VND" ? "selected" : ""}>\u{1F1FB}\u{1F1F3} \u20AB VND</option><option value="KRW" ${s.currency === "KRW" ? "selected" : ""}>\u{1F1F0}\u{1F1F7} \u20A9 Won</option><option value="JPY" ${s.currency === "JPY" ? "selected" : ""}>\u{1F1EF}\u{1F1F5} \xA5 Y\xEAn</option><option value="TWD" ${s.currency === "TWD" ? "selected" : ""}>\u{1F1F9}\u{1F1FC} NT$ \u0110\u00E0i t\u1EC7</option></select></div>
     <div class="rounded-xl bg-slate-100 p-3 text-[11px] text-slate-600">D\u1EEF li\u1EC7u \u0111\u01B0\u1EE3c l\u01B0u ngay trong tr\xECnh duy\u1EC7t n\xE0y. M\u1EE9c \u0111\u1ED9 h\u1ECDc hi\u1EC7n t\u1EA1i: ${LEVELS[ui.match.level]}.</div>
     <button data-action="open-cultivation-system" class="w-full rounded-xl border border-violet-200 p-3 text-left font-extrabold text-violet-800" style="background:linear-gradient(100deg,#f5d0fe,#dbeafe,#ccfbf1)">🌌 Hệ thống cảnh giới tu tiên <span class="block text-[10px] font-normal mt-1">Xem tất cả cảnh giới, thời gian thăng cấp và quy định hạ cấp</span></button>
     ${typeof inviteCard === "function" ? inviteCard() : ""}
@@ -1414,7 +1414,7 @@
     },
     "topup-custom": (el) => { const v = Number(el.value); if (v > 0) { topupState().amt = Math.floor(v); refreshModal(); } },
     currency: (el) => {
-      if (el.value === "VND" || el.value === "KRW" || el.value === "JPY") state.settings.currency = el.value;
+      if (el.value === "VND" || el.value === "KRW" || el.value === "JPY" || el.value === "TWD") state.settings.currency = el.value;
       commit();
       refreshModal();
     },
