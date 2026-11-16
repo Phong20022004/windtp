@@ -21,16 +21,24 @@ export type AuthErrorCode =
   | "popup-closed"
   | "popup-blocked"
   | "recent-login"
+  | "unauthorized-domain"
+  | "provider-disabled"
+  | "browser-unsupported"
+  | "config-error"
   | "unknown";
 
 /** Lỗi xác thực đã chuẩn hóa; `message` là tiếng Việt, hiển thị thẳng cho người dùng. */
 export class AuthFailure extends Error {
   readonly code: AuthErrorCode;
 
-  constructor(code: AuthErrorCode) {
-    super(AUTH_MESSAGES[code]);
+  /** Mã lỗi gốc của nhà cung cấp (ví dụ "auth/internal-error"), chỉ để hiển thị kèm khi chưa nhận diện được lỗi. */
+  readonly detail: string;
+
+  constructor(code: AuthErrorCode, detail = "") {
+    super(code === "unknown" && detail ? `${AUTH_MESSAGES.unknown} (mã lỗi: ${detail})` : AUTH_MESSAGES[code]);
     this.name = "AuthFailure";
     this.code = code;
+    this.detail = detail;
   }
 }
 
@@ -47,6 +55,10 @@ export const AUTH_MESSAGES: Readonly<Record<AuthErrorCode, string>> = {
   "popup-closed": "Bạn đã đóng cửa sổ đăng nhập Google",
   "popup-blocked": "Trình duyệt đã chặn cửa sổ đăng nhập Google, hãy cho phép cửa sổ bật lên",
   "recent-login": "Cần đăng nhập lại để xác nhận thao tác này",
+  "unauthorized-domain": "Tên miền này chưa được phép đăng nhập Google. Chủ app cần thêm tên miền vào Firebase: Authentication → Settings → Authorized domains",
+  "provider-disabled": "Đăng nhập Google chưa được bật. Chủ app cần bật Google ở Firebase: Authentication → Sign-in method",
+  "browser-unsupported": "Trình duyệt này không hỗ trợ đăng nhập Google (thường gặp khi mở link trong Zalo, Facebook hoặc Messenger). Hãy mở link bằng Chrome hoặc Safari",
+  "config-error": "Cấu hình đăng nhập chưa đúng, vui lòng liên hệ quản trị viên",
   unknown: "Có lỗi xảy ra, vui lòng thử lại",
 };
 

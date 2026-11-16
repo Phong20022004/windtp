@@ -1,0 +1,13 @@
+/* Tra cứu từ vựng: nút đổi chiều nguồn ↔ đích dễ thấy, bấm được trên điện thoại */
+#wind-vocab-card .vt-swap{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;font-size:14px}
+#wind-vocab-card .vt-swap__i{font-size:18px;line-height:1;display:inline-block;transform:rotate(90deg);transition:transform .25s}
+#wind-vocab-card .vt-swap:active .vt-swap__i{transform:rotate(270deg)}
+@media (min-width:640px){
+  #wind-vocab-card .vt-swap{min-width:44px;padding-left:12px;padding-right:12px}
+  #wind-vocab-card .vt-swap__t{display:none}
+  #wind-vocab-card .vt-swap__i{transform:none}
+  #wind-vocab-card .vt-swap:active .vt-swap__i{transform:rotate(180deg)}
+}
+html.dark #wind-vocab-card .vt-swap{background:#0f172a;border-color:#334155;color:#7dd3fc}
+html.dark #wind-vocab-card #vocab-note{color:#7dd3fc}
+@media (prefers-reduced-motion:reduce){#wind-vocab-card .vt-swap__i{transition:none}}

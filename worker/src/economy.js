@@ -4,14 +4,15 @@ export const VN_OFFSET_MS = 7 * 3600 * 1000; // ngày tính theo giờ Việt Na
 export const LIFE_TS = 4102444800000;
 export const MONTH_MS = 30 * 86400000; // (xác nhận) 1 tháng Premium = 30 ngày
 
-export const TOPUP_RATE = { VND: 1, KRW: 19, JPY: 160 };
-export const MINPAY = { VND: 30000, KRW: 2000, JPY: 200 };
+export const TOPUP_RATE = { VND: 1, KRW: 19, JPY: 160, TWD: 800 };
+export const MINPAY = { VND: 30000, KRW: 2000, JPY: 200, TWD: 40 };
 export const TOPUP_PRESETS = {
   VND: [3e4, 5e4, 1e5, 2e5, 5e5, 1e6],
   KRW: [2e3, 5e3, 1e4, 2e4, 5e4, 1e5],
   JPY: [200, 500, 1e3, 2e3, 5e3, 1e4],
+  TWD: [40, 100, 200, 400, 1e3, 2e3],
 };
-export const MAX_TOPUP_UNITS = { VND: 2e7, KRW: 2e6, JPY: 2e5 };
+export const MAX_TOPUP_UNITS = { VND: 2e7, KRW: 2e6, JPY: 2e5, TWD: 4e4 };
 
 export const PLANS = {
   '1m': { months: 1, vnd: 100000, chips: 10000 },

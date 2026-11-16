@@ -30,7 +30,7 @@
         <div><label class="font-bold text-slate-700" for="pp-cat">Danh mục</label><select id="pp-cat" class="${field} mt-1">${Object.keys(STALLS).map((k) => `<optgroup label="Gian ${STALLS[k].no} · ${STALLS[k].name}">${STALL_SUBS[k].map((sb, i) => `<option value="${k}|${sb}" ${ui.shopCat === k && (ui.shopSub ? ui.shopSub === sb : i === 0) ? "selected" : ""}>${sb}</option>`).join("")}</optgroup>`).join("")}</select></div></div>
       <div><label class="font-bold text-slate-700" for="pp-desc">Thông tin / mô tả</label><textarea id="pp-desc" rows="3" maxlength="200" class="${field} mt-1 resize-none"></textarea></div>
       <div class="grid grid-cols-2 gap-2"><div><label class="font-bold text-slate-700" for="pp-xu">Thưởng WIND Coin khi mua</label><input id="pp-xu" inputmode="numeric" placeholder="0" class="${field} mt-1"></div><div><label class="font-bold text-slate-700" for="pp-chip">Thưởng chip khi mua</label><input id="pp-chip" inputmode="numeric" placeholder="0" class="${field} mt-1"></div></div>
-      <p class="text-[11px] text-slate-500">Giá KRW và JPY được quy đổi tự động. Sản phẩm lên cửa hàng ngay khi bấm Đăng.</p>
+      <p class="text-[11px] text-slate-500">Giá KRW, JPY và TWD được quy đổi tự động. Sản phẩm lên cửa hàng ngay khi bấm Đăng.</p>
       <button data-action="pp-submit" class="w-full ${btnPrimary}">Đăng lên cửa hàng</button></div>`;
   }
   function readImage(file, cb) {

@@ -26,6 +26,7 @@
   "src/js/features/lesson-writing.js",
   "src/js/features/alphabet-data.js",
   "src/js/features/alphabet.js",
+  "src/js/features/alphabet-fx.js",
   "src/js/features/alphabet-everest.js",
   "src/js/features/economy-api.js",
   "src/js/games/card-game-quan-hung.js"

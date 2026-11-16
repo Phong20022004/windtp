@@ -59,7 +59,7 @@ export interface DeviceList {
 
 export type OrderKind = "topup" | "plan" | "shop" | "fbshare" | "ctask";
 export type OrderStatus = "pending" | "approved" | "rejected";
-export type Currency = "VND" | "KRW" | "JPY";
+export type Currency = "VND" | "KRW" | "JPY" | "TWD";
 
 export interface OrderInput {
   kind: OrderKind;
@@ -283,7 +283,7 @@ export interface StoreProduct {
   custom: true;
   name: string;
   desc: string;
-  price: { VND: number; KRW: number; JPY: number };
+  price: { VND: number; KRW: number; JPY: number; TWD: number };
   cat: string;
   sub: string;
   emoji: string;

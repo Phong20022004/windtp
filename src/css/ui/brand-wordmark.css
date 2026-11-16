@@ -6,7 +6,7 @@
 .lg-word--sm .lg-w2{font-size:10.5px;letter-spacing:.62em;margin-right:-.62em;padding-top:2px}
 .lg-word--sm .lg-w2::before,.lg-word--sm .lg-w2::after{width:12px;height:1.5px}
 .lg-word--sm .lg-w2::before{left:-16px}
-.lg-word--sm .lg-w2::after{right:-4px}
+.lg-word--sm .lg-w2::after{left:calc(100% - .62em + 4px);right:auto}
 .lg-word--sm span{animation-name:wdGrad,wdWaveSm;filter:drop-shadow(0 2px 3px rgba(99,102,241,.3))}
 .lg-word--sm .lg-w2 span{-webkit-text-stroke:.4px rgba(99,102,241,.55)}
 @keyframes wdWaveSm{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}

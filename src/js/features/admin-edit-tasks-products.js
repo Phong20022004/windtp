@@ -7,7 +7,7 @@
       <div><label class="font-bold text-slate-700" for="et-desc">Mô tả</label><textarea id="et-desc" rows="2" maxlength="200" class="${field} mt-1 resize-none">${esc(t.desc || "")}</textarea></div>
       <p class="font-bold text-slate-700">Mức thưởng (để 0 nếu không dùng)</p>
       <div class="grid grid-cols-3 gap-2"><div><label class="text-[10px] text-slate-500" for="et-xu">WIND Coin</label><input id="et-xu" inputmode="numeric" value="${t.xu || 0}" class="${field}"></div><div><label class="text-[10px] text-slate-500" for="et-chip">Chip</label><input id="et-chip" inputmode="numeric" value="${t.chips || 0}" class="${field}"></div><div><label class="text-[10px] text-slate-500" for="et-money">Tiền</label><input id="et-money" inputmode="numeric" value="${t.money || 0}" class="${field}"></div></div>
-      <select id="et-cur" class="${field}">${["VND", "KRW", "JPY"].map((c) => `<option ${c === cur ? "selected" : ""}>${c}</option>`).join("")}</select>
+      <select id="et-cur" class="${field}">${["VND", "KRW", "JPY", "TWD"].map((c) => `<option ${c === cur ? "selected" : ""}>${c}</option>`).join("")}</select>
       <p class="text-[11px] text-slate-500">Thay đổi áp dụng cho các lần nhận thưởng sau. Người đã nhận trước đó không bị ảnh hưởng.</p>
       <button data-action="task-edit-save" class="w-full ${btnPrimary}">Lưu thay đổi</button></div>`;
   }
@@ -22,8 +22,8 @@
       <div><label class="font-bold text-slate-700" for="pe-name">Tên sản phẩm</label><input id="pe-name" maxlength="120" value="${esc(String(p.name || "").replace(/<[^>]*>/g, ""))}" class="${field} mt-1"></div>
       <div><label class="font-bold text-slate-700" for="pe-desc">Thông tin / mô tả</label><textarea id="pe-desc" rows="3" maxlength="300" class="${field} mt-1 resize-none">${esc(String(p.desc || "").replace(/<[^>]*>/g, ""))}</textarea></div>
       <p class="font-bold text-slate-700">Giá bán</p>
-      <div class="grid grid-cols-3 gap-2"><div><label class="text-[10px] text-slate-500" for="pe-vnd">VND</label><input id="pe-vnd" inputmode="numeric" value="${p.price.VND}" data-o="${p.price.VND}" class="${field}"></div><div><label class="text-[10px] text-slate-500" for="pe-krw">KRW</label><input id="pe-krw" inputmode="numeric" value="${p.price.KRW}" data-o="${p.price.KRW}" class="${field}"></div><div><label class="text-[10px] text-slate-500" for="pe-jpy">JPY</label><input id="pe-jpy" inputmode="numeric" value="${p.price.JPY}" data-o="${p.price.JPY}" class="${field}"></div></div>
-      <p class="text-[11px] text-slate-500">Chỉ đổi VND thì KRW và JPY tự quy đổi theo.</p>
+      <div class="grid grid-cols-4 gap-2"><div><label class="text-[10px] text-slate-500" for="pe-vnd">VND</label><input id="pe-vnd" inputmode="numeric" value="${p.price.VND}" data-o="${p.price.VND}" class="${field}"></div><div><label class="text-[10px] text-slate-500" for="pe-krw">KRW</label><input id="pe-krw" inputmode="numeric" value="${p.price.KRW}" data-o="${p.price.KRW}" class="${field}"></div><div><label class="text-[10px] text-slate-500" for="pe-jpy">JPY</label><input id="pe-jpy" inputmode="numeric" value="${p.price.JPY}" data-o="${p.price.JPY}" class="${field}"></div><div><label class="text-[10px] text-slate-500" for="pe-twd">TWD</label><input id="pe-twd" inputmode="numeric" value="${p.price.TWD || Math.max(5, Math.round(p.price.VND / 800 / 5) * 5)}" data-o="${p.price.TWD || Math.max(5, Math.round(p.price.VND / 800 / 5) * 5)}" class="${field}"></div></div>
+      <p class="text-[11px] text-slate-500">Chỉ đổi VND thì KRW, JPY và TWD tự quy đổi theo.</p>
       <div class="grid grid-cols-2 gap-2"><div><label class="font-bold text-slate-700" for="pe-xu">Thưởng WIND Coin khi mua</label><input id="pe-xu" inputmode="numeric" value="${p.rewardXu || 0}" class="${field} mt-1"></div><div><label class="font-bold text-slate-700" for="pe-chip">Thưởng chip khi mua</label><input id="pe-chip" inputmode="numeric" value="${p.rewardChips || 0}" class="${field} mt-1"></div></div>
       ${catSel}
       <button data-action="pp-edit-save" class="w-full ${btnPrimary}">Lưu thay đổi</button>
@@ -54,11 +54,12 @@
       const name = val("pe-name"); if (name.length < 3) { toast("Tên sản phẩm cần tối thiểu 3 ký tự"); return; }
       const vnd = num("pe-vnd"); if (!(vnd > 0)) { toast("Giá VND phải lớn hơn 0"); return; }
       const o = (k) => Number($("#" + k)?.dataset.o || 0);
-      let krw = num("pe-krw"), jpy = num("pe-jpy");
+      let krw = num("pe-krw"), jpy = num("pe-jpy"), twd = num("pe-twd");
       if (vnd !== o("pe-vnd") && krw === o("pe-krw")) krw = Math.max(100, Math.round(vnd / 19 / 100) * 100);
       if (vnd !== o("pe-vnd") && jpy === o("pe-jpy")) jpy = Math.max(10, Math.round(vnd / 160 / 10) * 10);
-      if (!(krw > 0) || !(jpy > 0)) { toast("Giá KRW và JPY phải lớn hơn 0"); return; }
-      const f = { name, desc: val("pe-desc") || p.desc, price: { VND: vnd, KRW: krw, JPY: jpy }, rewardXu: Math.max(0, Math.floor(Number(val("pe-xu")) || 0)), rewardChips: Math.max(0, Math.floor(Number(val("pe-chip")) || 0)) };
+      if (vnd !== o("pe-vnd") && twd === o("pe-twd")) twd = Math.max(5, Math.round(vnd / 800 / 5) * 5);
+      if (!(krw > 0) || !(jpy > 0) || !(twd > 0)) { toast("Giá KRW, JPY và TWD phải lớn hơn 0"); return; }
+      const f = { name, desc: val("pe-desc") || p.desc, price: { VND: vnd, KRW: krw, JPY: jpy, TWD: twd }, rewardXu: Math.max(0, Math.floor(Number(val("pe-xu")) || 0)), rewardChips: Math.max(0, Math.floor(Number(val("pe-chip")) || 0)) };
       if (ui.ppImgChanged && ui.ppImg) f.img = ui.ppImg;
       const cs = $("#pe-cat");
       if (p.custom) {

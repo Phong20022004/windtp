@@ -46,7 +46,7 @@
       toast("Nhớ chọn quyền xem bài viết là Công khai (Public).");
     },
     "fb-copy-caption": () => {
-      const t = "Mình đang học ngoại ngữ cùng WINDTP Super-App 🚀 Học từ vựng, thi thử, nhận thưởng mỗi ngày! #WINDTP #HocNgoaiNgu";
+      const t = "Mình đang học ngoại ngữ cùng WINDTP 🚀 Học từ vựng, thi thử, nhận thưởng mỗi ngày! #WINDTP #HocNgoaiNgu";
       try { navigator.clipboard.writeText(t).then(() => toast("Đã sao chép nội dung gợi ý"), () => window.prompt("Sao chép nội dung:", t)); } catch (e) { window.prompt("Sao chép nội dung:", t); }
     },
     "fb-submit": () => {
@@ -85,7 +85,7 @@
       if (!ui.ppImg) { toast("Hãy chọn ảnh sản phẩm từ máy"); return; }
       if (name.length < 3) { toast("Tên sản phẩm cần tối thiểu 3 ký tự"); return; }
       if (!(vnd > 0) || !STALLS[cat]) { toast("Hãy nhập giá hợp lệ và chọn gian hàng"); return; }
-      const p = { id: uid("px"), custom: true, name, desc: desc || "Sản phẩm mới của WINDTP", price: { VND: vnd, KRW: Math.max(100, Math.round(vnd / 19 / 100) * 100), JPY: Math.max(10, Math.round(vnd / 160 / 10) * 10) }, cat, sub, emoji: STALLS[cat].emoji, img: ui.ppImg, ts: Date.now(), rewardXu: Math.max(0, Math.floor(Number(val("pp-xu")) || 0)), rewardChips: Math.max(0, Math.floor(Number(val("pp-chip")) || 0)) };
+      const p = { id: uid("px"), custom: true, name, desc: desc || "Sản phẩm mới của WINDTP", price: { VND: vnd, KRW: Math.max(100, Math.round(vnd / 19 / 100) * 100), JPY: Math.max(10, Math.round(vnd / 160 / 10) * 10), TWD: Math.max(5, Math.round(vnd / 800 / 5) * 5) }, cat, sub, emoji: STALLS[cat].emoji, img: ui.ppImg, ts: Date.now(), rewardXu: Math.max(0, Math.floor(Number(val("pp-xu")) || 0)), rewardChips: Math.max(0, Math.floor(Number(val("pp-chip")) || 0)) };
       state.customProducts.unshift(p);
       syncCustomProducts();
       ui.shopCat = cat; ui.shopSub = sub; ui.shopQuery = "";

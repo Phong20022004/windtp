@@ -15,7 +15,8 @@ export const DOC_PRICE = 100000;
 
 const krw = (vnd) => Math.max(100, Math.round(vnd / 19 / 100) * 100);
 const jpy = (vnd) => Math.max(10, Math.round(vnd / 160 / 10) * 10);
-const prices = (vnd) => ({ VND: vnd, KRW: krw(vnd), JPY: jpy(vnd) });
+const twd = (vnd) => Math.max(5, Math.round(vnd / 800 / 5) * 5);
+const prices = (vnd) => ({ VND: vnd, KRW: krw(vnd), JPY: jpy(vnd), TWD: twd(vnd) });
 
 /** Sản phẩm có sẵn theo mã: cr-<ngôn ngữ>-<gói> hoặc docm-<ngôn ngữ>; null nếu không phải. */
 export function builtinProduct(id) {

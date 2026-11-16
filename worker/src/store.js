@@ -15,6 +15,9 @@ function price(p, partial) {
     if (v === null) return null;
     out[c] = v;
   }
+  // Đài Loan: bản lưu cũ chưa có giá TWD thì tự quy đổi từ VND (1 NT$ ≈ 800 ₫).
+  if (p.TWD !== undefined) { const v = int(p.TWD, 1, 1e9); if (v === null) return null; out.TWD = v; }
+  else if (!partial && out.VND) out.TWD = Math.max(5, Math.round(out.VND / 800 / 5) * 5);
   return out;
 }
 

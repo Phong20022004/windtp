@@ -206,7 +206,7 @@
     if (!q.order.length) return alphaEmpty(kind === "weak" ? "Chưa có chữ hay sai 🎉<br>Hãy làm các bài trắc nghiệm, những chữ bạn nhầm sẽ xuất hiện ở đây." : "Nhóm này chưa có chữ.");
     if (q.n >= q.order.length) return alphaEmpty('<p class="font-extrabold text-slate-800 text-base">Kết quả: ' + q.score + '/' + q.order.length + '</p><p class="mt-1">' + (q.score === q.order.length ? "Tuyệt vời! 🎉" : "Cố gắng thêm nhé.") + '</p><button data-action="alpha-restart" class="mt-3 px-4 py-2 rounded-xl bg-sky-600 text-white keep-white text-xs font-bold">Làm lượt mới</button>');
     var qi = q.order[q.n], it = flat[qi].it;
-    var head = '<p class="text-xs text-slate-500 text-center">Câu ' + (q.n + 1) + '/' + q.order.length + ' · Đúng ' + q.score + '</p>';
+    var head = '<p class="text-xs text-slate-500 text-center">Câu ' + (q.n + 1) + '/' + q.order.length + ' · Đúng ' + q.score + (q.streak >= 2 ? ' · <span class="a-streak">🔥 Chuỗi ' + q.streak + '</span>' : '') + '</p>';
     var next = q.picked != null ? '<div class="text-center"><button data-action="alpha-next" class="px-5 py-2 rounded-xl bg-sky-600 text-white keep-white text-xs font-bold">Tiếp →</button></div>' : "";
     if (kind === "type") {
       var dict = cfg.typeMode === "dictate";

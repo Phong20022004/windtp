@@ -228,8 +228,21 @@
   var CURRENCIES = {
     VND: { symbol: "\u20AB", name: "Vi\u1EC7t Nam \u0111\u1ED3ng", flag: "\u{1F1FB}\u{1F1F3}", methods: ["Chuy\u1EC3n kho\u1EA3n ng\u00E2n h\u00E0ng", "V\u00ED \u0111i\u1EC7n t\u1EED"] },
     KRW: { symbol: "\u20A9", name: "Won H\xE0n Qu\u1ED1c", flag: "\u{1F1F0}\u{1F1F7}", methods: ["Th\u1EBB t\xEDn d\u1EE5ng / ghi n\u1EE3", "Kakao Pay", "Naver Pay"] },
-    JPY: { symbol: "\xA5", name: "Y\xEAn Nh\u1EADt", flag: "\u{1F1EF}\u{1F1F5}", methods: ["Th\u1EBB t\xEDn d\u1EE5ng / ghi n\u1EE3", "PayPay", "LINE Pay"] }
+    JPY: { symbol: "\xA5", name: "Y\xEAn Nh\u1EADt", flag: "\u{1F1EF}\u{1F1F5}", methods: ["Th\u1EBB t\xEDn d\u1EE5ng / ghi n\u1EE3", "PayPay", "LINE Pay"] },
+    TWD: { symbol: "NT$", name: "Đài tệ Đài Loan", flag: "\u{1F1F9}\u{1F1FC}", methods: ["Th\u1EBB t\xEDn d\u1EE5ng / ghi n\u1EE3", "LINE Pay", "JKOPAY"] }
   };
+  // Phí ship (tham khảo) và thời gian giao dự kiến theo từng thị trường; phí ship chốt khi shop xác nhận đơn.
+  var SHIPPING = {
+    VND: { country: "Vi\u1EC7t Nam", fee: 25000, free: 500000, days: "2\u20134 ng\u00E0y" },
+    KRW: { country: "H\u00E0n Qu\u1ED1c", fee: 3000, free: 50000, days: "2\u20133 ng\u00E0y" },
+    JPY: { country: "Nh\u1EADt B\u1EA3n", fee: 500, free: 8000, days: "2\u20134 ng\u00E0y" },
+    TWD: { country: "\u0110\u00E0i Loan", fee: 60, free: 1000, days: "3\u20135 ng\u00E0y" }
+  };
+  function shipLine(cur) {
+    var s = SHIPPING[cur]; if (!s) return "";
+    var sym = CURRENCIES[cur].symbol, nf = function (n) { return sym + Math.round(n).toLocaleString("en-US"); };
+    return "Giao \u0111\u1EBFn " + s.country + ": ph\u00ED ship " + nf(s.fee) + " (mi\u1EC5n ph\u00ED t\u1EEB " + nf(s.free) + ") \u00B7 d\u1EF1 ki\u1EBFn " + s.days;
+  }
   function money(n, cur) {
     if (cur === "XU") return Math.round(n).toLocaleString("en-US") + " Xu";
     return `${CURRENCIES[cur].symbol}${Math.round(n).toLocaleString("en-US")}`;
@@ -257,12 +270,12 @@
       id: "cr-" + l.code + "-" + pl.id, plan: pl.id, lang: l.code, cat: "study", sub: "Khóa học", emoji: l.flag,
       name: "Khóa học " + l.name + " · " + pl.label,
       desc: (pl.life ? "Premium trọn đời" : "Premium " + pl.months + " tháng") + " + " + pl.chips.toLocaleString("en-US") + " chip",
-      price: { VND: pl.vnd, KRW: Math.max(100, Math.round(pl.vnd / 19 / 100) * 100), JPY: Math.max(10, Math.round(pl.vnd / 160 / 10) * 10) }
+      price: { VND: pl.vnd, KRW: Math.max(100, Math.round(pl.vnd / 19 / 100) * 100), JPY: Math.max(10, Math.round(pl.vnd / 160 / 10) * 10), TWD: Math.max(5, Math.round(pl.vnd / 800 / 5) * 5) }
     })));
     LANGUAGES.forEach((l) => out.push({
       id: "docm-" + l.code, docOf: l.code, cat: "study", sub: "Tài liệu", emoji: l.flag,
       name: "Tài liệu tổng hợp " + l.name, desc: "Từ vựng và ngữ pháp " + l.name + " · file .txt",
-      price: { VND: DOC_PRICE, KRW: Math.max(100, Math.round(DOC_PRICE / 19 / 100) * 100), JPY: Math.max(10, Math.round(DOC_PRICE / 160 / 10) * 10) }
+      price: { VND: DOC_PRICE, KRW: Math.max(100, Math.round(DOC_PRICE / 19 / 100) * 100), JPY: Math.max(10, Math.round(DOC_PRICE / 160 / 10) * 10), TWD: Math.max(5, Math.round(DOC_PRICE / 800 / 5) * 5) }
     }));
     return out;
   }

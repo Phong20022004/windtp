@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="windtp-api" content="{{api-url}}">
 <meta http-equiv="Content-Security-Policy" content="{{csp}}">
-<title>WINDTP Super-App · Avatar Anime HD</title>
+<title>WINDTP · Avatar Anime HD</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>{{include:src/css/base/base.css}}</style>
 
@@ -35,6 +35,7 @@
 <style id="windtp-v48-lb">{{include:src/css/game/leaderboard-v48.css}}</style>
 <style id="windtp-v48-ui">{{include:src/css/ui/ui-v48.css}}</style>
 <style id="windtp-wallet-contrast">{{include:src/css/ui/wallet-contrast.css}}</style>
+<style id="windtp-vocab-tool">{{include:src/css/ui/vocab-tool.css}}</style>
 <script id="windtp-v47-js">{{include:src/scripts/v47-ux.js}}</script>
 <style id="perf-v48-outer">{{include:src/css/base/perf-v48.css}}</style>
 </head>
@@ -53,7 +54,6 @@
       <div>
         <div class="flex items-center gap-1">
           <div id="brand-text" class="font-extrabold text-lg tracking-tight transition-all duration-500" role="img" aria-label="WINDTP"><div class="lg-word lg-word--sm" aria-hidden="true"><div class="lg-w1"><span style="--i:0">W</span><span style="--i:1">I</span><span style="--i:2">N</span><span style="--i:3">D</span></div><div class="lg-w2"><span style="--i:4">T</span><span style="--i:5">P</span></div></div></div>
-          <span class="hidden sm:inline text-[10px] font-bold px-1.5 py-0.5 bg-sky-100 text-sky-700 rounded-full uppercase tracking-wider">Super</span>
         </div>
         <p class="text-[10px] text-slate-500 -mt-1 hidden sm:block">Một nền tảng - Nhiều tiện ích</p>
       </div>
@@ -132,6 +132,7 @@
 <script id="windtp-devtools-deterrent">{{include:src/js/core/devtools-deterrent.js}}</script>
 <script id="windtp-api">{{include-bundle:src/api/entry.ts}}</script>
 
+<script id="windtp-speech">{{include:src/scripts/speech.js}}</script>
 <script>{{include-manifest:src/js/main.manifest.json}}</script>
 
 <script>{{include:src/scripts/coin-mark.js}}</script>

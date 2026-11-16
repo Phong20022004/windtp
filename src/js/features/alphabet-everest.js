@@ -70,7 +70,9 @@
      <text id="vic" x="612" y="520" text-anchor="middle" font-size="190" font-weight="900" fill="#ffd43b" stroke="#e03131" stroke-width="12" paint-order="stroke">VICTORY!</text></svg></div><div id="bx"></div>`;
      const ch=$("#ch"),cf=$("#cf"),ci=$("#ci"),pw=$("#pw"),svgNS="http://www.w3.org/2000/svg",tr=$("#tr"),tr0=$("#tr0");
      const st=()=>$("#st").textContent=`Bậc ${pos}/${G} · Kỷ lục ${best} · Lần leo ${tries} · Đúng lên 1 bậc, sai lùi 3 bậc`;
-     const say=t=>{$("#bt").textContent=t};
+     // Ô thoại tự giãn theo độ dài câu: mép phải cố định ở 1208, mở rộng về bên trái để chữ và trái tim luôn nằm trong ô.
+     const say=t=>{const bt=$("#bt"),rc=$("#bb rect");bt.textContent=t;let w=0;try{w=bt.getBBox().width}catch(e){}if(!w)w=t.length*20;
+      const bw=Math.min(620,Math.max(430,Math.ceil(w+110))),right=1208;rc.setAttribute("width",bw);rc.setAttribute("x",right-bw);bt.setAttribute("x",right-bw/2)};
      const trail=u=>{const d=(u*1000).toFixed(1)+" 1000";tr.style.strokeDasharray=d;tr0.style.strokeDasharray=d};
      const place=(u,dir)=>{const[x,y,dx]=P(u),s=SC(u);ch.style.transform=`translate(${x.toFixed(1)}px,${(y+22*s).toFixed(1)}px) scale(${s.toFixed(3)})`;cf.style.transform=`scaleX(${dir||(dx>=0?1:-1)})`};
      const slide=(u0,u1,ms,done,cls,keep,onf)=>{const t0=performance.now(),g=gen,sgn=u1>=u0?1:-1;if(cls)ci.classList.add(cls);

@@ -61,3 +61,28 @@ html.dark .lw-chip small{color:#a7f3d0}
 html.dark .lw-chip.lock{background:rgba(30,41,59,.9);border-color:#475569;color:#cbd5e1}
 html.dark .lw-pager button{background:#0f172a;border-color:#475569;color:#f1f5f9}
 @media(prefers-reduced-motion:reduce){.lw-chip,.lw-bar i{transition:none}}
+
+/* Hiệu ứng học bảng chữ cái (alphabet-fx.js): cùng phong cách các bài học khác */
+.afx{position:fixed;inset:0;z-index:95;pointer-events:none;overflow:hidden}
+.afx i{position:fixed;font-style:normal;font-size:22px;transform:translate(-50%,-50%);animation:afxFly 1s ease-out forwards}
+.afx b{position:fixed;transform:translateX(-50%);font-size:20px;font-weight:900;color:#059669;text-shadow:0 2px 8px rgba(255,255,255,.9);white-space:nowrap;animation:afxRise 1.2s ease-out forwards}
+.afx b.bd{color:#e11d48}
+.afx u{position:fixed;inset:0;background:radial-gradient(circle,transparent 55%,rgba(225,29,72,.28));animation:afxFlash .5s ease-out forwards}
+.afx.afc i{top:-24px;width:10px;height:14px;border-radius:2px;font-size:20px;animation-name:afxFall;animation-timing-function:ease-in;animation-fill-mode:forwards}
+@keyframes afxFly{0%{opacity:1;transform:translate(-50%,-50%) scale(.4)}70%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) scale(1.2)}}
+@keyframes afxRise{0%{opacity:0;transform:translate(-50%,6px) scale(.7)}20%{opacity:1;transform:translate(-50%,-6px) scale(1.15)}100%{opacity:0;transform:translate(-50%,-48px) scale(1)}}
+@keyframes afxFlash{0%{opacity:1}100%{opacity:0}}
+@keyframes afxFall{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:.9;transform:translate(var(--dx),110vh) rotate(var(--r))}}
+.a-pulse{animation:aPulse .9s ease-out}
+@keyframes aPulse{0%{transform:scale(1);box-shadow:0 0 0 0 rgba(16,185,129,.6)}35%{transform:scale(1.07);box-shadow:0 0 0 10px rgba(16,185,129,0)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+.a-shk{animation:aShk .55s}
+@keyframes aShk{0%,100%{transform:translateX(0)}15%{transform:translateX(-9px)}35%{transform:translateX(8px)}55%{transform:translateX(-6px)}75%{transform:translateX(4px)}}
+.a-in{animation:aIn .45s ease-out both}
+@keyframes aIn{0%{opacity:0;transform:translateY(14px)}100%{opacity:1;transform:none}}
+.a-pop{animation:aPop .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes aPop{0%{transform:scale(.85)}100%{transform:scale(1)}}
+.a-flip{animation:aFlip .55s ease-in-out}
+@keyframes aFlip{0%{transform:perspective(700px) rotateY(0)}50%{transform:perspective(700px) rotateY(90deg)}100%{transform:perspective(700px) rotateY(0)}}
+.a-streak{display:inline-block;font-weight:900;color:#ea580c;animation:aStreak 1.2s ease-in-out infinite}
+@keyframes aStreak{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.12) rotate(-3deg)}}
+@media(prefers-reduced-motion:reduce){.afx *,.a-pulse,.a-shk,.a-in,.a-pop,.a-flip,.a-streak{animation:none!important}}

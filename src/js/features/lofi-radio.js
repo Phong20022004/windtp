@@ -5,11 +5,11 @@
       chords: [[50, 57, 60, 64], [55, 59, 65, 64], [48, 55, 59, 64], [45, 55, 60, 64]] },
     { id: "cafe", name: "Cà Phê Sáng", emoji: "☕", desc: "Nhẹ, sáng, rải từng nốt như guitar", sec: 3.5, lp: 1900, arp: true, bass: true, crackle: false, wave: ["sine", "triangle"],
       chords: [[53, 57, 60, 64], [52, 55, 59, 62], [50, 53, 57, 60], [48, 52, 55, 59]] },
-    { id: "rain", name: "Mưa Đêm", emoji: "\u{1F327}\uFE0F", desc: "Tiếng mưa rơi êm, thi thoảng có sấm xa — không có nhạc", rain: true, lp: 9000, sec: 0, arp: false, bass: false, crackle: false, wave: ["sine", "sine"], chords: [[60]] }
+    { id: "city", name: "Đêm Thành Phố", emoji: "\u{1F303}", desc: "Jazz-lofi chậm, hợp âm Dm7 – G7 – Cmaj7 – Am7, rải nhẹ như đèn phố về khuya", sec: 4.2, lp: 1500, arp: true, bass: true, crackle: true, wave: ["triangle", "sine"],
+      chords: [[50, 53, 57, 60], [55, 59, 62, 65], [48, 55, 59, 64], [57, 60, 64, 67]] }
   ];
   var trackIdx = 0;
   var ctx = null, master = null, lpFilter = null, timer, step = 0, playing = false, noise = null;
-  var rainNodes = [], rainTimer, thunderTimer;
   function midiHz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
   function curTrack() { return TRACKS[trackIdx] || TRACKS[0]; }
   function isSupported() {
@@ -68,50 +68,6 @@
     noise = ctx.createBufferSource(); noise.buffer = buf; noise.loop = true;
     const g = ctx.createGain(); g.gain.value = 0.5; noise.connect(g); g.connect(master); noise.start();
   }
-  // Tiếng mưa: nền "xào xạc" từ nhiễu lọc + hạt mưa lách tách ngẫu nhiên + sấm xa thỉnh thoảng (tạo trực tiếp, không dùng file).
-  function noiseBuf(sec) {
-    const len = Math.floor(ctx.sampleRate * sec), buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
-    let b0 = 0, b1 = 0, b2 = 0;
-    for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; b0 = 0.99765 * b0 + w * 0.099046; b1 = 0.963 * b1 + w * 0.2965164; b2 = 0.57 * b2 + w * 1.0526913; d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.18; }
-    return buf;
-  }
-  function startRain() {
-    const bed = ctx.createBufferSource(); bed.buffer = noiseBuf(6); bed.loop = true;
-    const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 350;
-    const bp = ctx.createBiquadFilter(); bp.type = "peaking"; bp.frequency.value = 3200; bp.gain.value = 5; bp.Q.value = 0.7;
-    const g = ctx.createGain(); g.gain.value = 0.9;
-    const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.12; lg.gain.value = 0.12; lfo.connect(lg); lg.connect(g.gain); lfo.start();
-    bed.connect(hp); hp.connect(bp); bp.connect(g); g.connect(master); bed.start();
-    rainNodes.push(bed, lfo);
-    const drop = noiseBuf(0.12);
-    rainTimer = window.setInterval(() => {
-      const n = 1 + Math.floor(Math.random() * 3);
-      for (let k = 0; k < n; k++) {
-        if (Math.random() < 0.45) continue;
-        const src = ctx.createBufferSource(); src.buffer = drop;
-        const f = ctx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 1800 + Math.random() * 5200; f.Q.value = 2 + Math.random() * 4;
-        const gg = ctx.createGain(), at = ctx.currentTime + Math.random() * 0.08, dur = 0.015 + Math.random() * 0.04;
-        gg.gain.setValueAtTime(0.12 + Math.random() * 0.25, at); gg.gain.exponentialRampToValueAtTime(1e-4, at + dur);
-        src.connect(f); f.connect(gg); gg.connect(master); src.start(at, Math.random() * 0.05); src.stop(at + dur + 0.02);
-      }
-    }, 70);
-    const thunder = () => {
-      const src = ctx.createBufferSource(); src.buffer = noiseBuf(5);
-      const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 140 + Math.random() * 80;
-      const gg = ctx.createGain(), at = ctx.currentTime + 0.1;
-      gg.gain.setValueAtTime(1e-4, at); gg.gain.linearRampToValueAtTime(0.5, at + 0.9); gg.gain.exponentialRampToValueAtTime(1e-4, at + 4.6);
-      src.connect(f); f.connect(gg); gg.connect(master); src.start(at); src.stop(at + 5);
-      thunderTimer = window.setTimeout(thunder, 22000 + Math.random() * 30000);
-    };
-    thunderTimer = window.setTimeout(thunder, 12000 + Math.random() * 15000);
-  }
-  function stopRain() {
-    if (rainTimer !== void 0) window.clearInterval(rainTimer);
-    if (thunderTimer !== void 0) window.clearTimeout(thunderTimer);
-    rainTimer = thunderTimer = void 0;
-    rainNodes.forEach((n) => { try { n.stop(); } catch { } });
-    rainNodes = [];
-  }
   async function start() {
     const c = ensure();
     if (c.state === "suspended") await c.resume();
@@ -119,7 +75,6 @@
     playing = true; step = 0;
     const T = curTrack();
     if (lpFilter) lpFilter.frequency.value = T.lp;
-    if (T.rain) { startRain(); return true; }
     playChord(T.chords[step]);
     if (T.crackle) startCrackle();
     timer = window.setInterval(() => { step = (step + 1) % T.chords.length; playChord(T.chords[step]); }, T.sec * 1e3);
@@ -130,7 +85,6 @@
     if (timer !== void 0) window.clearInterval(timer);
     timer = void 0;
     if (noise) { try { noise.stop(); } catch { } noise = null; }
-    stopRain();
   }
   async function pickTrack(i) {
     trackIdx = ((i % TRACKS.length) + TRACKS.length) % TRACKS.length;
@@ -210,52 +164,7 @@
       !!(window.SpeechSynthesisUtterance || window.webkitSpeechSynthesisUtterance);
   }
   function speak(text, lang) {
-    const phrase = String(text || "").trim();
-    if (!phrase) return;
-    const wantedLang = lang || "en-US";
-    const langCode = wantedLang.toLowerCase().split("-")[0];
-    const remoteSpeak = () => {
-      try {
-        const url = "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=" +
-          encodeURIComponent(langCode) + "&q=" + encodeURIComponent(phrase);
-        if (window.__windtpTtsAudio) { window.__windtpTtsAudio.pause(); window.__windtpTtsAudio = null; }
-        const audio = new Audio(url);
-        window.__windtpTtsAudio = audio;
-        audio.play().catch(() => {});
-      } catch {}
-    };
-    const synth = window.speechSynthesis || window.webkitSpeechSynthesis;
-    const Utterance = window.SpeechSynthesisUtterance || window.webkitSpeechSynthesisUtterance;
-    if (!synth || !Utterance) { remoteSpeak(); return; }
-    try {
-      synth.cancel();
-      let completed = false;
-      const say = () => {
-        if (completed) return;
-        const voices = synth.getVoices ? synth.getVoices() : [];
-        const wanted = wantedLang.toLowerCase();
-        const prefix = wanted.split("-")[0];
-        const voice = voices.find(v => String(v.lang || "").toLowerCase() === wanted) ||
-          voices.find(v => String(v.lang || "").toLowerCase().split("-")[0] === prefix);
-        if (!voice) { completed = true; remoteSpeak(); return; }
-        completed = true;
-        const u = new Utterance(phrase);
-        u.lang = wantedLang; u.voice = voice; u.rate = 0.88;
-        u.onerror = () => remoteSpeak();
-        synth.speak(u);
-        if (typeof synth.resume === "function") synth.resume();
-      };
-      if (synth.getVoices && synth.getVoices().length) say();
-      else {
-        const onVoices = () => say();
-        if (synth.addEventListener) synth.addEventListener("voiceschanged", onVoices, { once: true });
-        else if (synth.onvoiceschanged !== undefined) {
-          const previous = synth.onvoiceschanged;
-          synth.onvoiceschanged = () => { try { if (typeof previous === "function") previous.call(synth); } finally { onVoices(); } };
-        }
-        setTimeout(() => { if (!completed) say(); }, 900);
-      }
-    } catch { remoteSpeak(); }
+    if (window.WindtpSpeech) window.WindtpSpeech.speak(text, lang || "en-US");
   }
 
   // src/util.ts
@@ -355,7 +264,7 @@
         { id: "n-2", icon: "\u{1F3AF}", title: "Nhi\u1EC7m v\u1EE5 h\u1EB1ng ng\xE0y \u0111\xE3 s\u1EB5n s\xE0ng, v\xE0o Ti\u1EC7n \xEDch > Nhi\u1EC7m v\u1EE5 \u0111\u1EC3 nh\u1EADn Xu.", ts: now - 30 * 6e4, read: false }
       ],
       invited: [],
-      settings: { dark: false, sound: true, sfx: true, push: true, gender: "", birth: "", currency: ((Intl.DateTimeFormat().resolvedOptions().timeZone || "").includes("Tokyo") ? "JPY" : ((Intl.DateTimeFormat().resolvedOptions().timeZone || "").includes("Seoul") ? "KRW" : "VND")) },
+      settings: { dark: false, sound: true, sfx: true, push: true, gender: "", birth: "", currency: ((Intl.DateTimeFormat().resolvedOptions().timeZone || "").includes("Tokyo") ? "JPY" : ((Intl.DateTimeFormat().resolvedOptions().timeZone || "").includes("Seoul") ? "KRW" : ((Intl.DateTimeFormat().resolvedOptions().timeZone || "").includes("Taipei") ? "TWD" : "VND"))) },
       orders: [],
       customCats: [],
       loginStreak: 1,
@@ -475,7 +384,7 @@
   }
   function cultivationModal() {
     const current = Number(state.cultivationLevel || 0);
-    return `${modalHead("🌌 Hệ thống cảnh giới tu tiên")}<div class="p-4 space-y-3 text-xs"><div class="rounded-2xl p-3 text-center text-white" style="background:linear-gradient(120deg,#312e81,#7e22ce,#be185d)"><div style="min-height:56px;display:grid;place-items:center">${realmGlyph(cultivationIndex(), 46, true)}</div><p class="text-lg font-black">${cultivationRank().name}</p><p>Chuỗi đăng nhập hiện tại: ${Number(state.loginStreak || 1)} ngày</p></div><div class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-800"><b>⚠️ Quy định tụt cảnh giới</b><p class="mt-1">Nếu không đăng nhập liên tiếp 3 ngày trở lên, bạn sẽ bị hạ 1 cảnh giới. Đăng nhập trở lại sẽ bắt đầu tính chuỗi mới.</p></div><div class="space-y-2">${CULTIVATION_RANKS.map((r,i)=>`<div class="realm-row flex items-center gap-3 rounded-xl border ${i===current?'realm-row-now':i<current?'realm-row-done border-slate-200 bg-white':'realm-row-lock border-slate-200 bg-white'} p-3"${i===current?' aria-current="true"':''}><div class="grid place-items-center shrink-0" style="width:44px;height:44px">${realmGlyph(i, 28, false)}</div><div class="flex-1 min-w-0"><p class="font-black text-sm">${r.name} ${i===current?'<span class="realm-now-pill">★ Hiện tại</span>':''}</p><p class="text-slate-500">${i===0?'Cảnh giới khởi đầu':`Cần đăng nhập liên tục ${r.days} ngày`}</p></div><span class="text-base">${i<current?'✅':i===current?'🌟':'🔒'}</span></div>`).join("")}</div><p class="text-[10px] text-slate-500">Mốc tối đa: Độ Kiếp sau 365 ngày (1 năm) đăng nhập liên tục.</p><button data-action="back-settings-from-realms" class="w-full rounded-xl border border-slate-200 py-2.5 font-bold">Quay lại cài đặt</button></div>`;
+    return `${modalHead("🌌 Hệ thống cảnh giới tu tiên")}<div class="p-4 space-y-3 text-xs"><div class="rounded-2xl p-3 text-center text-white" style="background:linear-gradient(120deg,#312e81,#7e22ce,#be185d)"><div style="min-height:56px;display:grid;place-items:center">${realmGlyph(cultivationIndex(), 46, true)}</div><p class="text-lg font-black">${cultivationRank().name}</p><p>Chuỗi đăng nhập hiện tại: ${Number(state.loginStreak || 1)} ngày</p></div><div class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-800"><b>⚠️ Quy định tụt cảnh giới</b><p class="mt-1">Nếu không đăng nhập liên tiếp 3 ngày trở lên, bạn sẽ bị hạ 1 cảnh giới. Đăng nhập trở lại sẽ bắt đầu tính chuỗi mới.</p></div><div class="space-y-2">${CULTIVATION_RANKS.map((r,i)=>`<div class="realm-row flex items-center gap-3 rounded-xl border ${i===current?'realm-row-now':i<current?'realm-row-done border-slate-200 bg-white':'realm-row-lock border-slate-200 bg-white'} p-3"${i===current?' aria-current="true"':''}><div class="grid place-items-center shrink-0" style="width:44px;height:44px">${realmGlyph(i, 28, false)}</div><div class="flex-1 min-w-0"><p class="font-black text-sm">${r.name} ${i===current?'<span class="realm-now-pill">★ Hiện tại</span>':''}</p><p class="text-slate-500">${i===0?'Cảnh giới khởi đầu':`Cần đăng nhập liên tục ${r.days} ngày`}</p></div><span class="text-base">${i<current?'✅':i===current?'🌟':'🔒'}</span></div>`).join("")}</div><p class="text-[10px] text-slate-500">Mốc tối đa: Độ Kiếp sau 365 ngày (1 năm) đăng nhập liên tục.</p><button data-action="open-lb" data-k="realm" class="w-full rounded-xl py-2.5 font-extrabold text-white keep-white" style="background:linear-gradient(100deg,#7e22ce,#be185d)">\u{1F3C6} B\u1EA3ng x\u1EBFp h\u1EA1ng c\u1EA3nh gi\u1EDBi</button><button data-action="back-settings-from-realms" class="w-full rounded-xl border border-slate-200 py-2.5 font-bold">Quay lại cài đặt</button></div>`;
   }
   function updateCultivation() {
     const today = dateKey();

@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 // @ts-expect-error bảng giá máy chủ viết bằng JS thuần
 import { builtinProduct, LANG_CODES } from "../../worker/src/shop.js";
 
-type ClientProduct = { id: string; price: { VND: number; KRW: number; JPY: number }; plan?: string; lang?: string; docOf?: string };
+type ClientProduct = { id: string; price: { VND: number; KRW: number; JPY: number; TWD: number }; plan?: string; lang?: string; docOf?: string };
 
 /** Lấy danh sách sản phẩm có sẵn thật sự mà trình duyệt hiển thị, bằng cách chạy đúng đoạn mã tạo ra nó. */
 function clientProducts(): { products: ClientProduct[]; langs: string[]; plans: Array<{ id: string; months: number; chips: number; life?: boolean }> } {
@@ -26,7 +26,7 @@ describe("bảng giá máy chủ khớp bảng giá trình duyệt", () => {
   it("cùng danh sách ngôn ngữ", () => {
     assert.deepEqual([...langs].sort(), [...LANG_CODES].sort());
   });
-  it("mỗi sản phẩm có sẵn có đúng giá ở cả ba loại tiền", () => {
+  it("mỗi sản phẩm có sẵn có đúng giá ở cả bốn loại tiền", () => {
     assert.equal(products.length, LANG_CODES.length * 7);
     for (const p of products) {
       const s = builtinProduct(p.id);

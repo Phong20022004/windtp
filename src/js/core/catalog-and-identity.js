@@ -305,7 +305,7 @@
           <option value="vi" selected>🇻🇳 Tiếng Việt</option><option value="en">🇺🇸 Tiếng Anh</option><option value="ko">🇰🇷 Tiếng Hàn</option><option value="ja">🇯🇵 Tiếng Nhật</option><option value="zh-CN">🇨🇳 Tiếng Trung</option><option value="fr">🇫🇷 Tiếng Pháp</option><option value="de">🇩🇪 Tiếng Đức</option><option value="es">🇪🇸 Tiếng Tây Ban Nha</option>
         </select>
       </label>
-      <button type="button" id="vocab-swap" class="rounded-xl border border-sky-200 bg-sky-50 text-sky-700 px-3 py-2.5 font-bold hover:bg-sky-100" aria-label="Đổi chiều dịch">⇄</button>
+      <button type="button" id="vocab-swap" class="vt-swap rounded-xl border border-sky-200 bg-sky-50 text-sky-700 px-3 py-2.5 font-bold hover:bg-sky-100" aria-label="Đổi chiều dịch: hoán đổi ngôn ngữ nguồn và ngôn ngữ đích" title="Đổi chiều dịch"><span class="vt-swap__i" aria-hidden="true">⇄</span><span class="vt-swap__t">Đổi chiều</span></button>
       <label class="block text-xs font-bold text-slate-600">Ngôn ngữ đích
         <select id="vocab-to" class="mt-1 w-full rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-300">
           <option value="vi">🇻🇳 Tiếng Việt</option><option value="en" selected>🇺🇸 Tiếng Anh</option><option value="ko">🇰🇷 Tiếng Hàn</option><option value="ja">🇯🇵 Tiếng Nhật</option><option value="zh-CN">🇨🇳 Tiếng Trung</option><option value="fr">🇫🇷 Tiếng Pháp</option><option value="de">🇩🇪 Tiếng Đức</option><option value="es">🇪🇸 Tiếng Tây Ban Nha</option>
@@ -318,15 +318,17 @@
     <div class="flex flex-wrap gap-2">
       <button type="button" id="vocab-translate" class="flex-1 min-w-[150px] rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm hover:brightness-105">🔎 Dịch ngay</button>
       <button type="button" id="vocab-speak-source" class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-sm font-bold text-sky-700">🔊 Nghe từ gốc</button>
+      <button type="button" id="vocab-speak-source-slow" class="rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-sm font-bold text-sky-700" aria-label="Nghe từ gốc đọc chậm">🐢 Nghe chậm</button>
       <button type="button" id="vocab-clear" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600">Xóa</button>
     </div>
     <div id="vocab-result-wrap" class="hidden rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 space-y-2">
-      <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-emerald-800">Kết quả dịch</span><button type="button" id="vocab-speak-result" class="rounded-lg bg-white border border-emerald-200 px-3 py-1.5 text-xs font-bold text-emerald-800">🔊 Nghe phát âm</button></div>
+      <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-emerald-800">Kết quả dịch</span><span class="flex gap-1.5"><button type="button" id="vocab-speak-result" class="rounded-lg bg-white border border-emerald-200 px-3 py-1.5 text-xs font-bold text-emerald-800">🔊 Nghe phát âm</button><button type="button" id="vocab-speak-result-slow" class="rounded-lg bg-white border border-emerald-200 px-3 py-1.5 text-xs font-bold text-emerald-800" aria-label="Nghe phát âm đọc chậm">🐢 Chậm</button></span></div>
       <p id="vocab-result" class="text-base sm:text-lg font-bold text-slate-800 whitespace-pre-wrap break-words"></p>
       <p id="vocab-status" class="text-[11px] text-slate-500"></p>
     </div>
     <p id="vocab-error" class="hidden text-xs text-rose-600" role="status"></p>
-    <p class="text-[10px] text-slate-400">Dịch cần kết nối Internet; phát âm sử dụng giọng đọc có sẵn trên thiết bị/trình duyệt.</p>
+    <p id="vocab-note" class="hidden text-xs text-sky-700" role="status"></p>
+    <p class="text-[10px] text-slate-400">Dịch cần kết nối Internet; phát âm dùng giọng đọc tốt nhất có trên thiết bị, nếu thiếu sẽ dùng giọng trực tuyến. Bấm 🐢 để nghe chậm hơn.</p>
   </section>
 
   <section id="wind-cultivation-card" class="relative overflow-hidden rounded-3xl p-5 sm:p-6 shadow-lg border-0 text-white keep-white" style="background:linear-gradient(135deg,#6d28d9,#c026d3 55%,#f59e0b)">

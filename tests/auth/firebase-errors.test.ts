@@ -19,6 +19,11 @@ describe("mapFirebaseErrorCode", () => {
     ["auth/cancelled-popup-request", "popup-closed"],
     ["auth/popup-blocked", "popup-blocked"],
     ["auth/requires-recent-login", "recent-login"],
+    ["auth/unauthorized-domain", "unauthorized-domain"],
+    ["auth/operation-not-allowed", "provider-disabled"],
+    ["auth/operation-not-supported-in-this-environment", "browser-unsupported"],
+    ["auth/web-storage-unsupported", "browser-unsupported"],
+    ["auth/invalid-api-key", "config-error"],
     ["auth/khong-biet", "unknown"],
     ["", "unknown"],
   ];
@@ -45,5 +50,14 @@ describe("toAuthFailure", () => {
     assert.ok(mapped instanceof AuthFailure);
     assert.equal(mapped.code, "too-many-requests");
     assert.equal(toAuthFailure("chuỗi lạ").code, "unknown");
+  });
+
+  it("lỗi chưa nhận diện kèm mã gốc để dễ tra cứu, lỗi đã nhận diện thì không", () => {
+    const unknown = toAuthFailure({ code: "auth/internal-error" });
+    assert.equal(unknown.code, "unknown");
+    assert.equal(unknown.detail, "auth/internal-error");
+    assert.match(unknown.message, /auth\/internal-error/);
+    assert.doesNotMatch(toAuthFailure({ code: "auth/popup-blocked" }).message, /mã lỗi/);
+    assert.equal(toAuthFailure("chuỗi lạ").message, "Có lỗi xảy ra, vui lòng thử lại");
   });
 });

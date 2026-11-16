@@ -27,6 +27,17 @@ export function mapFirebaseErrorCode(code: string): AuthErrorCode {
       return "popup-blocked";
     case "auth/requires-recent-login":
       return "recent-login";
+    case "auth/unauthorized-domain":
+      return "unauthorized-domain";
+    case "auth/operation-not-allowed":
+      return "provider-disabled";
+    case "auth/operation-not-supported-in-this-environment":
+    case "auth/web-storage-unsupported":
+      return "browser-unsupported";
+    case "auth/invalid-api-key":
+    case "auth/api-key-not-valid.-please-pass-a-valid-api-key.":
+    case "auth/app-not-authorized":
+      return "config-error";
     default:
       return "unknown";
   }
@@ -41,5 +52,7 @@ export function readErrorCode(error: unknown): string {
 }
 
 export function toAuthFailure(error: unknown): AuthFailure {
-  return error instanceof AuthFailure ? error : new AuthFailure(mapFirebaseErrorCode(readErrorCode(error)));
+  if (error instanceof AuthFailure) return error;
+  const raw = readErrorCode(error);
+  return new AuthFailure(mapFirebaseErrorCode(raw), raw);
 }
