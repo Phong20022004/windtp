@@ -29,5 +29,6 @@
   "src/js/features/alphabet-fx.js",
   "src/js/features/alphabet-everest.js",
   "src/js/features/economy-api.js",
+  "src/js/features/windtp-ai.js",
   "src/js/games/card-game-quan-hung.js"
 ]

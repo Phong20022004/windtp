@@ -274,6 +274,7 @@
   };
   var TASK_GOTO = { "t-duel": "entertainment", "t-lessons": "learn", "t-game": "learn", "t-win": "entertainment", "t-post": "community", "t-shop": "shop", "t-bigshop": "shop" };
   var TOOLS = [
+    { id: "ai", emoji: "🤖", title: "WINDTP AI", sub: "Gia sư ngoại ngữ: giải thích từ, ngữ pháp, sửa bài, hội thoại" },
     { id: "pomodoro", emoji: "🍅", title: "\u0110\u1ED3ng H\u1ED3 Pomodoro", sub: "T\u1EADp trung 25 ph\xFAt, ngh\u1EC9 5 ph\xFAt" },
     { id: "reminders", emoji: "🔔", title: "L\u1ECBch Nh\u1EAFc Nh\u1EDF & Th\u1EDDi Kh\xF3a Bi\u1EC3u", sub: "Ghi vi\u1EC7c c\u1EA7n l\xE0m theo ng\xE0y gi\u1EDD" },
     { id: "gpa", emoji: "🎓", title: "T\xEDnh \u0110i\u1EC3m Trung B\xECnh (GPA)", sub: "\u0110i\u1EC3m c\xF3 tr\u1ECDng s\u1ED1 theo t\xEDn ch\u1EC9" }

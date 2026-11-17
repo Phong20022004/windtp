@@ -324,6 +324,7 @@
     <div id="vocab-result-wrap" class="hidden rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 space-y-2">
       <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-emerald-800">Kết quả dịch</span><span class="flex gap-1.5"><button type="button" id="vocab-speak-result" class="rounded-lg bg-white border border-emerald-200 px-3 py-1.5 text-xs font-bold text-emerald-800">🔊 Nghe phát âm</button><button type="button" id="vocab-speak-result-slow" class="rounded-lg bg-white border border-emerald-200 px-3 py-1.5 text-xs font-bold text-emerald-800" aria-label="Nghe phát âm đọc chậm">🐢 Chậm</button></span></div>
       <p id="vocab-result" class="text-base sm:text-lg font-bold text-slate-800 whitespace-pre-wrap break-words"></p>
+      <button type="button" data-action="ai-explain-vocab" class="rounded-lg bg-white border border-indigo-200 px-3 py-1.5 text-xs font-bold text-indigo-700">🤖 Giải thích từ này</button>
       <p id="vocab-status" class="text-[11px] text-slate-500"></p>
     </div>
     <p id="vocab-error" class="hidden text-xs text-rose-600" role="status"></p>

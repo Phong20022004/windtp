@@ -29,7 +29,15 @@ const CONTENT = {
     return /^vocab\/[a-z]{2}\.json$/.test(key) && fs.existsSync(file) ? { body: fs.readFileSync(file) } : null;
   },
 };
-const env = { DB: makeDb(), ALLOWED_ORIGIN: origin, CONTENT };
+// Workers AI giả cho test giao diện: trả lời cố định, lỗi khi câu hỏi chứa "LOI-AI".
+const AI = { run: async (_model, input) => {
+  const last = input.messages[input.messages.length - 1].content;
+  if (last.includes('LOI-AI')) throw new Error('boom');
+  return { response: 'Trả lời thử: **' + last.slice(0, 40) + '**\n- ý một\n- ý hai', usage: { prompt_tokens: 100, completion_tokens: 50 } };
+} };
+const kv = new Map(); // KV giả cho bộ nhớ đệm câu giải thích
+const CONTENT_KV = { get: async (k) => kv.get(k) ?? null, put: async (k, v) => { kv.set(k, v); } };
+const env = { DB: makeDb(), ALLOWED_ORIGIN: origin, CONTENT, CONTENT_KV, AI };
 
 const server = http.createServer(async (req, res) => {
   const chunks = [];

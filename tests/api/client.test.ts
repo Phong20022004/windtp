@@ -339,3 +339,34 @@ describe("đối soát ngân hàng", () => {
     assert.equal(seen[0]?.url, "https://api.windtp.test/admin/bank-events");
   });
 });
+
+describe("WINDTP AI", () => {
+  it("gửi yêu cầu tới /ai/chat và trả lời kèm số lượt còn lại", async () => {
+    const { client, seen } = make([{ status: 200, body: { reply: "Xin chào", cached: true, remaining: 14, limit: 15 } }]);
+    const r = await client.ai({ mode: "explain", context: { lang: "ko", word: "안녕" } });
+    assert.deepEqual(r, { reply: "Xin chào", cached: true, remaining: 14, limit: 15 });
+    assert.equal(seen[0]?.url, "https://api.windtp.test/ai/chat");
+    assert.equal(seen[0]?.method, "POST");
+    assert.deepEqual(JSON.parse(seen[0]?.body ?? "{}"), { mode: "explain", context: { lang: "ko", word: "안녕" } });
+  });
+
+  it("phân loại lỗi hết lượt, hết ngân sách và AI chưa bật", async () => {
+    for (const [status, error] of [[429, "ai-daily-limit"], [503, "ai-budget"], [503, "ai-unavailable"], [502, "ai-failed"]] as const) {
+      const { client } = make([{ status, body: { error } }]);
+      const e = await failure(client.ai({ message: "hi" }));
+      assert.equal(e.code, error);
+    }
+  });
+
+  it("từ chối phản hồi thiếu nội dung trả lời", async () => {
+    const { client } = make([{ status: 200, body: { reply: "" } }]);
+    assert.equal((await failure(client.ai({ message: "hi" }))).code, "bad-response");
+  });
+
+  it("admin xem thống kê Neurons", async () => {
+    const stats = { budget: 9000, today: { calls: 3, neurons: 40 }, recent: [{ day: "2026-11-17", calls: 3, neurons: 40 }] };
+    const { client, seen } = make([{ status: 200, body: stats }]);
+    assert.deepEqual(await client.admin.aiStats(), stats);
+    assert.equal(seen[0]?.url, "https://api.windtp.test/admin/ai/stats");
+  });
+});

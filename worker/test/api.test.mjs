@@ -1042,7 +1042,7 @@ test('chống giả mạo tên admin; PUT /me/state kiểm tra kiểu từng kh�
   assert.ok(!feed.some((p) => !p.admin && /admin|windtp|quản trị/i.test(p.author)), 'tên người thường không chứa từ dành riêng');
 });
 
-test('migrations 0001..0004 cho cùng cấu trúc bảng với schema.sql', async () => {
+test('migrations 0001..0006 cho cùng cấu trúc bảng với schema.sql', async () => {
   const { DatabaseSync } = await import('node:sqlite');
   const { readFileSync } = await import('node:fs');
   const cols = (sqls) => {
@@ -1052,7 +1052,7 @@ test('migrations 0001..0004 cho cùng cấu trúc bảng với schema.sql', asyn
     for (const { name } of d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()) out[name] = d.prepare(`PRAGMA table_info(${name})`).all().map((c) => `${c.name}:${c.type}:${c.notnull}`).sort();
     return out;
   };
-  assert.deepEqual(cols(['../migrations/0001_init.sql', '../migrations/0002_hardening.sql', '../migrations/0003_contacts_threads.sql', '../migrations/0004_thread_safety.sql', '../migrations/0005_bank_events.sql']), cols(['../schema.sql']));
+  assert.deepEqual(cols(['../migrations/0001_init.sql', '../migrations/0002_hardening.sql', '../migrations/0003_contacts_threads.sql', '../migrations/0004_thread_safety.sql', '../migrations/0005_bank_events.sql', '../migrations/0006_ai_usage.sql']), cols(['../schema.sql']));
 });
 
 // ===== An toàn nhắn tin và sửa cách liên hệ =====

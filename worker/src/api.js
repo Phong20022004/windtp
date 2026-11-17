@@ -1,6 +1,7 @@
 // API ví / đơn hàng / kiểm duyệt. Trình duyệt chỉ GỬI YÊU CẦU; mọi số tiền, giá, thưởng do máy chủ quyết định.
 import * as E from './economy.js';
 import { priceOrder } from './shop.js';
+import { aiChat, aiStats } from './ai.js';
 import { sanitizeStore, sniffImage, IMAGE_TYPES, IMG_KEY, MAX_IMAGE_BYTES } from './store.js';
 
 class HttpError extends Error {
@@ -711,6 +712,13 @@ export function createApi({ verify, now = () => Date.now() }) {
     await atomic(db, stmts);
     return { ok: true, count: body.items.length };
   });
+  // ----- WINDTP AI (Cloudflare Workers AI, gói free): hạn mức theo người dùng, cache KV, ngân sách Neurons theo ngày -----
+  route('POST', '/ai/chat', 'user', async ({ db, env, user, t, body }) => {
+    const w = await wallet(db, user.uid, t, '');
+    const storeRow = await q(db, 'SELECT json FROM store WHERE id = 1').first();
+    return aiChat({ db, env, user, t, body, q, rate, dayKey, premium: !!(w && w.premiumUntil > t), store: storeRow ? JSON.parse(storeRow.json) : null, fail: (status, code) => new HttpError(status, code) });
+  }, 16384);
+  route('GET', '/admin/ai/stats', 'admin', async ({ db, t }) => aiStats(db, q, t));
   route('GET', '/tasks', 'user', async ({ db }) => ({ tasks: (await q(db, 'SELECT id, title, xu, chips, money, cur FROM tasks ORDER BY rowid').all()).results }));
 
   // ----- Tin rao vặt -----
@@ -900,6 +908,7 @@ export function createApi({ verify, now = () => Date.now() }) {
     out.rate = (await q(db, 'DELETE FROM rate_limits WHERE window_start < ?', t - day).run()).meta.changes;
     out.devices = (await q(db, 'DELETE FROM device_months WHERE first_seen < ?', t - 93 * day).run()).meta.changes;
     out.reports = (await q(db, "DELETE FROM thread_reports WHERE status != 'open' AND created_at < ?", t - 90 * day).run()).meta.changes;
+    out.ai = (await q(db, 'DELETE FROM ai_usage WHERE day < ?', new Date(t - 60 * day).toISOString().slice(0, 10)).run()).meta.changes;
     return out;
   }
 
@@ -961,7 +970,7 @@ export function createApi({ verify, now = () => Date.now() }) {
       if (newKey) headers['x-session-key'] = newKey;
       return reply(200, out);
     } catch (e) {
-      if (e instanceof HttpError) return reply(e.status, { error: e.code });
+      if (e instanceof HttpError) return reply(e.status, { error: e.code, ...(e.extra || {}) });
       console.error('internal', e && e.message);
       return reply(500, { error: 'internal' });
     }

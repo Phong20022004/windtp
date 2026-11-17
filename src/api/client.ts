@@ -12,6 +12,9 @@ import {
   type ChatView,
   type ListingContact,
   type ThreadReport,
+  type AiReply,
+  type AiRequest,
+  type AiStats,
   type DeviceList,
   type Referral,
   type CatalogItem,
@@ -59,6 +62,10 @@ const BY_SERVER_CODE: Readonly<Record<string, ApiErrorCode>> = {
   "already-purchased": "already-purchased",
   "code-expired": "code-expired",
   "bad-contact": "bad-contact",
+  "ai-daily-limit": "ai-daily-limit",
+  "ai-budget": "ai-budget",
+  "ai-unavailable": "ai-unavailable",
+  "ai-failed": "ai-failed",
   "own-listing": "own-listing",
   "bad-message": "bad-message",
   spam: "spam",
@@ -98,6 +105,8 @@ export interface ApiClient {
   createOrder(input: OrderInput): Promise<{ id: number }>;
   myOrders(): Promise<Order[]>;
   tasks(): Promise<SpecialTask[]>;
+  /** Hỏi WINDTP AI (Cloudflare Workers AI); máy chủ giới hạn lượt hỏi theo ngày. */
+  ai(request: AiRequest): Promise<AiReply>;
   /** Cấu hình cửa hàng do admin đăng (sản phẩm, chỉnh sửa, ẩn, danh mục). */
   store(): Promise<StoreConfig>;
   /** Từ vựng đầy đủ của một ngôn ngữ; máy chủ chỉ gửi khi còn Premium và có khóa học đó. */
@@ -158,6 +167,8 @@ export interface ApiClient {
     resolveThreadReport(id: number, lock: boolean): Promise<void>;
     /** Thiết bị đã dùng trong tháng và thiết bị đang hoạt động của một người dùng. */
     devices(uid: string): Promise<AdminDevices>;
+    /** Neurons Workers AI đã dùng hôm nay và số tin các ngày gần đây. */
+    aiStats(): Promise<AiStats>;
   };
 }
 
@@ -247,6 +258,11 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, session, fetch
     },
     claimSession,
     store: async () => { const r = await request<StoreConfig>("GET", "/store"); if (!Array.isArray(r.customProducts) || !Array.isArray(r.hiddenProducts) || !Array.isArray(r.customCats)) throw new ApiError("bad-response", 200); return r; },
+    ai: async (input) => {
+      const r = await post("/ai/chat", input);
+      if (typeof r.reply !== "string" || !r.reply) throw new ApiError("bad-response", 200);
+      return { reply: r.reply, cached: r.cached === true, remaining: Number(r.remaining) || 0, limit: Number(r.limit) || 0 };
+    },
     tasks: async () => (await request<{ tasks: SpecialTask[] }>("GET", "/tasks")).tasks,
     myOrders: async () => (await request<{ orders: Order[] }>("GET", "/orders/mine")).orders,
     createPost: async (text, tag) => { const r = await post("/posts", { text, tag }); return { id: Number(r.id), status: r.status === "approved" ? "approved" : "pending" }; },
@@ -285,6 +301,11 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, session, fetch
       approvePost: (id) => done(post(`/admin/posts/${id}/approve`)),
       rejectPost: (id) => done(post(`/admin/posts/${id}/reject`)),
       grant: (input) => done(post("/admin/grant", input)),
+      aiStats: async () => {
+        const r = await request<AiStats>("GET", "/admin/ai/stats");
+        if (typeof r.budget !== "number" || !r.today || !Array.isArray(r.recent)) throw new ApiError("bad-response", 200);
+        return r;
+      },
       devices: async (uid) => {
         const r = await request<AdminDevices>("GET", "/admin/devices/" + encodeURIComponent(uid));
         if (typeof r.max !== "number" || !Array.isArray(r.devices)) throw new ApiError("bad-response", 200);

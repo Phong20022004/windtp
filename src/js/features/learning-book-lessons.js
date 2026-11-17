@@ -349,7 +349,7 @@
     }
     const count = list.length ? `${list.length} bài học` : "Đang cập nhật";
     return `<div class="ls-wrap">
-      <div class="ls-top"><button type="button" data-action="lessons-back" class="ls-back">← Danh sách quyển</button><span class="ls-count">${esc(count)}</span></div>
+      <div class="ls-top"><button type="button" data-action="lessons-back" class="ls-back">← Danh sách quyển</button><span class="ls-count">${esc(count)}</span><button type="button" data-action="ai-ask-lesson" class="ls-back" aria-label="Hỏi WINDTP AI về giáo trình này">🤖 Hỏi AI</button></div>
       <div class="ls-banner keep-white" style="background:${bg}"><p class="ls-eyebrow">WINDTP · ${esc(lang.name)} · Quyển ${v.v + 1}</p><h2 class="ls-title">${esc(g[0])} ${esc(vol)}</h2><p class="ls-sub">${lang.flag} ${list.length ? `Gồm ${list.length} bài học` : "Danh sách bài học"}</p><p class="ls-note">🆓 Bài 1 · Quyển 1 miễn phí · 👑 ${owned ? "Các bài còn lại đã mở khóa cho bạn" : "Các bài còn lại cần mua khóa học (Premium)"}</p></div>
       ${typeof lessonWritePanel === "function" ? lessonWritePanel(lang, v.g, v.v) : ""}
       ${body}

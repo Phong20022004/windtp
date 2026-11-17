@@ -222,6 +222,10 @@ export type ApiErrorCode =
   | "bad-message"
   | "spam"
   | "blocked"
+  | "ai-daily-limit"
+  | "ai-budget"
+  | "ai-unavailable"
+  | "ai-failed"
   | "unavailable"
   | "bad-response"
   | "unknown";
@@ -256,6 +260,10 @@ export const API_MESSAGES: Readonly<Record<ApiErrorCode, string>> = {
   "bad-message": "Tin nhắn không được để trống và tối đa 1000 ký tự",
   spam: "Tin nhắn bị chặn vì giống spam (lặp lại nhiều lần hoặc có quá nhiều đường dẫn)",
   "code-expired": "Đã quá 1 tháng kể từ lúc đăng ký nên không thể nhập mã mời nữa",
+  "ai-daily-limit": "Hôm nay bạn đã dùng hết lượt hỏi WINDTP AI, mai quay lại nhé (Premium có nhiều lượt hơn)",
+  "ai-budget": "WINDTP AI đang nghỉ để tiết kiệm tài nguyên, sẽ làm việc lại lúc 07:00 sáng (giờ Việt Nam)",
+  "ai-unavailable": "WINDTP AI chưa được bật trên máy chủ",
+  "ai-failed": "WINDTP AI chưa trả lời được, hãy thử lại sau giây lát",
   unavailable: "Máy chủ đang bận, hãy thử lại sau giây lát",
   "bad-response": "Máy chủ trả về dữ liệu không hợp lệ",
   unknown: "Có lỗi xảy ra, vui lòng thử lại",
@@ -278,6 +286,48 @@ export class ApiError extends Error {
 }
 
 /** Sản phẩm admin thêm (đã được máy chủ làm sạch); `img` là khóa ảnh trên máy chủ. */
+/** Chế độ trò chuyện của WINDTP AI (máy chủ giữ lời nhắc hệ thống cho từng chế độ). */
+export type AiMode = "chat" | "explain" | "grammar" | "correct" | "roleplay" | "shop" | "help";
+
+export interface AiContext {
+  /** Mã ngôn ngữ đang học: vi, en, ko, ja, zh, fr, de, es. */
+  lang?: string;
+  level?: string;
+  book?: string;
+  lesson?: string;
+  /** Từ hoặc điểm ngữ pháp cần giải thích (chế độ explain / grammar). */
+  word?: string;
+  screen?: string;
+  currency?: Currency;
+}
+
+export interface AiMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AiRequest {
+  mode?: AiMode;
+  message?: string;
+  history?: AiMessage[];
+  context?: AiContext;
+}
+
+export interface AiReply {
+  reply: string;
+  /** true nếu lấy từ bộ nhớ đệm dùng chung (không tốn lượt hỏi). */
+  cached: boolean;
+  /** Số lượt hỏi còn lại hôm nay và hạn mức của người dùng. */
+  remaining: number;
+  limit: number;
+}
+
+export interface AiStats {
+  budget: number;
+  today: { calls: number; neurons: number };
+  recent: { day: string; calls: number; neurons: number }[];
+}
+
 export interface StoreProduct {
   id: string;
   custom: true;

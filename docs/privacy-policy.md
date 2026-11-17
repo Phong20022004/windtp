@@ -21,7 +21,7 @@ Cung cấp tài khoản, ví, mua hàng và học tập; duyệt và hiển th�
 ## 3. Ai nhìn thấy dữ liệu
 - **Công khai với người dùng đã đăng nhập:** tên hiển thị, bài viết, bình luận đã duyệt, tin rao đã duyệt và thông tin liên hệ bạn chọn điền trong tin đó. **Hãy chỉ đưa vào tin đăng những thông tin bạn sẵn sàng công khai** (đặc biệt địa chỉ nhà riêng).
 - **Quản trị viên:** xem đơn hàng, thông tin liên hệ giao hàng, nội dung chờ duyệt và báo cáo vi phạm để xử lý.
-- **Nhà cung cấp hạ tầng xử lý dữ liệu thay mặt chúng tôi:** Google (Firebase Authentication), Cloudflare (Workers, D1, R2). Dữ liệu có thể được lưu và xử lý ở máy chủ ngoài Việt Nam. `[Luật sư xem điều kiện chuyển dữ liệu ra nước ngoài]`.
+- **Nhà cung cấp hạ tầng xử lý dữ liệu thay mặt chúng tôi:** Google (Firebase Authentication), Cloudflare (Workers, D1, R2, Workers AI cho tính năng WINDTP AI: nội dung bạn nhập được gửi tới Workers AI để tạo câu trả lời; WINDTP chỉ lưu số lượt hỏi theo ngày, không lưu nội dung hội thoại; câu giải thích từ/ngữ pháp được lưu dùng chung). Dữ liệu có thể được lưu và xử lý ở máy chủ ngoài Việt Nam. `[Luật sư xem điều kiện chuyển dữ liệu ra nước ngoài]`.
 - Cơ quan có thẩm quyền khi pháp luật yêu cầu.
 
 ## 4. Thời gian lưu trữ

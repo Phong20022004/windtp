@@ -25,3 +25,14 @@ thưởng 150 Xu mỗi 5 giây. Muốn chặn hẳn phải tính thưởng ở m
    (16 chỗ ghi số dư trong `src/js`, tập trung ở `quiz-cert-payment.js`, `lofi-radio.js`).
 4. Chuyển duyệt đơn/bài của admin sang ghi vào `orders`/`posts`; nạp Xu và Premium do admin ghi sau khi duyệt đơn.
 5. Triển khai: `firebase deploy --only firestore:rules`.
+
+## WINDTP AI (Cloudflare Workers AI, gói free)
+
+Trợ lý học tập chạy trong chính Worker, không cần khóa API hay thẻ quốc tế.
+
+- **Route:** `POST /ai/chat` (người dùng đã đăng nhập), `GET /admin/ai/stats` (admin). Mã nguồn: `worker/src/ai.js`; client: `window.WindtpApi.client.ai()` và `src/js/features/windtp-ai.js`.
+- **Model mặc định:** `@cf/google/gemma-4-26b-a4b-it` (đổi ở `AI_MODEL`). Chế độ: `chat`, `explain`, `grammar`, `correct`, `roleplay`, `shop`, `help`; lời nhắc hệ thống do máy chủ ghép, client không gửi được vai `system`.
+- **Chi phí = 0 nếu không nâng gói:** Cloudflare cho 10.000 Neurons/ngày. Quá mức thì yêu cầu AI báo lỗi đến 00:00 UTC (07:00 giờ Việt Nam), không tự tính tiền. Máy chủ giữ ngân sách `AI_BUDGET = 9000` Neurons/ngày và trả `ai-budget` trước khi chạm trần.
+- **Hạn mức:** 15 tin/ngày/người (Premium 40, theo ngày giờ Việt Nam), tối đa 12 tin/phút. Câu giải thích từ/ngữ pháp được cache dùng chung trong KV (`ai/…`, 30 ngày) và không tính lượt.
+- **Bật:** Dashboard → Workers AI → bật; `wrangler.toml` đã có `[ai] binding = "AI"`. Chạy `npx wrangler d1 migrations apply windtp-db --remote` (migration `0006_ai_usage.sql`) rồi `npx wrangler deploy`.
+- **Thử nhanh sau khi deploy:** mở app, bấm nút 🤖 và hỏi một câu; admin sẽ thấy số Neurons đã dùng ở dòng dưới khung chat.

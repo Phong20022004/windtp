@@ -26,3 +26,7 @@ id = "df189690c3524ae8bc8a31bfb8d81487"
 # [[r2_buckets]]
 # binding = "CONTENT"
 # bucket_name = "windtp-content"
+
+# WINDTP AI: Workers AI (gói free 10.000 Neurons/ngày, không cần thẻ). Bật trong Dashboard → Workers AI rồi deploy lại.
+[ai]
+binding = "AI"
