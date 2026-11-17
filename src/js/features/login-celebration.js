@@ -16,6 +16,10 @@
     wedding: { bg: "linear-gradient(#fff7ed,#fecdd3)", dark: false, title: "THE WEDDING OF THE CENTURY!", sub: "Hai chiếc nhẫn đang lồng vào nhau", hero: "💍", fall: ["🌹", "🌸", "💮"], show: "gold", gift: "🎁", giftText: "Mở hộp quà cưới", msg: "Bạn nhận được thiệp cưới, sticker cặp đôi, khung avatar và huy hiệu kỷ niệm 💒" }
   };
   var CELEB_DECO = { newyear: "🎆", valentine: "💖", women: "🌹", white: "🤍", fools: "🃏", halloween: "🎃", men: "💙", xmas: "🎄", tet: "🏮", midautumn: "🌕", qixi: "🌌", wedding: "💍" };
+  /** Lì xì Tết và quà Đám cưới (hoặc sự kiện có Xu): chỉ nhận khi mở hộp quà sau màn pháo hoa, và còn nhận được đến hết thời gian lễ. */
+  function celebHeld(ev) { return ev.id === "tet" || ev.id === "wedding" || !!(ev.xu || ev.chips); }
+  function celebShownStore() { try { return JSON.parse(localStorage.getItem("wd_cel_shown") || "[]"); } catch (e) { return []; } }
+  function celebMarkShown(k) { var a = celebShownStore(); if (a.indexOf(k) < 0) a.push(k); try { localStorage.setItem("wd_cel_shown", JSON.stringify(a.slice(-60))); } catch (e) {} }
   var celeb = { queue: [], busy: false, seen: {}, timer: 0, tomorrow: null, tomorrowAt: "", raf: 0 };
   function celebOff() { try { return localStorage.getItem("wd_cel_off") === "1"; } catch (e) { return false; } }
   function celebDate(add) {
@@ -34,7 +38,7 @@
     root.setAttribute("data-cel", ev.theme);
     var sc = CELEB_SCENES[ev.id] || {}, em = sc.fall || [CELEB_DECO[ev.id]], d = document.createElement("div");
     d.id = "cel-deco"; d.setAttribute("aria-hidden", "true");
-    var n = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 14, h = '<div class="cel-strip"></div><div class="cel-badge">' + (CELEB_DECO[ev.id] || "🎉") + " " + esc(ev.name) + "</div>";
+    var n = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 14, h = '<div class="cel-strip"></div>' + (celebHeld(ev) && !ev.claimed && !ev.forcedPreview ? '<button class="cel-badge cel-pending" data-action="cel-gift" data-id="' + ev.id + '">' + (CELEB_DECO[ev.id] || "🎁") + " Nhận quà " + esc(ev.name) + "</button>" : '<div class="cel-badge">' + (CELEB_DECO[ev.id] || "🎉") + " " + esc(ev.name) + "</div>");
     for (var i = 0; i < n; i++) h += '<i style="left:' + Math.round(Math.random() * 96) + "%;animation-delay:" + (-Math.random() * 14).toFixed(1) + "s;animation-duration:" + (9 + Math.random() * 9).toFixed(1) + "s;font-size:" + (14 + Math.round(Math.random() * 14)) + 'px">' + em[i % em.length] + "</i>";
     d.innerHTML = h; document.body.appendChild(d);
   }
@@ -120,14 +124,15 @@
         if (finished) return; finished = true;
         if (fw) fw.stop(); host.remove(); document.body.style.overflow = "";
         if (opt.preview) { done(); return; }
-        celebMarkSeen(ev.id + ":" + ev.period);
-        if (!claimed && !prank && window.WindtpApi) { claimed = true; claimNow(true); }
+        if (!celebHeld(ev) || claimed) celebMarkSeen(ev.id + ":" + ev.period);
+        if (!claimed && !prank && !celebHeld(ev) && window.WindtpApi) { claimed = true; claimNow(true); }
         else if (prank && window.WindtpApi) { try { econClient().claimCelebration(ev.id, celebDate()).catch(function () {}); } catch (e) {} }
         done();
       }
       function claimNow(quiet) {
         return econClient().claimCelebration(ev.id, celebDate()).then(function (r) {
           var g = celebGifts(); g.push({ id: ev.id, period: ev.period, gift: ev.gift, ts: Date.now() }); try { localStorage.setItem("wd_cel_gifts", JSON.stringify(g.slice(-40))); } catch (e) {}
+          ev.claimed = true; celebMarkSeen(ev.id + ":" + ev.period); if (celeb.top && celeb.top.id === ev.id) celebDecorate(celeb.top);
           if (r && (r.xu || r.chips) && typeof econRefresh === "function") econRefresh(true);
           return r;
         }, function (e) { if (!quiet && typeof econFail === "function") econFail(e, true); return null; });
@@ -141,13 +146,14 @@
         host.innerHTML = '<div class="cel-fall">' + celebFall(host, sc.fall) + "</div>" + (show ? '<canvas class="cel-cv"></canvas>' : "") + (sc.fog ? '<div class="cel-fog"></div>' : "") +
           '<div class="cel-main">' + (show === "multi" ? "" : celebHeroFx(ev.id, sc.hero)) + '<h1 class="cel-title" style="opacity:' + (show === "multi" ? 0 : 1) + '">' + esc(sc.title) + '</h1><p class="cel-sub">' + esc(sc.sub || "") + "</p></div>" + chrome();
         var title = host.querySelector(".cel-title"), sub = host.querySelector(".cel-sub");
+        if (opt.giftOnly) { stage2(); return; }
         if (show) {
           var cv = host.querySelector(".cel-cv"), shown = false, countdown = opt.countdown;
           fw = celebFireworks(cv, { gold: show === "gold", duration: ev.duration || 60, onTick: function (e, k) { if (k >= 55 && !shown) { shown = true; title.style.opacity = 1; title.classList.add("cel-pop"); sub.textContent = "Chúc mừng năm mới – Happy New Year!"; } }, onEnd: stage2 });
         } else { setTimeout(function () { if (!finished && stage === 1) stage2(); }, ev.id === "wedding" || ev.id === "women" ? 7000 : 6000); }
       }
       function stage2() {
-        if (finished || stage === 2) return; stage = 2; if (fw) { fw.stop(); fw = null; }
+        if (finished || stage === 2) return; stage = 2; celebMarkShown(ev.id + ":" + ev.period); if (fw) { fw.stop(); fw = null; }
         if (prank) return stagePrank();
         var cv = host.querySelector(".cel-cv"); if (cv) cv.style.opacity = 0.35;
         var main = host.querySelector(".cel-main");
@@ -203,11 +209,13 @@
   function celebCheck(force) {
     if (!state.account || !window.WindtpApi || celebOff()) return Promise.resolve();
     return econClient().celebration(celebDate()).then(function (list) {
-      celebDecorate(list[0] || null);
-      var seen = celebSeenStore();
+      celeb.list = list; celeb.top = list[0] || null; celebDecorate(celeb.top);
+      var seen = celebSeenStore(), shown = celebShownStore();
       list.forEach(function (ev) {
         var k = ev.id + ":" + ev.period;
-        if (ev.claimed || celeb.seen[k] || seen.indexOf(k) >= 0) return;
+        if (ev.claimed || celeb.seen[k]) return;
+        if (!celebHeld(ev) && seen.indexOf(k) >= 0) return;
+        if (celebHeld(ev) && shown.indexOf(k) >= 0) ev.__opt = { giftOnly: true }; // đã xem pháo hoa rồi: vào thẳng hộp quà
         celeb.seen[k] = 1; celeb.queue.push(ev);
       });
       celebPump();
@@ -266,6 +274,11 @@
   }
   function celebAdminSave() { return econClient().admin.setCelebration(celAdm.cfg).then(function () { toast("Đã lưu sự kiện lễ"); }, function (e) { econFail(e); throw e; }); }
   Object.assign(actions, {
+    "cel-gift": function (el) {
+      var ev = (celeb.list || []).filter(function (e) { return e.id === el.dataset.id && !e.claimed; })[0]; if (!ev) return;
+      var k = ev.id + ":" + ev.period; ev.__opt = { giftOnly: celebShownStore().indexOf(k) >= 0 };
+      celeb.queue.push(ev); celebPump();
+    },
     "cel-admin-open": function () {
       celAdm = { cfg: null }; openModal(celebAdminModal);
       econClient().admin.celebrationConfig().then(function (c) { celAdm.cfg = c; refreshModal(); }, function (e) { econFail(e); });

@@ -555,3 +555,38 @@
     },
     "alpha-d-ans": function (el) { var c = alphaCurrent(); if (c) alphaDuelAnswer(c.cfg, Number(el.dataset.i)); }
   });
+
+  // ===== Hiệu ứng cho học bảng chữ cái (âm thanh, pháo giấy, rung khi sai, chuỗi đúng) — cùng phong cách các màn học khác =====
+  var alphaFxStreak = 0;
+  function alphaFxBurst(list, n, big) {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var box = document.createElement("div"); box.className = "alfx-burst"; box.setAttribute("aria-hidden", "true"); var h = "";
+    for (var i = 0; i < n; i++) h += '<i style="--dx:' + Math.round(Math.random() * (big ? 520 : 300) - (big ? 260 : 150)) + "px;--dy:" + Math.round(-Math.random() * (big ? 420 : 240) - 30) + 'px;font-size:' + (16 + Math.round(Math.random() * 16)) + 'px">' + list[i % list.length] + "</i>";
+    box.innerHTML = h; document.body.appendChild(box); window.setTimeout(function () { box.remove(); }, 1500);
+  }
+  function alphaFxStreakPop() {
+    if (alphaFxStreak < 3) return;
+    var b = document.createElement("div"); b.className = "alfx-streak"; b.textContent = "🔥 Chuỗi đúng ×" + alphaFxStreak; document.body.appendChild(b); window.setTimeout(function () { b.remove(); }, 1300);
+  }
+  function alphaFxResult(ok) {
+    if (ok) { alphaFxStreak++; try { sfx("right"); } catch (e) { } alphaFxBurst(["✨", "⭐", "🌟"], 8, false); alphaFxStreakPop(); }
+    else { alphaFxStreak = 0; try { sfx("wrong"); } catch (e) { } var el = $("#tab-learn"); if (el) { el.classList.remove("alfx-shake"); void el.offsetWidth; el.classList.add("alfx-shake"); window.setTimeout(function () { el.classList.remove("alfx-shake"); }, 500); } }
+  }
+  function alphaFxDone() { try { sfx("coin"); } catch (e) { } alphaFxBurst(["🎉", "🎊", "⭐", "✨", "🌟"], 34, true); }
+  function alphaFxWrap(name, fn) {
+    var orig = actions[name]; if (!orig) return;
+    actions[name] = function (el, ev) { var pre = fn.pre ? fn.pre(el) : null; var r = orig(el, ev); if (fn.post) fn.post(el, pre); return r; };
+  }
+  (function () {
+    var cur = function () { return ui.alpha || {}; };
+    alphaFxWrap("alpha-ans", { pre: function () { var q = cur().q; return q && q.picked == null ? q : null; }, post: function (el, q) { if (!q) return; var ok = q.picked === q.order[q.n]; alphaFxResult(ok); } });
+    alphaFxWrap("alpha-check", { pre: function () { var q = cur().q; return q && q.picked == null ? q : null; }, post: function (el, q) { if (q && q.picked != null) alphaFxResult(q.picked === 1); } });
+    alphaFxWrap("alpha-know", { post: function (el) { alphaFxResult(el.dataset.ok === "1"); var A = cur(); if (A.deck && A.di >= A.deck.length) alphaFxDone(); } });
+    alphaFxWrap("alpha-wgrade", { post: function (el) { alphaFxResult(el.dataset.ok === "1"); } });
+    alphaFxWrap("alpha-mright", { pre: function () { var m = cur().m; return m && m.pick != null ? { n: m.solved.length, miss: m.miss, m: m } : null; }, post: function (el, p) { if (!p) return; var ok = p.m.solved.length > p.n; alphaFxResult(ok); if (ok && p.m.solved.length === p.m.left.length) alphaFxDone(); } });
+    alphaFxWrap("alpha-next", { post: function () { var q = cur().q; if (q && q.n >= q.order.length) { alphaFxDone(); } } });
+    alphaFxWrap("alpha-flip", { post: function () { try { sfx("click"); } catch (e) { } } });
+    alphaFxWrap("alpha-pick", { post: function () { try { sfx("toggle"); } catch (e) { } } });
+    alphaFxWrap("alpha-mleft", { post: function () { try { sfx("toggle"); } catch (e) { } } });
+    alphaFxWrap("alpha-mode", { post: function () { alphaFxStreak = 0; try { sfx("poke"); } catch (e) { } } });
+  })();
