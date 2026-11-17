@@ -8,6 +8,7 @@ import {
   type ChatInbox,
   type CelebrationConfig,
   type CelebrationEvent,
+  type CelebrationGift,
   type BankEvent,
   type ContentReport,
   type ReportKind,
@@ -103,9 +104,11 @@ export interface ApiClient {
   /** Cấu hình cửa hàng do admin đăng (sản phẩm, chỉnh sửa, ẩn, danh mục). */
   store(): Promise<StoreConfig>;
   /** Sự kiện chào mừng đang diễn ra vào ngày địa phương `date` (YYYY-MM-DD). */
-  celebration(date: string): Promise<CelebrationEvent[]>;
+  celebration(date: string, country?: string): Promise<CelebrationEvent[]>;
+  /** Quà lễ đã nhận của tài khoản (lưu ở máy chủ). */
+  celebrationGifts(): Promise<CelebrationGift[]>;
   /** Nhận quà một sự kiện (một lần/năm/tài khoản, máy chủ cộng Xu nếu có cấu hình). */
-  claimCelebration(id: string, date: string): Promise<{ xu: number; chips: number }>;
+  claimCelebration(id: string, date: string, country?: string): Promise<{ xu: number; chips: number }>;
   /** Từ vựng đầy đủ của một ngôn ngữ; máy chủ chỉ gửi khi còn Premium và có khóa học đó. */
   vocabContent(lang: string): Promise<unknown>;
   /** Mã mời của mình (máy chủ tạo lần đầu gọi) cùng số người đã mời/đã được thưởng. */
@@ -255,8 +258,9 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, session, fetch
     },
     claimSession,
     store: async () => { const r = await request<StoreConfig>("GET", "/store"); if (!Array.isArray(r.customProducts) || !Array.isArray(r.hiddenProducts) || !Array.isArray(r.customCats)) throw new ApiError("bad-response", 200); return r; },
-    celebration: async (date) => (await request<{ events: CelebrationEvent[] }>("GET", `/celebration?date=${encodeURIComponent(date)}`)).events,
-    claimCelebration: async (id, date) => { const r = await post("/celebration/claim", { id, date }) as { xu?: number; chips?: number }; return { xu: Number(r?.xu) || 0, chips: Number(r?.chips) || 0 }; },
+    celebration: async (date, country = "") => (await request<{ events: CelebrationEvent[] }>("GET", `/celebration?date=${encodeURIComponent(date)}&country=${encodeURIComponent(country)}`)).events,
+    celebrationGifts: async () => (await request<{ gifts: CelebrationGift[] }>("GET", "/celebration/gifts")).gifts,
+    claimCelebration: async (id, date, country = "") => { const r = await post("/celebration/claim", { id, date, country }) as { xu?: number; chips?: number }; return { xu: Number(r?.xu) || 0, chips: Number(r?.chips) || 0 }; },
     tasks: async () => (await request<{ tasks: SpecialTask[] }>("GET", "/tasks")).tasks,
     myOrders: async () => (await request<{ orders: Order[] }>("GET", "/orders/mine")).orders,
     createPost: async (text, tag) => { const r = await post("/posts", { text, tag }); return { id: Number(r.id), status: r.status === "approved" ? "approved" : "pending" }; },

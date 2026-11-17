@@ -1277,3 +1277,22 @@ test('sự kiện chào mừng: lịch dương/âm, nhận quà một lần/năm
   assert.equal(off.status, 200);
   assert.deepEqual((await app.call('GET', `/celebration?date=${day}`, { uid: 'u1' })).json.events, []);
 });
+
+test('sự kiện chào mừng: thời lượng, âm thanh, quốc gia, nhận lại theo ngày và danh sách quà đã nhận', async () => {
+  const { eventsOn, sanitizeCelebration } = await import('../src/celebration.js');
+  assert.equal(sanitizeCelebration({ events: { tet: { duration: 5 } } }), null);
+  assert.equal(sanitizeCelebration({ events: { tet: { sound: 'xx' } } }), null);
+  assert.equal(sanitizeCelebration({ events: { tet: { countries: ['VNN'] } } }), null);
+  const cfg = sanitizeCelebration({ events: { xmas: { countries: ['kr'], duration: 30, sound: 'none', repeat: 'daily' } } });
+  assert.deepEqual(eventsOn(2027, 12, 25, cfg, 'VN').map((e) => e.id), []);
+  const e = eventsOn(2027, 12, 25, cfg, 'KR')[0];
+  assert.equal(e.duration, 30); assert.equal(e.sound, 'none'); assert.equal(e.period, '2027:2027-12-25');
+  assert.equal(eventsOn(2027, 12, 25, undefined, '')[0].duration, 60);
+  const app = await makeApp();
+  const day = new Date(app.state.t).toISOString().slice(0, 10);
+  await app.call('PUT', '/admin/celebration', { uid: 'boss', admin: true, body: { events: {}, force: { id: 'valentine', nonce: 1 } } });
+  assert.equal((await app.call('POST', '/celebration/claim', { uid: 'u1', body: { id: 'valentine', date: day } })).status, 200);
+  const g = await app.call('GET', '/celebration/gifts', { uid: 'u1' });
+  assert.deepEqual(g.json.gifts.map((x) => [x.id, x.period]), [['valentine', 'force1']]);
+  assert.deepEqual((await app.call('GET', '/celebration/gifts', { uid: 'u2' })).json.gifts, []);
+});

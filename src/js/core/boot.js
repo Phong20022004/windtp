@@ -25,5 +25,7 @@ var FRAMES = [
     { id: "f-pm-aurora", name: "Cực Quang · Premium", cls: "rframe rfpm-aurora", fx: "pm-aurora", price: 0, unlock: "premium" },
     { id: "f-bronze7", name: "Đồng Giản · 7 ngày", cls: "frame-bronze", price: 0, unlock: "streak7", rewardDays: 7 },
     { id: "f-silver15", name: "Bạc Trơn · 15 ngày", cls: "frame-silver", price: 0, unlock: "streak15", rewardDays: 15 },
-    { id: "f-jade30", name: "Lục Ngọc · 30 ngày", cls: "frame-jade", price: 0, unlock: "streak30", rewardDays: 30 }
+    { id: "f-jade30", name: "Lục Ngọc · 30 ngày", cls: "frame-jade", price: 0, unlock: "streak30", rewardDays: 30 },
+    { id: "f-gift-tet", name: "Khung Tết · Quà lì xì", cls: "rframe rfgt-tet", fx: "", price: 0, unlock: "gift" },
+    { id: "f-gift-wedding", name: "Khung Đám cưới thế kỷ", cls: "rframe rfgt-wed", fx: "", price: 0, unlock: "gift" }
   ];

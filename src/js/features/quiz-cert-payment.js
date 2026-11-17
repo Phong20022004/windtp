@@ -201,7 +201,7 @@
   <div class="p-5 space-y-3.5 text-xs">
     <div class="flex items-center gap-3 rounded-2xl bg-sky-50/60 border border-sky-100 p-3">
       ${profileAvatar(60)}
-      <div class="flex-1 min-w-0"><p class="font-extrabold text-slate-800 text-sm truncate">${esc(state.userName)}</p><p class="text-[10px] text-slate-500">${esc(avatarById(state.avatarId).name)} \u2022 ${esc(frameById(myFrameId()).name)}<br><span class="text-teal-600 font-extrabold">Cảnh giới: ${esc(cultivationRank().name)} · Đăng nhập ${state.loginStreak}/365 ngày</span></p></div>
+      <div class="flex-1 min-w-0"><p class="font-extrabold text-slate-800 text-sm truncate">${esc(state.userName)}${typeof celebBadgeHtml === "function" ? celebBadgeHtml() : ""}</p><p class="text-[10px] text-slate-500">${esc(avatarById(state.avatarId).name)} \u2022 ${esc(frameById(myFrameId()).name)}<br><span class="text-teal-600 font-extrabold">Cảnh giới: ${esc(cultivationRank().name)} · Đăng nhập ${state.loginStreak}/365 ngày</span></p></div>
       <button data-action="open-profile" class="${btnPrimary} whitespace-nowrap">\u0110\u1ED5i avatar</button>
     </div>
     <div><label class="font-bold text-slate-700" for="set-name">T\xEAn hi\u1EC3n th\u1ECB</label><input id="set-name" data-change="name" maxlength="30" value="${esc(state.userName)}" class="${field} mt-1"></div>
@@ -228,6 +228,7 @@
       <select id="set-cur" data-change="currency" class="${field} mt-1"><option value="VND" ${s.currency === "VND" ? "selected" : ""}>\u{1F1FB}\u{1F1F3} \u20AB VND</option><option value="KRW" ${s.currency === "KRW" ? "selected" : ""}>\u{1F1F0}\u{1F1F7} \u20A9 Won</option><option value="JPY" ${s.currency === "JPY" ? "selected" : ""}>\u{1F1EF}\u{1F1F5} \xA5 Y\xEAn</option><option value="TWD" ${s.currency === "TWD" ? "selected" : ""}>\u{1F1F9}\u{1F1FC} NT$ \u0110\u00E0i t\u1EC7</option></select></div>
     <div class="rounded-xl bg-slate-100 p-3 text-[11px] text-slate-600">D\u1EEF li\u1EC7u \u0111\u01B0\u1EE3c l\u01B0u ngay trong tr\xECnh duy\u1EC7t n\xE0y. M\u1EE9c \u0111\u1ED9 h\u1ECDc hi\u1EC7n t\u1EA1i: ${LEVELS[ui.match.level]}.</div>
     <button data-action="open-cultivation-system" class="w-full rounded-xl border border-violet-200 p-3 text-left font-extrabold text-violet-800" style="background:linear-gradient(100deg,#f5d0fe,#dbeafe,#ccfbf1)">🌌 Hệ thống cảnh giới tu tiên <span class="block text-[10px] font-normal mt-1">Xem tất cả cảnh giới, thời gian thăng cấp và quy định hạ cấp</span></button>
+    ${typeof celebSettingsCard === "function" ? celebSettingsCard() : ""}
     ${typeof inviteCard === "function" ? inviteCard() : ""}
     ${adminSection()}
     ${typeof dataCard === "function" ? dataCard() : ""}
@@ -292,6 +293,7 @@
       else if (owned) btn = `<button data-action="equip-cosmetic" data-kind="${kind}" data-id="${it.id}" class="w-full py-1 rounded-lg text-[10px] font-bold bg-sky-600 text-white keep-white">S\u1EED d\u1EE5ng</button>`;
       else if (["streak7","streak15","streak30"].includes(it.unlock)) { const need = it.rewardDays || 7; const prog = streakProgress(); btn = prog >= need ? `<button data-action="claim-cosmetic" data-kind="${kind}" data-id="${it.id}" class="w-full py-1 rounded-lg text-[10px] font-bold bg-emerald-600 text-white keep-white">Nhận miễn phí</button>` : `<span class="block py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-500">🎁 ${prog}/${need} ngày liên tiếp</span>`; }
       else if (it.unlock === "premium") btn = `<button data-action="open-premium" class="w-full py-1 rounded-lg text-[10px] font-bold text-white keep-white bg-gradient-to-r from-amber-500 to-pink-500">👑 Cần Premium</button>`;
+      else if (it.unlock === "gift") btn = '<span class="block py-1 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-700">🎁 Nhận từ sự kiện lễ</span>';
       else if (it.unlock === "realm") btn = `<span class="block py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-500">🔒 Đạt ${CULTIVATION_RANKS[it.realm].name}</span>`;
       else btn = `<button data-action="buy-cosmetic" data-kind="${kind}" data-id="${it.id}" class="w-full py-1 rounded-lg text-[10px] font-bold bg-amber-500 text-white keep-white">\u{1FA99} ${fmt(it.price)}</button>`;
       return `<div class="rounded-2xl border ${on ? "border-sky-400 bg-sky-50/60" : "border-slate-200 bg-white"} p-2 text-center space-y-1.5">

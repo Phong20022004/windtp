@@ -903,11 +903,12 @@ export function createApi({ verify, now = () => Date.now() }) {
   const dateParts = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '')); return m ? [+m[1], +m[2], +m[3]] : null; };
   // Ngày địa phương của người dùng chỉ được lệch tối đa 1 ngày so với ngày UTC của máy chủ (múi giờ -12..+14).
   const dateOk = (p, t) => { const d = Date.UTC(p[0], p[1] - 1, p[2]); return Math.abs(d - Math.floor(t / 86400000) * 86400000) <= 86400000 * 1; };
+  const ctry = (c) => (/^[A-Za-z]{2}$/.test(String(c || '')) ? String(c).toUpperCase() : '');
   route('GET', '/celebration', 'user', async ({ db, user, t, url }) => {
     const p = dateParts(url.searchParams.get('date'));
     if (!p || !dateOk(p, t)) throw bad('bad-date');
-    const cfg = await celebConfig(db);
-    const list = eventsOn(p[0], p[1], p[2], cfg);
+    const cfg = await celebConfig(db), country = ctry(url.searchParams.get('country'));
+    const list = eventsOn(p[0], p[1], p[2], cfg, country);
     const rows = (await q(db, "SELECT key FROM claims WHERE uid = ? AND key LIKE 'celeb:%'", user.uid).all()).results || [];
     const done = new Set(rows.map((r) => r.key));
     return { events: list.map((e) => ({ ...e, claimed: done.has(claimKey(e.id, e.period)) })) };
@@ -917,7 +918,7 @@ export function createApi({ verify, now = () => Date.now() }) {
     const p = dateParts(body.date);
     if (!p || !dateOk(p, t) || !EVENTS[body.id]) throw bad('bad-event');
     const cfg = await celebConfig(db);
-    const ev = eventsOn(p[0], p[1], p[2], cfg).find((e) => e.id === body.id);
+    const ev = eventsOn(p[0], p[1], p[2], cfg, ctry(body.country)).find((e) => e.id === body.id);
     if (!ev) throw bad('not-active');
     await wallet(db, user.uid, t);
     const stmts = [q(db, 'INSERT INTO claims (uid, key, created_at) VALUES (?, ?, ?)', user.uid, claimKey(ev.id, ev.period), t)];
@@ -926,6 +927,11 @@ export function createApi({ verify, now = () => Date.now() }) {
     }
     await atomic(db, stmts);
     return { ok: true, xu: ev.xu, chips: ev.chips };
+  });
+  // Quà lễ đã nhận (suy ra từ khóa chống nhận trùng): id sự kiện + kỳ (năm/ngày).
+  route('GET', '/celebration/gifts', 'user', async ({ db, user }) => {
+    const rows = (await q(db, "SELECT key, created_at AS at FROM claims WHERE uid = ? AND key LIKE 'celeb:%' ORDER BY created_at DESC LIMIT 200", user.uid).all()).results || [];
+    return { gifts: rows.map((r) => { const [, id, ...rest] = r.key.split(':'); return { id, period: rest.join(':'), at: r.at }; }).filter((g) => EVENTS[g.id]) };
   });
   route('GET', '/admin/celebration', 'admin', async ({ db }) => ({ config: await celebConfig(db), events: Object.entries(EVENTS).map(([id, e]) => ({ id, name: e.name, gift: e.gift })) }));
   route('PUT', '/admin/celebration', 'admin', async ({ db, t, body }) => {

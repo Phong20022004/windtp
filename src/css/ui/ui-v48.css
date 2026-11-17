@@ -174,3 +174,6 @@ html[data-cel="wedding"] #cel-deco .cel-strip{background:linear-gradient(90deg,#
 .alfx-shake{animation:celShake .45s both}
 #tab-learn [data-action="alpha-pick"],#tab-learn [data-action="alpha-ans"],#tab-learn [data-action="alpha-mleft"],#tab-learn [data-action="alpha-mright"]{transition:transform .15s}
 #tab-learn [data-action="alpha-pick"]:active,#tab-learn [data-action="alpha-ans"]:active,#tab-learn [data-action="alpha-mleft"]:active,#tab-learn [data-action="alpha-mright"]:active{transform:scale(.94)}
+.cel-friends{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-height:140px;overflow:auto;width:100%}
+.cel-friends button{border:0;border-radius:999px;padding:7px 14px;background:rgba(255,255,255,.92);color:#9f1239;font-weight:700;font-size:13px;cursor:pointer}
+.cel-friends button:disabled{opacity:.7}

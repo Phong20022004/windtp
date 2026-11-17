@@ -21,6 +21,7 @@
   function celebShownStore() { try { return JSON.parse(localStorage.getItem("wd_cel_shown") || "[]"); } catch (e) { return []; } }
   function celebMarkShown(k) { var a = celebShownStore(); if (a.indexOf(k) < 0) a.push(k); try { localStorage.setItem("wd_cel_shown", JSON.stringify(a.slice(-60))); } catch (e) {} }
   var celeb = { queue: [], busy: false, seen: {}, timer: 0, tomorrow: null, tomorrowAt: "", raf: 0 };
+  function celebCountry() { var m = { VND: "VN", KRW: "KR", JPY: "JP", TWD: "TW" }; return m[state.settings && state.settings.currency] || ""; }
   function celebOff() { try { return localStorage.getItem("wd_cel_off") === "1"; } catch (e) { return false; } }
   function celebDate(add) {
     var d = new Date(); d.setDate(d.getDate() + (add || 0));
@@ -54,6 +55,25 @@
       f.type = "lowpass"; f.frequency.value = 500; g.gain.value = Math.min(0.5, v || 0.25); s.buffer = b; s.connect(f); f.connect(g); g.connect(c.destination); s.start();
     } catch (e) {}
   }
+  function celebChime(v) {
+    try {
+      if (localStorage.getItem("wd_cel_mute") === "1") return;
+      var A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+      var c = celeb.ac || (celeb.ac = new A()), t = c.currentTime;
+      [659.25, 783.99, 987.77, 1318.5].forEach(function (f, i) {
+        var o = c.createOscillator(), g = c.createGain(); o.type = "sine"; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t + i * 0.11); g.gain.exponentialRampToValueAtTime(v || 0.16, t + i * 0.11 + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.11 + 0.5);
+        o.connect(g); g.connect(c.destination); o.start(t + i * 0.11); o.stop(t + i * 0.11 + 0.55);
+      });
+    } catch (e) {}
+  }
+  /** Âm thanh từng sự kiện do admin chọn: auto (pháo hoa = tiếng nổ, còn lại = chuông), boom, chime hoặc none. */
+  function celebSound(ev, kind) {
+    var s = ev.sound || "auto"; if (s === "none") return;
+    if (s === "auto") s = CELEB_SCENES[ev.id] && CELEB_SCENES[ev.id].show ? "boom" : "chime";
+    if (kind === "gift") { celebChime(0.18); return; }
+    s === "boom" ? celebBoom(0.3) : celebChime(0.14);
+  }
   function celebFireworks(cv, opts) {
     var ctx = cv.getContext("2d"), W = 0, H = 0, P = [], R = [], t0 = performance.now(), last = t0, nextL = 0, dur = (opts.duration || 60), gold = opts.gold, running = true;
     var COLORS = gold ? [45, 38, 50, 33] : [0, 30, 50, 120, 190, 220, 280, 320];
@@ -62,7 +82,7 @@
     function burst(x, y, big, hue) {
       var n = big ? 170 : 70, sp = big ? 7 : 4.5, h = hue != null ? hue : COLORS[Math.floor(Math.random() * COLORS.length)];
       for (var i = 0; i < n; i++) { var a = Math.random() * 6.283, v = (0.35 + Math.random() * 0.65) * sp; P.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, dec: 0.008 + Math.random() * 0.012, h: h + Math.random() * 16 - 8, g: gold ? 1 : 0 }); }
-      celebBoom(big ? 0.4 : 0.18);
+      if (!opts.silent) celebBoom(big ? 0.4 : 0.18);
     }
     function launch(big, slow) {
       R.push({ x: W * (big ? 0.5 : 0.12 + Math.random() * 0.76), y: H, ty: H * (big ? 0.28 : 0.12 + Math.random() * 0.4), vy: -(H / (slow ? 520 : 70)) * (big ? 1 : 1), big: big, hue: gold ? 45 : null });
@@ -126,13 +146,13 @@
         if (opt.preview) { done(); return; }
         if (!celebHeld(ev) || claimed) celebMarkSeen(ev.id + ":" + ev.period);
         if (!claimed && !prank && !celebHeld(ev) && window.WindtpApi) { claimed = true; claimNow(true); }
-        else if (prank && window.WindtpApi) { try { econClient().claimCelebration(ev.id, celebDate()).catch(function () {}); } catch (e) {} }
+        else if (prank && window.WindtpApi) { try { econClient().claimCelebration(ev.id, celebDate(), celebCountry()).catch(function () {}); } catch (e) {} }
         done();
       }
       function claimNow(quiet) {
-        return econClient().claimCelebration(ev.id, celebDate()).then(function (r) {
+        return econClient().claimCelebration(ev.id, celebDate(), celebCountry()).then(function (r) {
           var g = celebGifts(); g.push({ id: ev.id, period: ev.period, gift: ev.gift, ts: Date.now() }); try { localStorage.setItem("wd_cel_gifts", JSON.stringify(g.slice(-40))); } catch (e) {}
-          ev.claimed = true; celebMarkSeen(ev.id + ":" + ev.period); if (celeb.top && celeb.top.id === ev.id) celebDecorate(celeb.top);
+          celebSyncGifts(); ev.claimed = true; celebMarkSeen(ev.id + ":" + ev.period); if (celeb.top && celeb.top.id === ev.id) celebDecorate(celeb.top);
           if (r && (r.xu || r.chips) && typeof econRefresh === "function") econRefresh(true);
           return r;
         }, function (e) { if (!quiet && typeof econFail === "function") econFail(e, true); return null; });
@@ -146,10 +166,11 @@
         host.innerHTML = '<div class="cel-fall">' + celebFall(host, sc.fall) + "</div>" + (show ? '<canvas class="cel-cv"></canvas>' : "") + (sc.fog ? '<div class="cel-fog"></div>' : "") +
           '<div class="cel-main">' + (show === "multi" ? "" : celebHeroFx(ev.id, sc.hero)) + '<h1 class="cel-title" style="opacity:' + (show === "multi" ? 0 : 1) + '">' + esc(sc.title) + '</h1><p class="cel-sub">' + esc(sc.sub || "") + "</p></div>" + chrome();
         var title = host.querySelector(".cel-title"), sub = host.querySelector(".cel-sub");
+        if (!show && !opt.giftOnly) celebSound(ev, "intro");
         if (opt.giftOnly) { stage2(); return; }
         if (show) {
           var cv = host.querySelector(".cel-cv"), shown = false, countdown = opt.countdown;
-          fw = celebFireworks(cv, { gold: show === "gold", duration: ev.duration || 60, onTick: function (e, k) { if (k >= 55 && !shown) { shown = true; title.style.opacity = 1; title.classList.add("cel-pop"); sub.textContent = "Chúc mừng năm mới – Happy New Year!"; } }, onEnd: stage2 });
+          fw = celebFireworks(cv, { silent: ev.sound === "none" || ev.sound === "chime", gold: show === "gold", duration: ev.duration || 60, onTick: function (e, k) { if (k >= 55 && !shown) { shown = true; title.style.opacity = 1; title.classList.add("cel-pop"); sub.textContent = "Chúc mừng năm mới – Happy New Year!"; } }, onEnd: stage2 });
         } else { setTimeout(function () { if (!finished && stage === 1) stage2(); }, ev.id === "wedding" || ev.id === "women" ? 7000 : 6000); }
       }
       function stage2() {
@@ -168,7 +189,7 @@
         var main = host.querySelector(".cel-main"), burst = sc.burst, friends = sc.friends;
         main.innerHTML = '<div class="cel-hero cel-pop">' + sc.gift + '</div><h1 class="cel-title">' + esc(sc.title) + '</h1><p class="cel-msg">' + esc(sc.msg) + '</p><p class="cel-reward" data-reward></p>' +
           (friends ? '<button class="cel-btn alt" data-cel="friend">🌹 Gửi hoa cho bạn bè</button>' : "") + '<button class="cel-btn" data-cel="done">Vào WINDTP</button>';
-        celebBoom(0.15); celebConfetti(host, sc.fall);
+        celebSound(ev, "gift"); celebConfetti(host, sc.fall);
         claimed = true;
         if (!opt.preview && window.WindtpApi) claimNow().then(function (r) { var el = host.querySelector("[data-reward]"); if (el && r && (r.xu || r.chips)) el.textContent = "🎁 +" + (r.xu ? r.xu + " Xu " : "") + (r.chips ? r.chips + " chip" : ""); });
       }
@@ -183,7 +204,15 @@
           var main = host.querySelector(".cel-main"); host.classList.add("cel-shake");
           setTimeout(function () { host.classList.remove("cel-shake"); main.innerHTML = '<div class="cel-hero cel-fish">🐟</div><h1 class="cel-title cel-pop">Cá tháng Tư!<br>Bắt được bạn rồi!</h1><p class="cel-msg">Chỉ là trò đùa thôi nhé, Wind Coin của bạn không đổi 😄</p><button class="cel-btn" data-cel="done">Vào WINDTP</button>'; stage = 3; }, 700);
         } else if (a === "friend") {
-          try { var fr = window.WINDTP && window.WINDTP.friends ? window.WINDTP.friends() : []; if (fr[0] && window.WINDTP.poke) window.WINDTP.poke(fr[0].id); toast(fr[0] ? "🌹 Đã gửi bông hồng cho " + fr[0].name : "Hãy kết bạn để gửi hoa nhé"); } catch (er) { toast("Hãy kết bạn để gửi hoa nhé"); }
+          var fr = []; try { fr = window.WINDTP && window.WINDTP.friends ? window.WINDTP.friends() : []; } catch (er) { }
+          if (!fr.length) { toast("Hãy kết bạn để gửi hoa nhé"); return; }
+          var old = host.querySelector(".cel-friends"); if (old) { old.remove(); return; }
+          var box = document.createElement("div"); box.className = "cel-friends";
+          box.innerHTML = fr.slice(0, 12).map(function (f) { return '<button data-cel="rose" data-fid="' + esc(f.id) + '" data-fname="' + esc(f.name) + '">🌹 ' + esc(f.name) + "</button>"; }).join("");
+          host.querySelector(".cel-main").appendChild(box);
+        } else if (a === "rose") {
+          try { if (window.WINDTP.poke) window.WINDTP.poke(b.dataset.fid); } catch (er) { }
+          b.disabled = true; b.textContent = "✓ Đã gửi cho " + b.dataset.fname; celebConfetti(host, ["🌹", "🌸"]);
         }
       });
       host.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
@@ -208,7 +237,7 @@
   }
   function celebCheck(force) {
     if (!state.account || !window.WindtpApi || celebOff()) return Promise.resolve();
-    return econClient().celebration(celebDate()).then(function (list) {
+    return econClient().celebration(celebDate(), celebCountry()).then(function (list) {
       celeb.list = list; celeb.top = list[0] || null; celebDecorate(celeb.top);
       var seen = celebSeenStore(), shown = celebShownStore();
       list.forEach(function (ev) {
@@ -227,7 +256,7 @@
     if (!state.account || !window.WindtpApi || celebOff()) return;
     if (s >= 86400 - 120 && celeb.tomorrowAt !== celebDate(1)) {
       celeb.tomorrowAt = celebDate(1); celeb.tomorrow = null;
-      econClient().celebration(celeb.tomorrowAt).then(function (l) { celeb.tomorrow = l.filter(function (e) { return e.midnight && !e.claimed; })[0] || null; }, function () { });
+      econClient().celebration(celeb.tomorrowAt, celebCountry()).then(function (l) { celeb.tomorrow = l.filter(function (e) { return e.midnight && !e.claimed; })[0] || null; }, function () { });
     }
     if (s >= 86400 - 10 && celeb.tomorrow && !celeb.busy) {
       var ev = celeb.tomorrow; celeb.tomorrow = null; var k = ev.id + ":" + ev.period; celeb.seen[k] = 1;
@@ -240,7 +269,7 @@
     celeb.lastDay = celebDate();
     var q = (new URLSearchParams(location.search)).get("celebrate");
     if (q && CELEB_SCENES[q]) { celebRun({ id: q, name: q, period: "preview", gift: "", theme: q }, { preview: true }); return; }
-    celebCheck();
+    celebCheck(); celebSyncGifts();
     window.clearInterval(celeb.timer); celeb.timer = window.setInterval(celebTick, 1000);
     window.clearInterval(celeb.poll); celeb.poll = window.setInterval(function () { if (document.visibilityState === "visible") celebCheck(); }, 180000);
   }
@@ -257,6 +286,7 @@
       var e = c.events[id] || { enabled: true, xu: 0, chips: 0 }, forced = c.force && c.force.id === id;
       return '<div class="border border-slate-200 rounded-xl p-2.5 space-y-1.5" data-cel-row="' + id + '"><label class="flex items-center gap-2 text-xs font-bold text-slate-800"><input type="checkbox" data-f="enabled"' + (e.enabled !== false ? " checked" : "") + '> ' + esc(CELEB_NAMES[id]) + (forced ? ' <span class="text-[10px] bg-rose-600 text-white keep-white rounded-full px-1.5">ĐANG BẬT THỬ</span>' : "") + '</label>' +
         (id === "fools" ? '<p class="text-[10px] text-slate-500">Chỉ là trò đùa — không bao giờ cộng Xu.</p>' : '<div class="flex gap-2 text-[11px]"><label>Xu <input data-f="xu" type="number" min="0" value="' + (e.xu || 0) + '" class="w-20 border rounded px-1"></label><label>Chip <input data-f="chips" type="number" min="0" value="' + (e.chips || 0) + '" class="w-16 border rounded px-1"></label></div>') +
+        '<div class="flex flex-wrap gap-2 text-[11px]"><label>Thời lượng (giây, 0 = mặc định) <input data-f="duration" type="number" min="0" max="120" value="' + (e.duration || 0) + '" class="w-14 border rounded px-1"></label><label>Âm thanh <select data-f="sound" class="border rounded px-1">' + [["auto", "Tự động"], ["boom", "Tiếng nổ"], ["chime", "Chuông"], ["none", "Tắt"]].map(function (o) { return '<option value="' + o[0] + '"' + ((e.sound || "auto") === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + '</select></label><label>Phát lại <select data-f="repeat" class="border rounded px-1"><option value="year"' + ((e.repeat || "year") === "year" ? " selected" : "") + '>1 lần/năm</option><option value="daily"' + (e.repeat === "daily" ? " selected" : "") + '>Mỗi ngày lễ</option></select></label><label>Quốc gia (VN,KR,JP,TW; trống = tất cả) <input data-f="countries" type="text" value="' + esc((e.countries || []).join(",")) + '" class="w-24 border rounded px-1"></label></div>' +
         '<div class="flex gap-1.5"><button data-action="cel-preview" data-id="' + id + '" class="px-2 py-1 rounded-lg bg-slate-100 text-[11px] font-bold">👁 Xem thử</button><button data-action="cel-force" data-id="' + id + '" class="px-2 py-1 rounded-lg bg-rose-100 text-rose-700 text-[11px] font-bold">⚡ Bật cho mọi người</button></div></div>';
     }).join("");
     return modalHead("🎉 Sự kiện lễ") + '<div class="p-4 space-y-2.5 text-slate-800"><label class="flex items-center gap-2 text-xs font-extrabold"><input type="checkbox" id="cel-all"' + (c.enabled !== false ? " checked" : "") + '> Bật hệ thống sự kiện</label>' +
@@ -268,7 +298,10 @@
     c.enabled = host.querySelector("#cel-all").checked;
     host.querySelectorAll("[data-cel-row]").forEach(function (r) {
       var f = function (k) { var el = r.querySelector('[data-f="' + k + '"]'); return el ? (el.type === "checkbox" ? el.checked : Math.max(0, parseInt(el.value, 10) || 0)) : 0; };
-      c.events[r.dataset.celRow] = { enabled: f("enabled"), xu: f("xu"), chips: f("chips") };
+      var t = function (k, d) { var el = r.querySelector('[data-f="' + k + '"]'); return el ? el.value : d; };
+      var dur = Math.min(120, f("duration")); if (dur > 0 && dur < 10) dur = 10;
+      c.events[r.dataset.celRow] = { enabled: f("enabled"), xu: f("xu"), chips: f("chips"), duration: dur, sound: t("sound", "auto"), repeat: t("repeat", "year"),
+        countries: String(t("countries", "")).split(/[,\s]+/).map(function (x) { return x.trim().toUpperCase(); }).filter(Boolean) };
     });
     c.wedding = { start: host.querySelector("#cel-wd").value || "", days: Math.min(14, Math.max(1, parseInt(host.querySelector("#cel-wn").value, 10) || 3)) };
   }
@@ -290,4 +323,72 @@
       return celebAdminSave().then(function () { toast("Đã bật cho mọi người (mỗi tài khoản nhận một lần)"); refreshModal(); celebCheck(); }, function () { });
     },
     "cel-force-off": function () { celebAdminRead(); celAdm.cfg.force = null; return celebAdminSave().then(refreshModal, function () { }); }
+  });
+
+  // ----- Quà lễ: bộ sưu tập, khung avatar, huy hiệu, công tắc hiệu ứng -----
+  var CELEB_GIFTS = {
+    newyear: [["💌", "Thiệp chúc mừng năm mới", "card"]],
+    valentine: [["💗", "Trái tim ảo", "sticker"], ["💌", "Thiệp Valentine", "card"]],
+    women: [["🌹", "Bông hồng ảo", "sticker"]],
+    white: [["🍫", "Hộp chocolate ảo", "sticker"]],
+    halloween: [["🎃", "Sticker bí ngô", "sticker"]],
+    men: [["🏅", "Huy hiệu Quốc tế Nam giới", "badge"]],
+    xmas: [["💌", "Thiệp Giáng sinh", "card"], ["🎅", "Sticker ông già Noel", "sticker"]],
+    tet: [["🧧", "Thiệp Tết đặc biệt", "card"], ["🏅", "Huy hiệu chúc mừng năm mới", "badge"], ["🖼️", "Khung avatar Tết", "frame", "f-gift-tet"]],
+    midautumn: [["🐇", "Sticker thỏ ngọc", "sticker"], ["🥮", "Thiệp Trung thu", "card"]],
+    qixi: [["💞", "Thiệp tình yêu", "card"]],
+    wedding: [["💒", "Thiệp cưới Đám cưới thế kỷ", "card"], ["👩‍❤️‍👨", "Sticker cặp đôi", "sticker"], ["🏅", "Huy hiệu kỷ niệm Đám cưới thế kỷ", "badge"], ["🖼️", "Khung avatar Đám cưới", "frame", "f-gift-wedding"]]
+  };
+  function celebBadgeKey() { try { return localStorage.getItem("wd_cel_badge") || ""; } catch (e) { return ""; } }
+  function celebHasGift(id) { return (celeb.gifts || []).some(function (g) { return g.id === id; }); }
+  function celebBadgeHtml() {
+    var k = celebBadgeKey(); if (!k) return "";
+    var id = k.split(":")[0], it = (CELEB_GIFTS[id] || []).filter(function (x) { return x[2] === "badge"; })[0];
+    return it && celebHasGift(id) ? ' <span title="' + esc(it[1]) + '">' + it[0] + "</span>" : "";
+  }
+  function celebSyncGifts() {
+    if (!state.account || !window.WindtpApi) return Promise.resolve();
+    return econClient().celebrationGifts().then(function (list) {
+      celeb.gifts = list; var changed = false;
+      Object.keys(CELEB_GIFTS).forEach(function (id) {
+        if (!celebHasGift(id)) return;
+        CELEB_GIFTS[id].forEach(function (it) { if (it[2] === "frame" && (state.ownedFrames || []).indexOf(it[3]) < 0) { state.ownedFrames = (state.ownedFrames || []).concat([it[3]]); changed = true; } });
+      });
+      if (changed && typeof commit === "function") commit();
+    }, function () { });
+  }
+  function celebSettingsCard() {
+    var on = !celebOff(), mute = localStorage.getItem("wd_cel_mute") === "1";
+    return '<div class="rounded-xl border border-amber-200 bg-amber-50/70 p-3 space-y-2"><div class="font-extrabold text-amber-800">🎉 Hiệu ứng ngày lễ</div>' +
+      '<label class="flex items-center justify-between gap-2 font-bold text-slate-700">Hiện hiệu ứng & trang trí khi đăng nhập ngày lễ<input type="checkbox" data-action="cel-toggle"' + (on ? " checked" : "") + '></label>' +
+      '<label class="flex items-center justify-between gap-2 font-bold text-slate-700">Âm thanh hiệu ứng lễ<input type="checkbox" data-action="cel-mute-toggle"' + (mute ? "" : " checked") + '></label>' +
+      '<button data-action="cel-collection" class="w-full py-2 rounded-xl bg-amber-500 text-white keep-white font-bold">🎁 Bộ sưu tập quà lễ của tôi</button></div>';
+  }
+  function celebCollectionModal() {
+    var list = celeb.gifts, body;
+    if (!list) body = '<p class="text-sm text-slate-600">Đang tải…</p>';
+    else if (!list.length) body = '<p class="text-sm text-slate-600">Bạn chưa nhận quà lễ nào. Đăng nhập vào dịp lễ để nhận quà nhé! 🎉</p>';
+    else {
+      var seen = {}, wearing = celebBadgeKey();
+      body = list.filter(function (g) { var k = g.id; if (seen[k]) return false; seen[k] = 1; return CELEB_GIFTS[g.id]; }).map(function (g) {
+        var years = list.filter(function (x) { return x.id === g.id; }).length;
+        return '<div class="border border-slate-200 rounded-2xl p-3 space-y-2"><p class="font-extrabold text-sm text-slate-800">' + esc((CELEB_NAMES[g.id] || g.id)) + (years > 1 ? ' <span class="text-[10px] text-slate-500">· nhận ' + years + " lần</span>" : "") + "</p>" +
+          CELEB_GIFTS[g.id].map(function (it) {
+            var act = "";
+            if (it[2] === "badge") act = wearing === g.id + ":badge" ? '<span class="text-[10px] font-bold text-emerald-700">Đang đeo</span> <button data-action="cel-badge" data-k="" class="px-2 py-1 rounded-lg bg-slate-100 text-[10px] font-bold">Bỏ đeo</button>' : '<button data-action="cel-badge" data-k="' + g.id + ':badge" class="px-2 py-1 rounded-lg bg-sky-600 text-white keep-white text-[10px] font-bold">Đeo huy hiệu</button>';
+            else if (it[2] === "frame") act = state.frameId === it[3] ? '<span class="text-[10px] font-bold text-emerald-700">Đang dùng</span>' : '<button data-action="equip-cosmetic" data-kind="frame" data-id="' + it[3] + '" class="px-2 py-1 rounded-lg bg-sky-600 text-white keep-white text-[10px] font-bold">Dùng khung</button>';
+            return '<div class="flex items-center gap-2 text-xs"><span class="text-2xl">' + it[0] + '</span><span class="flex-1 font-bold text-slate-700">' + esc(it[1]) + "</span>" + act + "</div>";
+          }).join("") + "</div>";
+      }).join("");
+    }
+    return modalHead("🎁 Quà lễ của tôi") + '<div class="p-4 space-y-3">' + body + "</div>";
+  }
+  Object.assign(actions, {
+    "cel-toggle": function (el) {
+      try { localStorage.setItem("wd_cel_off", el.checked ? "0" : "1"); } catch (e) { }
+      if (el.checked) { celebBoot(); toast("Đã bật hiệu ứng ngày lễ"); } else { celebStop(); toast("Đã tắt hiệu ứng ngày lễ"); }
+    },
+    "cel-mute-toggle": function (el) { try { localStorage.setItem("wd_cel_mute", el.checked ? "0" : "1"); } catch (e) { } },
+    "cel-collection": function () { celeb.gifts = celeb.gifts || null; openModal(celebCollectionModal); celebSyncGifts().then(function () { if (ui.renderModal === celebCollectionModal) refreshModal(); }); },
+    "cel-badge": function (el) { try { localStorage.setItem("wd_cel_badge", el.dataset.k || ""); } catch (e) { } refreshModal(); }
   });

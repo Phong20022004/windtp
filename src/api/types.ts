@@ -386,11 +386,21 @@ export interface CelebrationEvent {
   forced?: boolean;
   xu: number;
   chips: number;
+  /** Thời lượng màn pháo hoa (giây), âm thanh và chính sách phát lại do admin cấu hình. */
+  duration: number;
+  sound: "auto" | "boom" | "chime" | "none";
+  repeat: "year" | "daily";
+}
+
+export interface CelebrationGift {
+  id: string;
+  period: string;
+  at: number;
 }
 
 export interface CelebrationConfig {
   enabled: boolean;
-  events: Record<string, { enabled: boolean; xu: number; chips: number }>;
+  events: Record<string, { enabled: boolean; xu: number; chips: number; duration: number; sound: string; repeat: string; countries: string[] }>;
   wedding: { start: string; days: number };
   force: { id: string; nonce: number } | null;
 }

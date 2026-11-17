@@ -32,7 +32,15 @@ export function sanitizeCelebration(input) {
     if (!e || typeof e !== 'object') return null;
     const xu = int(e.xu ?? 0, 0, MAX_GRANT), chips = int(e.chips ?? 0, 0, MAX_GRANT);
     if (xu === null || chips === null) return null;
-    out.events[id] = { enabled: e.enabled !== false, xu: id === 'fools' ? 0 : xu, chips: id === 'fools' ? 0 : chips };
+    const duration = int(e.duration ?? 0, 0, 120);
+    if (duration === null || (duration !== 0 && duration < 10)) return null;
+    const sound = e.sound ?? 'auto';
+    if (!['auto', 'boom', 'chime', 'none'].includes(sound)) return null;
+    const repeat = e.repeat ?? 'year';
+    if (!['year', 'daily'].includes(repeat)) return null;
+    const countries = Array.isArray(e.countries) ? e.countries.map((c) => String(c).toUpperCase()) : [];
+    if (countries.length > 10 || countries.some((c) => !/^[A-Z]{2}$/.test(c))) return null;
+    out.events[id] = { enabled: e.enabled !== false, xu: id === 'fools' ? 0 : xu, chips: id === 'fools' ? 0 : chips, duration, sound, repeat, countries };
   }
   const w = input.wedding;
   if (w) {
@@ -61,7 +69,7 @@ function addDays(y, m, d, n) { const t = new Date(Date.UTC(y, m - 1, d + n)); re
 const ymd = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
 /** Các sự kiện diễn ra vào ngày y-m-d (lịch của người dùng), theo thứ tự ưu tiên hiển thị. period dùng làm khóa "một lần/năm". */
-export function eventsOn(y, m, d, config = DEFAULT_CONFIG) {
+export function eventsOn(y, m, d, config = DEFAULT_CONFIG, country = '') {
   if (config.enabled === false) return [];
   const out = [], lu = lunarOf(y, m, d);
   const add = (id, period, extra = {}) => out.push({ id, period: String(period), ...extra });
@@ -90,9 +98,12 @@ export function eventsOn(y, m, d, config = DEFAULT_CONFIG) {
   }
   return out
     .filter((e) => e.forced || (config.events?.[e.id]?.enabled !== false))
+    // Giới hạn quốc gia: danh sách rỗng = áp dụng mọi nơi; sự kiện bật thử (forced) luôn áp dụng cho mọi người.
+    .filter((e) => e.forced || !(config.events?.[e.id]?.countries || []).length || (country && config.events[e.id].countries.includes(country)))
     .map((e) => {
       const cfg = config.events?.[e.id] || {}, def = EVENTS[e.id];
-      return { ...e, name: def.name, theme: def.theme, gift: def.gift, xu: def.reward || e.id !== 'fools' ? cfg.xu || 0 : 0, chips: cfg.chips || 0 };
+      const period = cfg.repeat === 'daily' && !e.forced ? `${e.period}:${ymd(y, m, d)}` : e.period;
+      return { ...e, period, name: def.name, theme: def.theme, gift: def.gift, xu: def.reward || e.id !== 'fools' ? cfg.xu || 0 : 0, chips: cfg.chips || 0, duration: cfg.duration || 60, sound: cfg.sound || 'auto', repeat: cfg.repeat || 'year' };
     });
 }
 
