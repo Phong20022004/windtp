@@ -278,3 +278,11 @@ html[data-cel="fools"] *:has(> #brand-text)::before{content:"🃏"}
 .cel-twinkle i.big{font-size:54px;animation-duration:2s}
 @keyframes celTw{0%,100%{opacity:.1;transform:scale(.5) rotate(0)}50%{opacity:1;transform:scale(1.2) rotate(45deg)}}
 #cel-host.cel-photoscene .cel-fall i{font-size:13px!important}
+/* Màn dọc (điện thoại): hiện trọn ảnh như trên máy tính, phần thừa được lấp bằng chính ảnh làm mờ */
+#cel-host .cel-photo-blur{display:none}
+@media (max-aspect-ratio:1/1){
+  #cel-host .cel-photo-blur{display:block;position:absolute;inset:-30px;background-size:cover;background-position:center;filter:blur(22px) brightness(.8)}
+  #cel-host.cel-wedding .cel-photo{background-size:240% auto;background-position:48% 50%;background-repeat:no-repeat;animation:celKenS 24s ease-out forwards}
+  #cel-host.cel-wedding .cel-photo-shade{background:linear-gradient(to top,rgba(2,6,23,.85),rgba(2,6,23,.1) 50%,rgba(2,6,23,.25))}
+}
+@keyframes celKenS{from{transform:scale(1)}to{transform:scale(1.06)}}

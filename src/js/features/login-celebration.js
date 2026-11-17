@@ -9,7 +9,7 @@
     fools: { bg: "linear-gradient(#0f766e,#14b8a6)", title: "Happy April Fools' Day!", sub: "", hero: "🎁", fall: ["🃏", "🎈"], prank: true },
     halloween: { bg: "linear-gradient(#0b0014,#4c1d95)", title: "Trick or Treat!", sub: "Có gì đó đang nhìn bạn…", hero: "🎃", fall: ["🦇", "👻"], fog: true, gift: "🎃", giftText: "Chạm vào quả bí ngô", msg: "Bạn nhận được sticker bí ngô Halloween 🎃" },
     men: { bg: "linear-gradient(#0c4a6e,#38bdf8)", title: "Happy International Men's Day!", sub: "", hero: "🎁", fall: ["💙", "⭐"], glow: true, reveal: "🏅", gift: "🎁", giftText: "Mở hộp quà xanh", msg: "Bạn nhận được huy hiệu Quốc tế Nam giới 🏅" },
-    xmas: { bg: "linear-gradient(#052e16,#14532d)", title: "Merry Christmas!", sub: "Chạm hộp quà để mở", hero: "🎄", fall: ["❄️", "❄️", "⭐"], gift: "🎁", giftText: "Mở hộp quà", msg: "Bạn nhận được thiệp Giáng sinh và sticker ông già Noel 🎅" },
+    xmas: { bg: "linear-gradient(#052e16,#14532d)", title: "Merry Christmas!", sub: "Chạm hộp quà để mở", hero: "🎄", fall: ["❄️", "⛄", "❄️", "☃️", "❄️", "⭐"], gift: "🎁", giftText: "Mở hộp quà", msg: "Bạn nhận được thiệp Giáng sinh và sticker ông già Noel 🎅" },
     tet: { bg: "linear-gradient(#991b1b,#dc2626 55%,#f59e0b)", title: "Chúc Mừng Năm Mới!", sub: "Chạm vào phong bao lì xì", hero: "🏮", fall: ["🌸", "🌼", "✨", "🧧"], show: "gold", glitter: true, lanterns: true, titleLate: true, endSub: "Chúc mừng năm mới – Happy New Year!", gift: "🧧", giftText: "Mở lì xì", msg: "Vạn sự như ý, an khang thịnh vượng! 🌼 Bạn nhận được thiệp Tết, khung avatar Tết và huy hiệu chúc mừng năm mới." },
     midautumn: { bg: "linear-gradient(#1e1b4b,#312e81)", title: "Happy Mid-Autumn Festival!", sub: "Trăng rằm tháng Tám", hero: "🌕", fall: ["🏮", "✨"], rise: true, gift: "🥮", giftText: "Mở hộp bánh trung thu", msg: "Bạn nhận được sticker thỏ ngọc 🐇 và thiệp Trung thu" },
     qixi: { bg: "linear-gradient(#0f172a,#4c1d95)", title: "Happy Qixi Festival!", sub: "Ngưu Lang – Chức Nữ gặp nhau", hero: "🌌", fall: ["⭐", "✨"], photo: "qixi", intro: 10000, gift: "💌", giftText: "Mở thiệp tình yêu", msg: "Bạn nhận được một tấm thiệp tình yêu 💞" },
@@ -146,7 +146,7 @@
   var CELEB_MAGPIE = '<svg viewBox="0 0 60 30" aria-hidden="true"><path class="w1" d="M30 15C20 1 8 1 0 6c10 2 18 6 30 9z" fill="#0f172a"/><path class="w2" d="M30 15C40 1 52 1 60 6c-10 2-18 6-30 9z" fill="#1e293b"/><path d="M22 16 8 21l15-2z" fill="#0f172a"/><ellipse cx="30" cy="16.5" rx="9" ry="4" fill="#111827"/><ellipse cx="30" cy="17.8" rx="4" ry="1.5" fill="#e2e8f0"/><path d="M38 15l8-1-7 3z" fill="#111827"/></svg>';
   /** Cảnh dùng ảnh nền: Thất Tịch = đàn chim thước bay quanh cầu, Đám cưới = nhẫn lấp lánh. */
   function celebPhoto(id) {
-    var h = '<div class="cel-photo" style="background-image:url(\'' + CELEB_IMG[id] + '\')"></div><div class="cel-photo-shade"></div>', i;
+    var h = '<div class="cel-photo-blur" style="background-image:url(\'' + CELEB_IMG[id] + '\')"></div><div class="cel-photo" style="background-image:url(\'' + CELEB_IMG[id] + '\')"></div><div class="cel-photo-shade"></div>', i;
     if (id === "qixi") {
       h += '<div class="cel-moonglow"></div><div class="cel-birds">';
       for (i = 0; i < 16; i++) h += '<span style="top:' + Math.round(6 + Math.random() * 48) + "%;width:" + (34 + Math.round(Math.random() * 34)) + "px;animation-duration:" + (9 + Math.random() * 9).toFixed(1) + "s;animation-delay:" + (-Math.random() * 14).toFixed(1) + 's">' + CELEB_MAGPIE + "</span>";
