@@ -111,3 +111,56 @@ html.dark .com-empty .com-t{color:#e0e7ff}html.dark .com-empty .com-s{color:#cbd
 .lw-card.lw-done .st-title::after{content:" ✓";color:#059669}
 .lw-body .st-list{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
 html.dark .ls-write{background:#0c4a6e;color:#bae6fd}
+
+/* ===== Login Celebration: màn hình sự kiện + trang trí ngày lễ ===== */
+#cel-host{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;text-align:center;font-family:inherit;animation:celIn .6s ease both}
+#cel-host.cel-light{color:#831843}
+@keyframes celIn{from{opacity:0}to{opacity:1}}
+#cel-host .cel-cv{position:absolute;inset:0;width:100%;height:100%;transition:opacity .6s}
+#cel-host .cel-fall{opacity:.6;position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#cel-host .cel-fall i,#cel-deco i{position:absolute;top:-8%;font-style:normal;animation:celFall linear infinite;will-change:transform}
+@keyframes celFall{to{transform:translateY(115vh) rotate(360deg)}}
+#cel-host .cel-main{position:relative;z-index:2;padding:24px;max-width:560px;width:100%;display:flex;flex-direction:column;align-items:center;gap:14px}
+.cel-title{font-size:clamp(26px,7vw,44px);font-weight:900;line-height:1.15;text-shadow:0 4px 24px rgba(0,0,0,.35);margin:0}
+.cel-sub,.cel-msg{font-size:15px;font-weight:600;opacity:.92;margin:0;max-width:440px}
+.cel-reward{font-weight:800;font-size:16px;color:#fde047;min-height:1.2em;margin:0}
+.cel-hero{font-size:clamp(84px,24vw,150px);line-height:1;animation:celFloat 3s ease-in-out infinite}
+.cel-glow{filter:drop-shadow(0 0 28px #fde047)}
+@keyframes celFloat{50%{transform:translateY(-14px) scale(1.05)}}
+.cel-pop{animation:celPop .8s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes celPop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+.cel-gift{font-size:clamp(90px,26vw,160px);line-height:1;background:none;border:0;cursor:pointer;animation:celBounce 1.2s ease-in-out infinite;filter:drop-shadow(0 10px 22px rgba(0,0,0,.35))}
+@keyframes celBounce{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-16px) rotate(4deg)}}
+.cel-shake{animation:celShake .6s both!important}
+@keyframes celShake{10%,90%{transform:translateX(-4px)}20%,80%{transform:translateX(8px)}30%,50%,70%{transform:translateX(-12px)}40%,60%{transform:translateX(12px)}}
+.cel-btn{padding:12px 26px;border-radius:999px;border:0;background:#fde047;color:#7c2d12;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.3)}
+.cel-btn.alt{background:#fff;color:#be123c}
+.cel-skip,.cel-mute{position:absolute;top:14px;z-index:5;border:0;border-radius:999px;background:rgba(0,0,0,.35);color:#fff;font-weight:700;font-size:13px;padding:8px 14px;cursor:pointer}
+.cel-skip{right:14px}.cel-mute{left:14px}
+.cel-light .cel-skip,.cel-light .cel-mute{background:rgba(131,24,67,.75)}
+.cel-count{position:relative;z-index:2}.cel-count p{font-size:18px;font-weight:700;margin:0 0 6px}.cel-count b{display:block;font-size:min(42vw,220px);line-height:1;color:#fde047;text-shadow:0 0 40px #f59e0b;animation:celPop .9s both}
+.cel-burst{position:absolute;left:50%;top:55%;z-index:6;pointer-events:none}
+.cel-burst i{position:absolute;font-style:normal;animation:celBurst 1.5s ease-out forwards}
+@keyframes celBurst{to{transform:translate(var(--dx),var(--dy)) rotate(300deg);opacity:0}}
+.cel-rings{display:flex;font-size:clamp(70px,20vw,120px)}.cel-rings span:first-child{animation:celRingA 2.6s ease-in-out infinite alternate}.cel-rings span:last-child{margin-left:-26px;animation:celRingB 2.6s ease-in-out infinite alternate}
+@keyframes celRingA{from{transform:translateX(-90px)}to{transform:translateX(0)}}@keyframes celRingB{from{transform:translateX(90px)}to{transform:translateX(0)}}
+.cel-qixi{display:flex;align-items:center;font-size:56px}.cel-qixi b{font-size:80px;margin:0 -8px}.cel-qixi span:first-child{animation:celRingA 4s ease-in-out infinite alternate}.cel-qixi span:last-child{animation:celRingB 4s ease-in-out infinite alternate}
+.cel-moon{position:relative;font-size:clamp(110px,32vw,190px);filter:drop-shadow(0 0 40px #fde68a);animation:celFloat 5s ease-in-out infinite}.cel-moon span{position:absolute;font-size:.36em;right:-4%;bottom:-6%}
+.cel-rose{font-size:clamp(40px,10vw,60px);animation:celBloom 5s ease-out forwards;transform-origin:50% 100%}
+@keyframes celBloom{to{font-size:clamp(120px,34vw,200px)}}
+.cel-pump{font-size:clamp(110px,30vw,180px);filter:drop-shadow(0 0 40px #f97316);animation:celFloat 3s infinite}
+.cel-fog{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 100%,rgba(196,181,253,.35),transparent 60%);animation:celFog 6s ease-in-out infinite alternate;pointer-events:none}
+@keyframes celFog{to{opacity:.35;transform:scale(1.15)}}
+.cel-fish{animation:celFish 2.4s linear infinite}@keyframes celFish{from{transform:translateX(-120vw) scaleX(-1)}to{transform:translateX(120vw) scaleX(-1)}}
+/* Trang trí giao diện suốt ngày lễ */
+#cel-deco{position:fixed;inset:0;z-index:60;pointer-events:none;overflow:hidden}
+#cel-deco i{opacity:.75}
+#cel-deco .cel-strip{position:fixed;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#f43f5e,#f59e0b,#22c55e,#38bdf8,#a855f7)}
+#cel-deco .cel-badge{position:fixed;top:8px;right:8px;background:rgba(255,255,255,.88);color:#334155;font-size:11px;font-weight:800;border-radius:999px;padding:3px 10px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+html.dark #cel-deco .cel-badge{background:rgba(30,41,59,.9);color:#e2e8f0}
+html[data-cel="tet"] #cel-deco .cel-strip{background:linear-gradient(90deg,#dc2626,#f59e0b,#dc2626)}
+html[data-cel="xmas"] #cel-deco .cel-strip{background:repeating-linear-gradient(90deg,#dc2626 0 24px,#16a34a 24px 48px)}
+html[data-cel="valentine"] #cel-deco .cel-strip,html[data-cel="women"] #cel-deco .cel-strip,html[data-cel="white"] #cel-deco .cel-strip{background:linear-gradient(90deg,#f43f5e,#f9a8d4,#f43f5e)}
+html[data-cel="halloween"] #cel-deco .cel-strip{background:linear-gradient(90deg,#f97316,#7c3aed,#f97316)}
+html[data-cel="wedding"] #cel-deco .cel-strip{background:linear-gradient(90deg,#fde68a,#fecdd3,#fde68a)}
+@media (prefers-reduced-motion:reduce){#cel-host *,#cel-deco *{animation-duration:.01s!important;animation-iteration-count:1!important}}

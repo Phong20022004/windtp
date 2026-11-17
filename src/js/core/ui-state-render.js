@@ -360,7 +360,7 @@
     <button data-action="open-category" class="px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap border border-dashed border-teal-400 text-teal-700 bg-white hover:bg-teal-50">\uFF0B T\u1EA1o danh m\u1EE5c</button>
   </div>
   ${custom ? `<div class="flex items-center justify-between text-xs text-slate-500"><span>Danh m\u1EE5c do b\u1EA1n t\u1EA1o: <b class="text-slate-700">${esc(custom.emoji)} ${esc(custom.name)}</b></span><button data-action="delete-category" data-id="${custom.id}" class="font-bold text-rose-500 hover:text-rose-600">X\xF3a danh m\u1EE5c</button></div>` : ""}
-  ${isAdmin() ? modCard() : ""}
+  ${isAdmin() ? modCard() + celebAdminCard() : ""}
   ${utilSearchBar()}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">${parts.join("") || '<p class="col-span-full text-center text-sm text-slate-500 py-10">Ch\u01B0a c\xF3 m\u1EE5c n\xE0o trong danh m\u1EE5c n\xE0y.</p>'}</div>`;
   }
@@ -405,7 +405,7 @@
   </div>
   <div class="max-w-2xl mx-auto space-y-4">
 
-    ${isAdmin() ? modCard() : ""}${ownPendingNote()}
+    ${isAdmin() ? modCard() + celebAdminCard() : ""}${ownPendingNote()}
     <div class="glass-card p-4 rounded-2xl space-y-3">
       <div class="flex gap-3">${profileAvatar(40)}
         <textarea data-input="draft" id="post-draft" rows="2" maxlength="600" placeholder="B\u1EA1n mu\u1ED1n chia s\u1EBB \u0111i\u1EC1u g\xEC h\xF4m nay?" class="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-sky-400 resize-none">${esc(ui.draft)}</textarea></div>

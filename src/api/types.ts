@@ -372,3 +372,25 @@ export interface ChatView {
   blocked: { me: boolean; other: boolean };
   messages: ChatMessage[];
 }
+
+/** Một sự kiện chào mừng sau đăng nhập (máy chủ tính theo ngày địa phương của người dùng). */
+export interface CelebrationEvent {
+  id: string;
+  name: string;
+  theme: string;
+  gift: string;
+  period: string;
+  claimed: boolean;
+  /** Đúng khoảnh khắc 00:00 của ngày này có màn pháo hoa đếm ngược. */
+  midnight: boolean;
+  forced?: boolean;
+  xu: number;
+  chips: number;
+}
+
+export interface CelebrationConfig {
+  enabled: boolean;
+  events: Record<string, { enabled: boolean; xu: number; chips: number }>;
+  wedding: { start: string; days: number };
+  force: { id: string; nonce: number } | null;
+}

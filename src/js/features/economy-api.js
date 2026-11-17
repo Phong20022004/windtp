@@ -115,11 +115,12 @@
   /** claim=true khi vừa đăng nhập: giành phiên (thiết bị khác bị đăng xuất) rồi mới lấy ví. Mở lại app đã đăng nhập thì không giành lại. */
   function econBoot(claim) {
     econ.me = null; econ.ref = null; econ.devs = null; econ.chat = null; econ.inbox = null; econ.unread = 0; econ.ordersLoaded = false; econ.syncReady = false;
-    const go = () => econRefresh(false).then(() => { if (isAdmin()) econPublishCatalog(); });
+    const go = () => econRefresh(false).then(() => { if (isAdmin()) econPublishCatalog(); if (typeof celebBoot === "function") celebBoot(); });
     if (!claim || !window.WindtpApi) { go(); return; }
     econClient().claimSession().then(go, (e) => { if (e && e.code === "device-limit") econFail(e); else go(); });
   }
   function econReset() {
+    if (typeof celebStop === "function") celebStop();
     econ.me = null; econ.chat = null; econ.inbox = null; econ.unread = 0; window.clearInterval(econ.chatTimer); econ.adminOrders = []; econ.myOrders = []; econ.orderStatus = null; econ.ordersLoaded = false; econ.birthSent = ""; econ.syncReady = false; window.clearTimeout(econ.syncTimer);
     if (window.WindtpApi) { window.WindtpApi.wallet.clear(); window.WindtpApi.clearSession(); }
   }

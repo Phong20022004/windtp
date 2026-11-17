@@ -1,6 +1,7 @@
 // API ví / đơn hàng / kiểm duyệt. Trình duyệt chỉ GỬI YÊU CẦU; mọi số tiền, giá, thưởng do máy chủ quyết định.
 import * as E from './economy.js';
 import { priceOrder } from './shop.js';
+import { EVENTS, DEFAULT_CONFIG, sanitizeCelebration, eventsOn, claimKey } from './celebration.js';
 import { sanitizeStore, sniffImage, IMAGE_TYPES, IMG_KEY, MAX_IMAGE_BYTES } from './store.js';
 
 class HttpError extends Error {
@@ -891,6 +892,47 @@ export function createApi({ verify, now = () => Date.now() }) {
   route('GET', '/store', 'user', async ({ db }) => {
     const row = await q(db, 'SELECT json, updated_at FROM store WHERE id = 1').first();
     return row ? { ...JSON.parse(row.json), updatedAt: row.updated_at } : { customProducts: [], productEdits: {}, hiddenProducts: [], customCats: [], updatedAt: 0 };
+  });
+
+
+  // ===== Sự kiện chào mừng sau đăng nhập (xem worker/src/celebration.js) =====
+  async function celebConfig(db) {
+    const row = await q(db, 'SELECT json FROM celebration WHERE id = 1').first();
+    try { return row ? { ...DEFAULT_CONFIG, ...JSON.parse(row.json) } : DEFAULT_CONFIG; } catch { return DEFAULT_CONFIG; }
+  }
+  const dateParts = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '')); return m ? [+m[1], +m[2], +m[3]] : null; };
+  // Ngày địa phương của người dùng chỉ được lệch tối đa 1 ngày so với ngày UTC của máy chủ (múi giờ -12..+14).
+  const dateOk = (p, t) => { const d = Date.UTC(p[0], p[1] - 1, p[2]); return Math.abs(d - Math.floor(t / 86400000) * 86400000) <= 86400000 * 1; };
+  route('GET', '/celebration', 'user', async ({ db, user, t, url }) => {
+    const p = dateParts(url.searchParams.get('date'));
+    if (!p || !dateOk(p, t)) throw bad('bad-date');
+    const cfg = await celebConfig(db);
+    const list = eventsOn(p[0], p[1], p[2], cfg);
+    const rows = (await q(db, "SELECT key FROM claims WHERE uid = ? AND key LIKE 'celeb:%'", user.uid).all()).results || [];
+    const done = new Set(rows.map((r) => r.key));
+    return { events: list.map((e) => ({ ...e, claimed: done.has(claimKey(e.id, e.period)) })) };
+  });
+  route('POST', '/celebration/claim', 'user', async ({ db, user, t, body }) => {
+    await rate(db, user, t, 'celeb', 30, 60000);
+    const p = dateParts(body.date);
+    if (!p || !dateOk(p, t) || !EVENTS[body.id]) throw bad('bad-event');
+    const cfg = await celebConfig(db);
+    const ev = eventsOn(p[0], p[1], p[2], cfg).find((e) => e.id === body.id);
+    if (!ev) throw bad('not-active');
+    await wallet(db, user.uid, t);
+    const stmts = [q(db, 'INSERT INTO claims (uid, key, created_at) VALUES (?, ?, ?)', user.uid, claimKey(ev.id, ev.period), t)];
+    if (ev.xu || ev.chips) {
+      stmts.push(credit(db, user.uid, ev.xu, ev.chips), txStmt(db, user.uid, 'celebration', ev.xu, ev.chips, `Quà sự kiện ${ev.name}`, ev.id, t));
+    }
+    await atomic(db, stmts);
+    return { ok: true, xu: ev.xu, chips: ev.chips };
+  });
+  route('GET', '/admin/celebration', 'admin', async ({ db }) => ({ config: await celebConfig(db), events: Object.entries(EVENTS).map(([id, e]) => ({ id, name: e.name, gift: e.gift })) }));
+  route('PUT', '/admin/celebration', 'admin', async ({ db, t, body }) => {
+    const clean = sanitizeCelebration(body);
+    if (!clean) throw bad('bad-celebration');
+    await q(db, 'INSERT INTO celebration (id, json, updated_at) VALUES (1, ?, ?) ON CONFLICT (id) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at', JSON.stringify(clean), t).run();
+    return { ok: true };
   });
 
   // Dọn dữ liệu hết hạn (chạy theo lịch hằng ngày): giới hạn tần suất cũ, lịch sử thiết bị quá 3 tháng, báo cáo chat đã xử lý quá 90 ngày.

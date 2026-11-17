@@ -28,5 +28,6 @@
   "src/js/features/alphabet.js",
   "src/js/features/alphabet-everest.js",
   "src/js/features/economy-api.js",
+  "src/js/features/login-celebration.js",
   "src/js/games/card-game-quan-hung.js"
 ]

@@ -1042,7 +1042,7 @@ test('chống giả mạo tên admin; PUT /me/state kiểm tra kiểu từng kh�
   assert.ok(!feed.some((p) => !p.admin && /admin|windtp|quản trị/i.test(p.author)), 'tên người thường không chứa từ dành riêng');
 });
 
-test('migrations 0001..0004 cho cùng cấu trúc bảng với schema.sql', async () => {
+test('migrations 0001..0006 cho cùng cấu trúc bảng với schema.sql', async () => {
   const { DatabaseSync } = await import('node:sqlite');
   const { readFileSync } = await import('node:fs');
   const cols = (sqls) => {
@@ -1052,7 +1052,7 @@ test('migrations 0001..0004 cho cùng cấu trúc bảng với schema.sql', asyn
     for (const { name } of d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()) out[name] = d.prepare(`PRAGMA table_info(${name})`).all().map((c) => `${c.name}:${c.type}:${c.notnull}`).sort();
     return out;
   };
-  assert.deepEqual(cols(['../migrations/0001_init.sql', '../migrations/0002_hardening.sql', '../migrations/0003_contacts_threads.sql', '../migrations/0004_thread_safety.sql', '../migrations/0005_bank_events.sql']), cols(['../schema.sql']));
+  assert.deepEqual(cols(['../migrations/0001_init.sql', '../migrations/0002_hardening.sql', '../migrations/0003_contacts_threads.sql', '../migrations/0004_thread_safety.sql', '../migrations/0005_bank_events.sql', '../migrations/0006_celebration.sql']), cols(['../schema.sql']));
 });
 
 // ===== An toàn nhắn tin và sửa cách liên hệ =====
@@ -1232,4 +1232,48 @@ test('Đài tệ (TWD): nạp Xu theo tỷ giá, tối thiểu, và giá sản p
   const store = { customProducts: [{ id: 'cp-9', custom: true, name: 'Bút', desc: '', price: { VND: 40000, KRW: 2100, JPY: 250 }, rewardXu: 0, rewardChips: 0 }] };
   assert.equal(priceOrder([{ id: 'cp-9', qty: 2 }], 'TWD', store).total, 100);
   assert.equal(priceOrder([{ id: 'cr-en-1m', qty: 1 }], 'TWD', {}).total, 125);
+});
+
+test('sự kiện chào mừng: lịch dương/âm, nhận quà một lần/năm, cấu hình admin, trò đùa Cá tháng Tư không cộng Xu', async () => {
+  const { eventsOn } = await import('../src/celebration.js');
+  const ids = (y, m, d, c) => eventsOn(y, m, d, c).map((e) => e.id);
+  assert.deepEqual(ids(2027, 1, 1), ['newyear']);
+  assert.deepEqual(ids(2027, 12, 25), ['xmas']);
+  // Tết 2027: 30 Chạp = 06/02, mùng 1 = 07/02, mùng 6 = 12/02, mùng 7 = 13/02 đã hết Tết.
+  assert.deepEqual(ids(2027, 2, 5), []);
+  assert.deepEqual(ids(2027, 2, 6), ['tet']);
+  assert.equal(eventsOn(2027, 2, 6)[0].midnight, false);
+  assert.equal(eventsOn(2027, 2, 7)[0].midnight, true);
+  assert.deepEqual(ids(2027, 2, 12), ['tet']);
+  assert.deepEqual(ids(2027, 2, 13), []);
+  assert.deepEqual(ids(2026, 9, 25), ['midautumn']); // rằm tháng 8 âm 2026
+  assert.deepEqual(ids(2026, 8, 19), ['qixi']); // 7/7 âm 2026
+  const cfg = { enabled: true, events: {}, wedding: { start: '2027-05-20', days: 3 }, force: null };
+  assert.deepEqual([19, 20, 21, 22, 23].map((d) => ids(2027, 5, d, cfg).length), [0, 1, 1, 1, 0]);
+
+  const app = await makeApp();
+  const day = new Date(app.state.t).toISOString().slice(0, 10);
+  // Admin bật sự kiện thử cho Tết kèm thưởng 100 Xu, và bật thử Cá tháng Tư kèm thưởng (phải bị bỏ qua).
+  assert.equal((await app.call('PUT', '/admin/celebration', { uid: 'boss', admin: true, body: { events: { tet: { xu: 100 }, fools: { xu: 999 } }, force: { id: 'tet', nonce: 1 } } })).status, 200);
+  assert.equal((await app.call('PUT', '/admin/celebration', { uid: 'u1', body: {} })).status, 403);
+  assert.equal((await app.call('PUT', '/admin/celebration', { uid: 'boss', admin: true, body: { force: { id: 'xx' } } })).status, 400);
+  const g = await app.call('GET', `/celebration?date=${day}`, { uid: 'u1' });
+  assert.equal(g.status, 200);
+  assert.equal(g.json.events[0].id, 'tet');
+  assert.equal(g.json.events[0].claimed, false);
+  const c1 = await app.call('POST', '/celebration/claim', { uid: 'u1', body: { id: 'tet', date: day } });
+  assert.equal(c1.status, 200);
+  assert.equal(c1.json.xu, 100);
+  assert.equal((await app.call('POST', '/celebration/claim', { uid: 'u1', body: { id: 'tet', date: day } })).status, 409);
+  assert.equal((await app.call('GET', '/me', { uid: 'u1' })).json.balance, 100);
+  assert.equal((await app.call('GET', `/celebration?date=${day}`, { uid: 'u1' })).json.events[0].claimed, true);
+  // Sự kiện không diễn ra hôm nay thì không nhận được; ngày lệch quá xa bị từ chối.
+  assert.equal((await app.call('POST', '/celebration/claim', { uid: 'u2', body: { id: 'halloween', date: day } })).status, 400);
+  assert.equal((await app.call('GET', '/celebration?date=2001-01-01', { uid: 'u2' })).status, 400);
+  // Admin bật lại lần nữa (nonce mới) => người dùng nhận lại được một lần nữa.
+  await app.call('PUT', '/admin/celebration', { uid: 'boss', admin: true, body: { events: { tet: { xu: 100 } }, force: { id: 'tet', nonce: 2 } } });
+  assert.equal((await app.call('POST', '/celebration/claim', { uid: 'u1', body: { id: 'tet', date: day } })).status, 200);
+  const off = await app.call('PUT', '/admin/celebration', { uid: 'boss', admin: true, body: { enabled: false } });
+  assert.equal(off.status, 200);
+  assert.deepEqual((await app.call('GET', `/celebration?date=${day}`, { uid: 'u1' })).json.events, []);
 });

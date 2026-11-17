@@ -117,6 +117,13 @@ CREATE TABLE IF NOT EXISTS post_comments (
 CREATE INDEX IF NOT EXISTS post_comments_post ON post_comments (post_id, id);
 
 -- Cấu hình cửa hàng do admin đăng: một dòng JSON đã làm sạch (xem worker/src/store.js).
+-- Cấu hình sự kiện chào mừng sau đăng nhập (Login Celebration) do admin chỉnh.
+CREATE TABLE IF NOT EXISTS celebration (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  json TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS store (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   json TEXT NOT NULL,
