@@ -40,7 +40,14 @@ export function sanitizeCelebration(input) {
     if (!['year', 'daily'].includes(repeat)) return null;
     const countries = Array.isArray(e.countries) ? e.countries.map((c) => String(c).toUpperCase()) : [];
     if (countries.length > 10 || countries.some((c) => !/^[A-Z]{2}$/.test(c))) return null;
-    out.events[id] = { enabled: e.enabled !== false, xu: id === 'fools' ? 0 : xu, chips: id === 'fools' ? 0 : chips, duration, sound, repeat, countries };
+    // Khoảng ngày tùy chỉnh (ghi đè ngày mặc định): from/to dạng YYYY-MM-DD, cả hai hoặc không có.
+    let range = null;
+    if (e.from || e.to) {
+      if (!DATE.test(e.from || '') || !DATE.test(e.to || '') || Number.isNaN(Date.parse(e.from)) || Number.isNaN(Date.parse(e.to)) || e.to < e.from) return null;
+      if (Date.parse(e.to) - Date.parse(e.from) > 31 * 86400000) return null;
+      range = { from: e.from, to: e.to };
+    }
+    out.events[id] = { enabled: e.enabled !== false, range, xu: id === 'fools' ? 0 : xu, chips: id === 'fools' ? 0 : chips, duration, sound, repeat, countries };
   }
   const w = input.wedding;
   if (w) {
@@ -88,6 +95,14 @@ export function eventsOn(y, m, d, config = DEFAULT_CONFIG, country = '') {
     if (lu.m === 8 && (lu.d === 14 || lu.d === 15)) add('midautumn', y);
     if (lu.m === 7 && lu.d === 7) add('qixi', y);
   }
+  // Khoảng ngày do admin đặt thay hoàn toàn ngày mặc định của sự kiện đó.
+  const cur = ymd(y, m, d);
+  for (const id of ID_LIST) {
+    const r = config.events?.[id]?.range;
+    if (!r) continue;
+    for (let i = out.length - 1; i >= 0; i--) if (out[i].id === id) out.splice(i, 1);
+    if (cur >= r.from && cur <= r.to) add(id, y, { midnight: cur === r.from });
+  }
   const w = config.wedding;
   if (w && w.start) {
     const s = Date.parse(w.start + 'T00:00:00Z'), cur = Date.UTC(y, m - 1, d);
@@ -103,8 +118,19 @@ export function eventsOn(y, m, d, config = DEFAULT_CONFIG, country = '') {
     .map((e) => {
       const cfg = config.events?.[e.id] || {}, def = EVENTS[e.id];
       const period = cfg.repeat === 'daily' && !e.forced ? `${e.period}:${ymd(y, m, d)}` : e.period;
-      return { ...e, period, name: def.name, theme: def.theme, gift: def.gift, xu: def.reward || e.id !== 'fools' ? cfg.xu || 0 : 0, chips: cfg.chips || 0, duration: cfg.duration || 60, sound: cfg.sound || 'auto', repeat: cfg.repeat || 'year' };
+      return { ...e, period, range: undefined, name: def.name, theme: def.theme, gift: def.gift, xu: def.reward || e.id !== 'fools' ? cfg.xu || 0 : 0, chips: cfg.chips || 0, duration: cfg.duration || 60, sound: cfg.sound || 'auto', repeat: cfg.repeat || 'year' };
     });
 }
 
 export const claimKey = (id, period) => `celeb:${id}:${period}`;
+
+/** Sự kiện sắp tới trong `within` ngày kể từ ngày y-m-d (để hiện "còn N ngày"); null nếu không có hoặc hôm nay đã có sự kiện. */
+export function upcomingFrom(y, m, d, config = DEFAULT_CONFIG, country = '', within = 10) {
+  if (eventsOn(y, m, d, config, country).length) return null;
+  for (let i = 1; i <= within; i++) {
+    const [ny, nm, nd] = addDays(y, m, d, i);
+    const ev = eventsOn(ny, nm, nd, { ...config, force: null }, country)[0];
+    if (ev) return { id: ev.id, name: ev.name, theme: ev.theme, days: i };
+  }
+  return null;
+}

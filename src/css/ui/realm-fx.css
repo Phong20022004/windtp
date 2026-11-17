@@ -78,3 +78,7 @@
 .pfp-off.rframe::before,.pfp-off.rframe::after{animation:none!important;opacity:.3}
 .rfgt-tet{--ring:conic-gradient(#dc2626,#fde047,#dc2626,#f59e0b,#fff7ed,#dc2626);--glow:#f59e0b;--spd:4s;--pulse:1.8s}
 .rfgt-wed{--ring:conic-gradient(#fde68a,#fecdd3,#fff,#f9a8d4,#fde68a,#fff7ed,#fde68a);--glow:#fb7185;--spd:5s;--pulse:2s}
+.rfgt-xmas{--ring:conic-gradient(#dc2626,#fff,#16a34a,#dc2626,#fff,#16a34a);--glow:#22c55e;--spd:4s;--pulse:1.8s}
+.rfgt-mid{--ring:conic-gradient(#fde68a,#f59e0b,#fff7ed,#fbbf24,#fde68a);--glow:#fbbf24;--spd:6s;--pulse:2.2s}
+.rfgt-hal{--ring:conic-gradient(#f97316,#7c3aed,#111827,#f97316,#7c3aed);--glow:#f97316;--spd:3.6s;--pulse:1.6s}
+.rfgt-val{--ring:conic-gradient(#f43f5e,#fda4af,#fff,#fb7185,#f43f5e);--glow:#f43f5e;--spd:4.5s;--pulse:1.8s}

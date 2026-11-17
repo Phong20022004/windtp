@@ -400,7 +400,20 @@ export interface CelebrationGift {
 
 export interface CelebrationConfig {
   enabled: boolean;
-  events: Record<string, { enabled: boolean; xu: number; chips: number; duration: number; sound: string; repeat: string; countries: string[] }>;
+  events: Record<string, { enabled: boolean; xu: number; chips: number; duration: number; sound: string; repeat: string; countries: string[]; range: { from: string; to: string } | null }>;
   wedding: { start: string; days: number };
   force: { id: string; nonce: number } | null;
+}
+
+/** Sự kiện sắp diễn ra trong vài ngày tới (để hiện "còn N ngày"). */
+export interface CelebrationUpcoming {
+  id: string;
+  name: string;
+  theme: string;
+  days: number;
+}
+
+export interface CelebrationDay {
+  events: CelebrationEvent[];
+  upcoming: CelebrationUpcoming | null;
 }

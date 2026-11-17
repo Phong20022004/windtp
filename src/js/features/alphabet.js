@@ -569,7 +569,7 @@
     var b = document.createElement("div"); b.className = "alfx-streak"; b.textContent = "🔥 Chuỗi đúng ×" + alphaFxStreak; document.body.appendChild(b); window.setTimeout(function () { b.remove(); }, 1300);
   }
   function alphaFxResult(ok) {
-    if (ok) { alphaFxStreak++; try { sfx("right"); } catch (e) { } alphaFxBurst(["✨", "⭐", "🌟"], 8, false); alphaFxStreakPop(); }
+    if (ok) { alphaFxStreak++; try { sfx("right"); } catch (e) { } alphaFxBurst((typeof celebThemeEmoji === "function" && celebThemeEmoji()) || ["✨", "⭐", "🌟"], 8, false); alphaFxStreakPop(); }
     else { alphaFxStreak = 0; try { sfx("wrong"); } catch (e) { } var el = $("#tab-learn"); if (el) { el.classList.remove("alfx-shake"); void el.offsetWidth; el.classList.add("alfx-shake"); window.setTimeout(function () { el.classList.remove("alfx-shake"); }, 500); } }
   }
   function alphaFxDone() { try { sfx("coin"); } catch (e) { } alphaFxBurst(["🎉", "🎊", "⭐", "✨", "🌟"], 34, true); }

@@ -1,7 +1,7 @@
 // API ví / đơn hàng / kiểm duyệt. Trình duyệt chỉ GỬI YÊU CẦU; mọi số tiền, giá, thưởng do máy chủ quyết định.
 import * as E from './economy.js';
 import { priceOrder } from './shop.js';
-import { EVENTS, DEFAULT_CONFIG, sanitizeCelebration, eventsOn, claimKey } from './celebration.js';
+import { EVENTS, DEFAULT_CONFIG, sanitizeCelebration, eventsOn, upcomingFrom, claimKey } from './celebration.js';
 import { sanitizeStore, sniffImage, IMAGE_TYPES, IMG_KEY, MAX_IMAGE_BYTES } from './store.js';
 
 class HttpError extends Error {
@@ -912,7 +912,7 @@ export function createApi({ verify, now = () => Date.now() }) {
     const list = eventsOn(p[0], p[1], p[2], cfg, country);
     const rows = (await q(db, "SELECT key FROM claims WHERE uid = ? AND key LIKE 'celeb:%'", user.uid).all()).results || [];
     const done = new Set(rows.map((r) => r.key));
-    return { events: list.map((e) => ({ ...e, claimed: done.has(claimKey(e.id, e.period)) })) };
+    return { events: list.map((e) => ({ ...e, claimed: done.has(claimKey(e.id, e.period)) })), upcoming: upcomingFrom(p[0], p[1], p[2], cfg, country) };
   });
   route('POST', '/celebration/claim', 'user', async ({ db, user, t, body }) => {
     await rate(db, user, t, 'celeb', 30, 60000);

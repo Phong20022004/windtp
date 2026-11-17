@@ -9,6 +9,7 @@ import {
   type CelebrationConfig,
   type CelebrationEvent,
   type CelebrationGift,
+  type CelebrationDay,
   type BankEvent,
   type ContentReport,
   type ReportKind,
@@ -104,7 +105,7 @@ export interface ApiClient {
   /** Cấu hình cửa hàng do admin đăng (sản phẩm, chỉnh sửa, ẩn, danh mục). */
   store(): Promise<StoreConfig>;
   /** Sự kiện chào mừng đang diễn ra vào ngày địa phương `date` (YYYY-MM-DD). */
-  celebration(date: string, country?: string): Promise<CelebrationEvent[]>;
+  celebration(date: string, country?: string): Promise<CelebrationDay>;
   /** Quà lễ đã nhận của tài khoản (lưu ở máy chủ). */
   celebrationGifts(): Promise<CelebrationGift[]>;
   /** Nhận quà một sự kiện (một lần/năm/tài khoản, máy chủ cộng Xu nếu có cấu hình). */
@@ -258,7 +259,7 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, session, fetch
     },
     claimSession,
     store: async () => { const r = await request<StoreConfig>("GET", "/store"); if (!Array.isArray(r.customProducts) || !Array.isArray(r.hiddenProducts) || !Array.isArray(r.customCats)) throw new ApiError("bad-response", 200); return r; },
-    celebration: async (date, country = "") => (await request<{ events: CelebrationEvent[] }>("GET", `/celebration?date=${encodeURIComponent(date)}&country=${encodeURIComponent(country)}`)).events,
+    celebration: async (date, country = "") => { const r = await request<{ events: CelebrationEvent[]; upcoming?: CelebrationDay["upcoming"] }>("GET", `/celebration?date=${encodeURIComponent(date)}&country=${encodeURIComponent(country)}`); return { events: r.events, upcoming: r.upcoming ?? null }; },
     celebrationGifts: async () => (await request<{ gifts: CelebrationGift[] }>("GET", "/celebration/gifts")).gifts,
     claimCelebration: async (id, date, country = "") => { const r = await post("/celebration/claim", { id, date, country }) as { xu?: number; chips?: number }; return { xu: Number(r?.xu) || 0, chips: Number(r?.chips) || 0 }; },
     tasks: async () => (await request<{ tasks: SpecialTask[] }>("GET", "/tasks")).tasks,

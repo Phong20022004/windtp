@@ -2,18 +2,18 @@
      Máy chủ (worker/src/celebration.js) quyết định hôm nay có sự kiện nào và chống nhận quà trùng theo tài khoản.
      Trình duyệt chỉ gửi ngày địa phương, phát hiệu ứng, rồi gọi "claim"; Xu do máy chủ cộng. Mở thử: thêm ?celebrate=tet vào địa chỉ (không nhận quà). */
   var CELEB_SCENES = {
-    newyear: { bg: "linear-gradient(#020617,#1e1b4b)", title: "HAPPY NEW YEAR!", sub: "Chúc mừng năm mới", hero: "🎆", fall: ["✨", "🎊"], show: "multi", gift: "💌", giftText: "Mở thiệp chúc mừng năm mới", msg: "Chúc bạn một năm mới học thật giỏi, vui thật nhiều!" },
+    newyear: { bg: "linear-gradient(#020617,#1e1b4b)", title: "HAPPY NEW YEAR!", sub: "Chúc mừng năm mới", hero: "🎆", fall: ["✨", "🎊"], show: "multi", glitter: true, titleLate: true, endSub: "Chúc mừng năm mới – Happy New Year!", gift: "💌", giftText: "Mở thiệp chúc mừng năm mới", msg: "Chúc bạn một năm mới học thật giỏi, vui thật nhiều!" },
     valentine: { bg: "linear-gradient(#be123c,#fb7185)", title: "Happy Valentine's Day!", sub: "Chạm vào trái tim nhé", hero: "💖", fall: ["💗", "💕", "🌹"], gift: "💖", giftText: "Chạm trái tim", burst: "💗", msg: "Bạn nhận được một trái tim ảo và thiệp Valentine 💌" },
     women: { bg: "linear-gradient(#831843,#f472b6)", title: "Happy Women's Day!", sub: "Bông hồng đang nở…", hero: "🌹", fall: ["🌸", "🌹"], gift: "🌹", giftText: "Nhận bông hồng", msg: "Bạn nhận được một bông hồng ảo 🌹", friends: "🌹" },
-    white: { bg: "linear-gradient(#fdf2f8,#e0f2fe)", dark: false, title: "Happy White Day!", sub: "Hộp quà đang mở ra", hero: "🤍", fall: ["🤍", "🕊️", "🤍"], gift: "🎁", giftText: "Mở hộp quà", msg: "Bạn nhận được một hộp chocolate ảo 🍫" },
+    white: { bg: "linear-gradient(#fdf2f8,#e0f2fe)", dark: false, title: "Happy White Day!", sub: "Hộp quà đang mở ra", hero: "🤍", fall: ["🤍", "🕊️", "🤍"], rise: true, reveal: "🍫", gift: "🎁", giftText: "Mở hộp quà", msg: "Bạn nhận được một hộp chocolate ảo 🍫" },
     fools: { bg: "linear-gradient(#0f766e,#14b8a6)", title: "Happy April Fools' Day!", sub: "", hero: "🎁", fall: ["🃏", "🎈"], prank: true },
     halloween: { bg: "linear-gradient(#0b0014,#4c1d95)", title: "Trick or Treat!", sub: "Có gì đó đang nhìn bạn…", hero: "🎃", fall: ["🦇", "👻"], fog: true, gift: "🎃", giftText: "Chạm vào quả bí ngô", msg: "Bạn nhận được sticker bí ngô Halloween 🎃" },
-    men: { bg: "linear-gradient(#0c4a6e,#38bdf8)", title: "Happy International Men's Day!", sub: "", hero: "🎁", fall: ["💙", "⭐"], gift: "🎁", giftText: "Mở hộp quà xanh", msg: "Bạn nhận được huy hiệu Quốc tế Nam giới 🏅" },
+    men: { bg: "linear-gradient(#0c4a6e,#38bdf8)", title: "Happy International Men's Day!", sub: "", hero: "🎁", fall: ["💙", "⭐"], glow: true, reveal: "🏅", gift: "🎁", giftText: "Mở hộp quà xanh", msg: "Bạn nhận được huy hiệu Quốc tế Nam giới 🏅" },
     xmas: { bg: "linear-gradient(#052e16,#14532d)", title: "Merry Christmas!", sub: "Chạm hộp quà để mở", hero: "🎄", fall: ["❄️", "❄️", "⭐"], gift: "🎁", giftText: "Mở hộp quà", msg: "Bạn nhận được thiệp Giáng sinh và sticker ông già Noel 🎅" },
-    tet: { bg: "linear-gradient(#991b1b,#dc2626 55%,#f59e0b)", title: "Chúc Mừng Năm Mới!", sub: "Chạm vào phong bao lì xì", hero: "🏮", fall: ["🌸", "🏵️", "✨"], show: "gold", gift: "🧧", giftText: "Mở lì xì", msg: "Vạn sự như ý, an khang thịnh vượng! 🌼 Bạn nhận được thiệp Tết, khung avatar Tết và huy hiệu chúc mừng năm mới." },
+    tet: { bg: "linear-gradient(#991b1b,#dc2626 55%,#f59e0b)", title: "Chúc Mừng Năm Mới!", sub: "Chạm vào phong bao lì xì", hero: "🏮", fall: ["🌸", "🌼", "✨", "🧧"], show: "gold", glitter: true, lanterns: true, titleLate: true, endSub: "Chúc mừng năm mới – Happy New Year!", gift: "🧧", giftText: "Mở lì xì", msg: "Vạn sự như ý, an khang thịnh vượng! 🌼 Bạn nhận được thiệp Tết, khung avatar Tết và huy hiệu chúc mừng năm mới." },
     midautumn: { bg: "linear-gradient(#1e1b4b,#312e81)", title: "Happy Mid-Autumn Festival!", sub: "Trăng rằm tháng Tám", hero: "🌕", fall: ["🏮", "✨"], rise: true, gift: "🥮", giftText: "Mở hộp bánh trung thu", msg: "Bạn nhận được sticker thỏ ngọc 🐇 và thiệp Trung thu" },
     qixi: { bg: "linear-gradient(#0f172a,#4c1d95)", title: "Happy Qixi Festival!", sub: "Ngưu Lang – Chức Nữ gặp nhau", hero: "🌌", fall: ["⭐", "✨"], stars: true, gift: "💌", giftText: "Mở thiệp tình yêu", msg: "Bạn nhận được một tấm thiệp tình yêu 💞" },
-    wedding: { bg: "linear-gradient(#fff7ed,#fecdd3)", dark: false, title: "THE WEDDING OF THE CENTURY!", sub: "Hai chiếc nhẫn đang lồng vào nhau", hero: "💍", fall: ["🌹", "🌸", "💮"], show: "gold", gift: "🎁", giftText: "Mở hộp quà cưới", msg: "Bạn nhận được thiệp cưới, sticker cặp đôi, khung avatar và huy hiệu kỷ niệm 💒" }
+    wedding: { bg: "linear-gradient(#4c0519,#9f1239)", title: "THE WEDDING OF THE CENTURY!", sub: "Hai chiếc nhẫn đang lồng vào nhau", hero: "💍", fall: ["🌹", "🌸", "💮"], show: "gold", titleLate: true, endSub: "Chúc mừng đôi uyên ương 💒", gift: "🎁", giftText: "Mở hộp quà cưới", msg: "Bạn nhận được thiệp cưới, sticker cặp đôi, khung avatar và huy hiệu kỷ niệm 💒" }
   };
   var CELEB_DECO = { newyear: "🎆", valentine: "💖", women: "🌹", white: "🤍", fools: "🃏", halloween: "🎃", men: "💙", xmas: "🎄", tet: "🏮", midautumn: "🌕", qixi: "🌌", wedding: "💍" };
   /** Lì xì Tết và quà Đám cưới (hoặc sự kiện có Xu): chỉ nhận khi mở hộp quà sau màn pháo hoa, và còn nhận được đến hết thời gian lễ. */
@@ -35,6 +35,12 @@
   function celebDecorate(ev) {
     var root = document.documentElement, old = document.getElementById("cel-deco");
     if (old) old.remove();
+    var up = !ev && celeb.upcoming;
+    if (up) {
+      root.removeAttribute("data-cel");
+      var u = document.createElement("div"); u.id = "cel-deco"; u.setAttribute("aria-hidden", "true");
+      u.innerHTML = '<div class="cel-badge">' + (CELEB_DECO[up.id] || "🎉") + " Còn " + up.days + " ngày nữa đến " + esc(up.name) + "</div>"; document.body.appendChild(u); return;
+    }
     if (!ev) { root.removeAttribute("data-cel"); return; }
     root.setAttribute("data-cel", ev.theme);
     var sc = CELEB_SCENES[ev.id] || {}, em = sc.fall || [CELEB_DECO[ev.id]], d = document.createElement("div");
@@ -43,6 +49,16 @@
     for (var i = 0; i < n; i++) h += '<i style="left:' + Math.round(Math.random() * 96) + "%;animation-delay:" + (-Math.random() * 14).toFixed(1) + "s;animation-duration:" + (9 + Math.random() * 9).toFixed(1) + "s;font-size:" + (14 + Math.round(Math.random() * 14)) + 'px">' + em[i % em.length] + "</i>";
     d.innerHTML = h; document.body.appendChild(d);
   }
+
+  function celebThemeEmoji() { var t = celeb.top; return t && CELEB_SCENES[t.id] ? CELEB_SCENES[t.id].fall : null; }
+  // Chạm vào đâu trên giao diện ngày lễ cũng bắn vài biểu tượng đúng chủ đề.
+  document.addEventListener("click", function (e) {
+    var list = celebThemeEmoji(); if (!list || !document.documentElement.getAttribute("data-cel") || e.target.closest("#cel-host") || celebOff()) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var box = document.createElement("div"); box.className = "cel-tap"; box.style.left = e.clientX + "px"; box.style.top = e.clientY + "px"; var h = "";
+    for (var i = 0; i < 6; i++) h += '<i style="--dx:' + Math.round(Math.random() * 90 - 45) + "px;--dy:" + Math.round(-Math.random() * 70 - 20) + 'px">' + list[i % list.length] + "</i>";
+    box.innerHTML = h; document.body.appendChild(box); window.setTimeout(function () { box.remove(); }, 900);
+  }, true);
 
   // ----- Pháo hoa -----
   function celebBoom(v) {
@@ -117,17 +133,24 @@
   }
 
   // ----- Màn hình sự kiện -----
-  function celebFall(host, list) {
+  function celebFall(host, list, rise) {
     var h = "";
-    for (var i = 0; i < 22; i++) h += '<i style="left:' + Math.round(Math.random() * 98) + "%;animation-delay:" + (-Math.random() * 10).toFixed(1) + "s;animation-duration:" + (6 + Math.random() * 7).toFixed(1) + "s;font-size:" + (16 + Math.round(Math.random() * 22)) + 'px">' + list[i % list.length] + "</i>";
+    for (var i = 0; i < 22; i++) h += '<i' + (rise ? ' class="rise"' : "") + ' style="left:' + Math.round(Math.random() * 98) + "%;animation-delay:" + (-Math.random() * 10).toFixed(1) + "s;animation-duration:" + (6 + Math.random() * 7).toFixed(1) + "s;font-size:" + (16 + Math.round(Math.random() * 22)) + 'px">' + list[i % list.length] + "</i>";
+    return h;
+  }
+  function celebGlitter() {
+    var h = "";
+    for (var i = 0; i < 40; i++) h += '<b style="left:' + Math.round(Math.random() * 99) + "%;animation-delay:" + (-Math.random() * 6).toFixed(1) + "s;animation-duration:" + (3 + Math.random() * 4).toFixed(1) + 's"></b>';
     return h;
   }
   function celebHeroFx(id, hero) {
-    if (id === "wedding") return '<div class="cel-rings"><span>💍</span><span>💍</span></div>';
-    if (id === "qixi") return '<div class="cel-qixi"><span>⭐</span><b>🌉</b><span>🌟</span></div>';
+    if (id === "wedding") return '<div class="cel-rings2"><span class="rg a"></span><span class="rg b"></span><i>✨</i></div>';
+    if (id === "qixi") return '<div class="cel-qixi"><span class="qs a">⭐</span><div class="cel-bridge">' + [0, 1, 2, 3, 4, 5, 6].map(function (i) { return '<em style="--i:' + i + '">🐦</em>'; }).join("") + '</div><span class="qs b">🌟</span></div>';
+    if (id === "valentine") return '<div class="cel-rose">🌹</div>';
+    if (id === "white") return '<div class="cel-boxwrap"><span class="cel-boxtop">🍫</span><span class="cel-hero">🎁</span></div>';
     if (id === "midautumn") return '<div class="cel-moon">🌕<span>🐇</span></div>';
     if (id === "women") return '<div class="cel-rose">🌹</div>';
-    if (id === "halloween") return '<div class="cel-pump" data-pump>🎃</div>';
+    if (id === "halloween") return '<div class="cel-pumpkin"><i class="e l"></i><i class="e r"></i><i class="m"></i></div>';
     if (id === "xmas") return '<div class="cel-hero cel-glow">🎄</div>';
     return '<div class="cel-hero">' + hero + "</div>";
   }
@@ -163,14 +186,14 @@
       function stage1() {
         stage = 1;
         var show = sc.show;
-        host.innerHTML = '<div class="cel-fall">' + celebFall(host, sc.fall) + "</div>" + (show ? '<canvas class="cel-cv"></canvas>' : "") + (sc.fog ? '<div class="cel-fog"></div>' : "") +
-          '<div class="cel-main">' + (show === "multi" ? "" : celebHeroFx(ev.id, sc.hero)) + '<h1 class="cel-title" style="opacity:' + (show === "multi" ? 0 : 1) + '">' + esc(sc.title) + '</h1><p class="cel-sub">' + esc(sc.sub || "") + "</p></div>" + chrome();
+        host.innerHTML = '<div class="cel-fall">' + celebFall(host, sc.fall, sc.rise) + "</div>" + (sc.glitter ? '<div class="cel-fall cel-glitter">' + celebGlitter() + "</div>" : "") + (sc.lanterns ? '<div class="cel-lant l1">🏮</div><div class="cel-lant l2">🏮</div><div class="cel-lant l3">🏮</div>' : "") + (ev.id === "qixi" ? '<div class="cel-milky"></div>' : "") + (show ? '<canvas class="cel-cv"></canvas>' : "") + (sc.fog ? '<div class="cel-fog"></div>' : "") +
+          '<div class="cel-main">' + (show === "multi" ? "" : celebHeroFx(ev.id, sc.hero)) + '<h1 class="cel-title" style="opacity:' + (sc.titleLate ? 0 : 1) + '">' + esc(sc.title) + '</h1><p class="cel-sub">' + esc(sc.sub || "") + "</p></div>" + chrome();
         var title = host.querySelector(".cel-title"), sub = host.querySelector(".cel-sub");
         if (!show && !opt.giftOnly) celebSound(ev, "intro");
         if (opt.giftOnly) { stage2(); return; }
         if (show) {
           var cv = host.querySelector(".cel-cv"), shown = false, countdown = opt.countdown;
-          fw = celebFireworks(cv, { silent: ev.sound === "none" || ev.sound === "chime", gold: show === "gold", duration: ev.duration || 60, onTick: function (e, k) { if (k >= 55 && !shown) { shown = true; title.style.opacity = 1; title.classList.add("cel-pop"); sub.textContent = "Chúc mừng năm mới – Happy New Year!"; } }, onEnd: stage2 });
+          fw = celebFireworks(cv, { silent: ev.sound === "none" || ev.sound === "chime", gold: show === "gold", duration: ev.duration || 60, onTick: function (e, k) { if (k >= 55 && !shown) { shown = true; title.style.opacity = 1; title.classList.add("cel-pop"); sub.textContent = sc.endSub || ""; } }, onEnd: stage2 });
         } else { setTimeout(function () { if (!finished && stage === 1) stage2(); }, ev.id === "wedding" || ev.id === "women" ? 7000 : 6000); }
       }
       function stage2() {
@@ -178,7 +201,7 @@
         if (prank) return stagePrank();
         var cv = host.querySelector(".cel-cv"); if (cv) cv.style.opacity = 0.35;
         var main = host.querySelector(".cel-main");
-        main.innerHTML = '<h1 class="cel-title cel-pop">' + esc(sc.title) + '</h1><button class="cel-gift" data-cel="open" aria-label="' + esc(sc.giftText) + '">' + sc.gift + '</button><p class="cel-sub">' + esc(sc.giftText) + "</p>";
+        main.innerHTML = (ev.id === "xmas" ? '<div class="cel-hero cel-glow cel-tree">🎄</div>' : "") + '<h1 class="cel-title cel-pop">' + esc(sc.title) + '</h1><button class="cel-gift" data-cel="open" aria-label="' + esc(sc.giftText) + '">' + sc.gift + '</button><p class="cel-sub">' + esc(sc.giftText) + "</p>";
       }
       function stagePrank() {
         var main = host.querySelector(".cel-main");
@@ -187,7 +210,8 @@
       function open() {
         if (stage !== 2 || finished) return; stage = 3;
         var main = host.querySelector(".cel-main"), burst = sc.burst, friends = sc.friends;
-        main.innerHTML = '<div class="cel-hero cel-pop">' + sc.gift + '</div><h1 class="cel-title">' + esc(sc.title) + '</h1><p class="cel-msg">' + esc(sc.msg) + '</p><p class="cel-reward" data-reward></p>' +
+        if (sc.glow) host.insertAdjacentHTML("afterbegin", '<div class="cel-blueglow"></div>');
+        main.innerHTML = '<div class="cel-hero cel-pop">' + (sc.reveal || sc.gift) + '</div><h1 class="cel-title">' + esc(sc.title) + '</h1><p class="cel-msg">' + esc(sc.msg) + '</p><p class="cel-reward" data-reward></p>' +
           (friends ? '<button class="cel-btn alt" data-cel="friend">🌹 Gửi hoa cho bạn bè</button>' : "") + '<button class="cel-btn" data-cel="done">Vào WINDTP</button>';
         celebSound(ev, "gift"); celebConfetti(host, sc.fall);
         claimed = true;
@@ -237,7 +261,8 @@
   }
   function celebCheck(force) {
     if (!state.account || !window.WindtpApi || celebOff()) return Promise.resolve();
-    return econClient().celebration(celebDate(), celebCountry()).then(function (list) {
+    return econClient().celebration(celebDate(), celebCountry()).then(function (day) {
+      var list = day.events; celeb.upcoming = day.upcoming;
       celeb.list = list; celeb.top = list[0] || null; celebDecorate(celeb.top);
       var seen = celebSeenStore(), shown = celebShownStore();
       list.forEach(function (ev) {
@@ -256,7 +281,7 @@
     if (!state.account || !window.WindtpApi || celebOff()) return;
     if (s >= 86400 - 120 && celeb.tomorrowAt !== celebDate(1)) {
       celeb.tomorrowAt = celebDate(1); celeb.tomorrow = null;
-      econClient().celebration(celeb.tomorrowAt, celebCountry()).then(function (l) { celeb.tomorrow = l.filter(function (e) { return e.midnight && !e.claimed; })[0] || null; }, function () { });
+      econClient().celebration(celeb.tomorrowAt, celebCountry()).then(function (day) { celeb.tomorrow = day.events.filter(function (e) { return e.midnight && !e.claimed; })[0] || null; }, function () { });
     }
     if (s >= 86400 - 10 && celeb.tomorrow && !celeb.busy) {
       var ev = celeb.tomorrow; celeb.tomorrow = null; var k = ev.id + ":" + ev.period; celeb.seen[k] = 1;
@@ -287,6 +312,7 @@
       return '<div class="border border-slate-200 rounded-xl p-2.5 space-y-1.5" data-cel-row="' + id + '"><label class="flex items-center gap-2 text-xs font-bold text-slate-800"><input type="checkbox" data-f="enabled"' + (e.enabled !== false ? " checked" : "") + '> ' + esc(CELEB_NAMES[id]) + (forced ? ' <span class="text-[10px] bg-rose-600 text-white keep-white rounded-full px-1.5">ĐANG BẬT THỬ</span>' : "") + '</label>' +
         (id === "fools" ? '<p class="text-[10px] text-slate-500">Chỉ là trò đùa — không bao giờ cộng Xu.</p>' : '<div class="flex gap-2 text-[11px]"><label>Xu <input data-f="xu" type="number" min="0" value="' + (e.xu || 0) + '" class="w-20 border rounded px-1"></label><label>Chip <input data-f="chips" type="number" min="0" value="' + (e.chips || 0) + '" class="w-16 border rounded px-1"></label></div>') +
         '<div class="flex flex-wrap gap-2 text-[11px]"><label>Thời lượng (giây, 0 = mặc định) <input data-f="duration" type="number" min="0" max="120" value="' + (e.duration || 0) + '" class="w-14 border rounded px-1"></label><label>Âm thanh <select data-f="sound" class="border rounded px-1">' + [["auto", "Tự động"], ["boom", "Tiếng nổ"], ["chime", "Chuông"], ["none", "Tắt"]].map(function (o) { return '<option value="' + o[0] + '"' + ((e.sound || "auto") === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + '</select></label><label>Phát lại <select data-f="repeat" class="border rounded px-1"><option value="year"' + ((e.repeat || "year") === "year" ? " selected" : "") + '>1 lần/năm</option><option value="daily"' + (e.repeat === "daily" ? " selected" : "") + '>Mỗi ngày lễ</option></select></label><label>Quốc gia (VN,KR,JP,TW; trống = tất cả) <input data-f="countries" type="text" value="' + esc((e.countries || []).join(",")) + '" class="w-24 border rounded px-1"></label></div>' +
+        (id === "wedding" ? "" : '<div class="flex flex-wrap gap-2 text-[11px] items-center"><span class="font-bold">Ngày diễn ra tùy chỉnh (trống = mặc định):</span><input data-f="from" type="date" value="' + esc((e.range && e.range.from) || "") + '" class="border rounded px-1"> → <input data-f="to" type="date" value="' + esc((e.range && e.range.to) || "") + '" class="border rounded px-1"></div>') +
         '<div class="flex gap-1.5"><button data-action="cel-preview" data-id="' + id + '" class="px-2 py-1 rounded-lg bg-slate-100 text-[11px] font-bold">👁 Xem thử</button><button data-action="cel-force" data-id="' + id + '" class="px-2 py-1 rounded-lg bg-rose-100 text-rose-700 text-[11px] font-bold">⚡ Bật cho mọi người</button></div></div>';
     }).join("");
     return modalHead("🎉 Sự kiện lễ") + '<div class="p-4 space-y-2.5 text-slate-800"><label class="flex items-center gap-2 text-xs font-extrabold"><input type="checkbox" id="cel-all"' + (c.enabled !== false ? " checked" : "") + '> Bật hệ thống sự kiện</label>' +
@@ -302,6 +328,7 @@
       var dur = Math.min(120, f("duration")); if (dur > 0 && dur < 10) dur = 10;
       c.events[r.dataset.celRow] = { enabled: f("enabled"), xu: f("xu"), chips: f("chips"), duration: dur, sound: t("sound", "auto"), repeat: t("repeat", "year"),
         countries: String(t("countries", "")).split(/[,\s]+/).map(function (x) { return x.trim().toUpperCase(); }).filter(Boolean) };
+      var fr = t("from", ""), to = t("to", ""); if (fr && to) { c.events[r.dataset.celRow].from = fr; c.events[r.dataset.celRow].to = to; }
     });
     c.wedding = { start: host.querySelector("#cel-wd").value || "", days: Math.min(14, Math.max(1, parseInt(host.querySelector("#cel-wn").value, 10) || 3)) };
   }
@@ -328,14 +355,14 @@
   // ----- Quà lễ: bộ sưu tập, khung avatar, huy hiệu, công tắc hiệu ứng -----
   var CELEB_GIFTS = {
     newyear: [["💌", "Thiệp chúc mừng năm mới", "card"]],
-    valentine: [["💗", "Trái tim ảo", "sticker"], ["💌", "Thiệp Valentine", "card"]],
+    valentine: [["💗", "Trái tim ảo", "sticker"], ["💌", "Thiệp Valentine", "card"], ["🖼️", "Khung avatar Valentine", "frame", "f-gift-valentine"]],
     women: [["🌹", "Bông hồng ảo", "sticker"]],
     white: [["🍫", "Hộp chocolate ảo", "sticker"]],
-    halloween: [["🎃", "Sticker bí ngô", "sticker"]],
+    halloween: [["🎃", "Sticker bí ngô", "sticker"], ["🖼️", "Khung avatar Halloween", "frame", "f-gift-halloween"]],
     men: [["🏅", "Huy hiệu Quốc tế Nam giới", "badge"]],
-    xmas: [["💌", "Thiệp Giáng sinh", "card"], ["🎅", "Sticker ông già Noel", "sticker"]],
+    xmas: [["💌", "Thiệp Giáng sinh", "card"], ["🎅", "Sticker ông già Noel", "sticker"], ["🖼️", "Khung avatar Giáng sinh", "frame", "f-gift-xmas"]],
     tet: [["🧧", "Thiệp Tết đặc biệt", "card"], ["🏅", "Huy hiệu chúc mừng năm mới", "badge"], ["🖼️", "Khung avatar Tết", "frame", "f-gift-tet"]],
-    midautumn: [["🐇", "Sticker thỏ ngọc", "sticker"], ["🥮", "Thiệp Trung thu", "card"]],
+    midautumn: [["🐇", "Sticker thỏ ngọc", "sticker"], ["🥮", "Thiệp Trung thu", "card"], ["🖼️", "Khung avatar Trung thu", "frame", "f-gift-midautumn"]],
     qixi: [["💞", "Thiệp tình yêu", "card"]],
     wedding: [["💒", "Thiệp cưới Đám cưới thế kỷ", "card"], ["👩‍❤️‍👨", "Sticker cặp đôi", "sticker"], ["🏅", "Huy hiệu kỷ niệm Đám cưới thế kỷ", "badge"], ["🖼️", "Khung avatar Đám cưới", "frame", "f-gift-wedding"]]
   };

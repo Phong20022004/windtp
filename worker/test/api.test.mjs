@@ -1298,3 +1298,16 @@ test('sự kiện chào mừng: thời lượng, âm thanh, quốc gia, nhận l
   assert.deepEqual(g.json.gifts.map((x) => [x.id, x.period]), [['valentine', 'force1']]);
   assert.deepEqual((await app.call('GET', '/celebration/gifts', { uid: 'u2' })).json.gifts, []);
 });
+
+test('sự kiện chào mừng: khoảng ngày tùy chỉnh thay ngày mặc định và báo sự kiện sắp tới', async () => {
+  const { eventsOn, sanitizeCelebration, upcomingFrom } = await import('../src/celebration.js');
+  assert.equal(sanitizeCelebration({ events: { xmas: { from: '2027-12-20' } } }), null);
+  assert.equal(sanitizeCelebration({ events: { xmas: { from: '2027-12-26', to: '2027-12-20' } } }), null);
+  const cfg = sanitizeCelebration({ events: { xmas: { from: '2027-12-20', to: '2027-12-26' } } });
+  assert.deepEqual([19, 20, 24, 26, 27].map((d) => eventsOn(2027, 12, d, cfg).length), [0, 1, 1, 1, 0]);
+  assert.equal(eventsOn(2027, 12, 25, sanitizeCelebration({ events: { xmas: { from: '2027-12-10', to: '2027-12-12' } } })).length, 0);
+  const up = upcomingFrom(2027, 12, 20, undefined, '');
+  assert.deepEqual([up.id, up.days], ['xmas', 4]);
+  assert.equal(upcomingFrom(2027, 12, 25), null);
+  assert.equal(upcomingFrom(2027, 6, 1), null);
+});

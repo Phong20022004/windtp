@@ -183,3 +183,76 @@ html[data-cel="wedding"] #cel-deco .cel-strip{background:linear-gradient(90deg,#
 .cel-sticker{display:inline-block;font-size:56px;line-height:1.1;animation:celPop .5s cubic-bezier(.2,1.6,.4,1) both}
 .cel-card{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:150px;padding:10px 14px;border-radius:14px;background:linear-gradient(135deg,#fef3c7,#fecdd3);color:#7c2d12;text-align:center}
 .cel-card-e{font-size:40px;line-height:1.1}.cel-card small{opacity:.75}
+
+/* ===== Bổ sung hiệu ứng lễ ===== */
+#cel-host .cel-fall i.rise,#cel-deco i.rise{top:auto;bottom:-8%;animation-name:celRise}
+@keyframes celRise{to{transform:translateY(-115vh) rotate(-300deg)}}
+#cel-host .cel-glitter b{position:absolute;top:-4%;width:5px;height:9px;background:linear-gradient(#fde047,#f59e0b);opacity:.9;animation:celFall linear infinite}
+#cel-host .cel-lant{position:absolute;top:0;z-index:1;font-size:54px;transform-origin:50% 0;animation:celSway 3s ease-in-out infinite alternate}
+#cel-host .cel-lant.l1{left:6%}#cel-host .cel-lant.l2{right:6%;animation-delay:-1.4s}#cel-host .cel-lant.l3{left:44%;top:-12px;font-size:40px;animation-delay:-.7s}
+@keyframes celSway{from{transform:rotate(-9deg)}to{transform:rotate(9deg)}}
+/* Thất Tịch: dải ngân hà, cầu Ô Thước, hai ngôi sao gặp nhau rồi dừng */
+.cel-milky{position:absolute;left:-10%;right:-10%;top:18%;height:34%;transform:rotate(-14deg);background:radial-gradient(ellipse at center,rgba(199,210,254,.55),rgba(129,140,248,.25) 40%,transparent 70%);filter:blur(6px);animation:celIn 3s both}
+.cel-qixi{display:flex;align-items:center;justify-content:center;gap:0;width:100%;font-size:58px}
+.cel-qixi .qs{filter:drop-shadow(0 0 18px #fde047)}
+.cel-qixi .qs.a{animation:celMeetA 5s ease-in-out forwards}.cel-qixi .qs.b{animation:celMeetB 5s ease-in-out forwards}
+@keyframes celMeetA{from{transform:translateX(-26vw)}to{transform:translateX(18px)}}@keyframes celMeetB{from{transform:translateX(26vw)}to{transform:translateX(-18px)}}
+.cel-bridge{display:flex;align-items:flex-end;height:70px;margin:0 -6px}
+.cel-bridge em{font-style:normal;font-size:30px;margin:0 -2px;transform:translateY(calc(var(--i) * 0px));opacity:0;animation:celBird .5s forwards;animation-delay:calc(2.2s + var(--i) * .35s)}
+.cel-bridge em:nth-child(1),.cel-bridge em:nth-child(7){margin-bottom:0}.cel-bridge em:nth-child(2),.cel-bridge em:nth-child(6){margin-bottom:14px}.cel-bridge em:nth-child(3),.cel-bridge em:nth-child(5){margin-bottom:26px}.cel-bridge em:nth-child(4){margin-bottom:32px}
+@keyframes celBird{from{opacity:0;transform:translateY(-18px) scale(.5)}to{opacity:1;transform:none}}
+/* Đám cưới: hai chiếc nhẫn khác nhau lồng vào nhau */
+.cel-rings2{position:relative;width:190px;height:110px;display:flex;align-items:center;justify-content:center}
+.cel-rings2 .rg{position:absolute;width:84px;height:84px;border-radius:50%;box-sizing:border-box}
+.cel-rings2 .rg.a{border:11px solid #fbbf24;box-shadow:0 0 18px #fde047,inset 0 0 6px #b45309;animation:celRgA 3.2s ease-in-out forwards}
+.cel-rings2 .rg.b{border:11px solid #f9a8d4;border-top-color:#fecdd3;box-shadow:0 0 18px #fb7185,inset 0 0 6px #be185d;animation:celRgB 3.2s ease-in-out forwards}
+.cel-rings2 i{position:absolute;top:-10px;font-style:normal;font-size:26px;opacity:0;animation:celIn .6s 3s forwards}
+@keyframes celRgA{from{transform:translateX(-95px)}to{transform:translateX(-27px)}}@keyframes celRgB{from{transform:translateX(95px)}to{transform:translateX(27px)}}
+/* Halloween: bí ngô mở mắt và cười */
+.cel-pumpkin{position:relative;width:170px;height:140px;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 35% 30%,#fb923c,#ea580c 60%,#9a3412);box-shadow:0 0 50px #f97316;animation:celFloat 3s ease-in-out infinite}
+.cel-pumpkin::before{content:"";position:absolute;left:50%;top:-16px;width:18px;height:24px;margin-left:-9px;background:#365314;border-radius:6px 6px 2px 2px}
+.cel-pumpkin .e{position:absolute;top:38px;width:30px;height:34px;background:#fde047;clip-path:polygon(50% 0,100% 100%,0 100%);transform:scaleY(.05);transform-origin:50% 100%;animation:celEye 1s 2.4s forwards;filter:drop-shadow(0 0 8px #fde047)}
+.cel-pumpkin .e.l{left:30px}.cel-pumpkin .e.r{right:30px}
+.cel-pumpkin .m{position:absolute;left:34px;right:34px;bottom:22px;height:30px;background:#fde047;clip-path:polygon(0 0,10% 60%,22% 20%,36% 70%,50% 20%,64% 70%,78% 20%,90% 60%,100% 0,92% 100%,8% 100%);transform:scaleY(0);transform-origin:50% 0;animation:celEye .8s 3.2s forwards}
+@keyframes celEye{to{transform:scaleY(1)}}
+/* Nam giới: ánh sáng xanh; Giáng sinh: cây thông cùng hộp quà; Valentine Trắng: hộp quà mở dần */
+.cel-blueglow{position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px;border-radius:50%;background:radial-gradient(circle,#e0f2fe,#38bdf8 45%,transparent 70%);animation:celBlue 1.8s ease-out forwards;pointer-events:none;z-index:1}
+@keyframes celBlue{to{transform:scale(60);opacity:0}}
+.cel-tree{font-size:clamp(60px,18vw,100px)}
+#cel-host.cel-xmas .cel-gift{font-size:clamp(70px,20vw,110px)}
+.cel-boxwrap{position:relative;display:flex;flex-direction:column;align-items:center}
+.cel-boxtop{font-size:46px;opacity:0;animation:celBoxTop 2.5s 1.5s ease-out forwards}
+@keyframes celBoxTop{from{opacity:0;transform:translateY(40px) scale(.4)}to{opacity:1;transform:translateY(8px) scale(1)}}
+/* Chạm tạo hạt chủ đề */
+.cel-tap{position:fixed;z-index:2147482000;pointer-events:none}
+.cel-tap i{position:absolute;font-style:normal;font-size:18px;animation:celTap .9s ease-out forwards}
+@keyframes celTap{to{transform:translate(var(--dx),var(--dy)) scale(.6);opacity:0}}
+/* Đổi màu chủ đạo app theo lễ (chỉ các màu nhấn xanh dương mặc định) */
+html[data-cel="tet"]{--cel-a:#dc2626;--cel-b:#b91c1c;--cel-soft:#fef2f2}
+html[data-cel="xmas"]{--cel-a:#15803d;--cel-b:#166534;--cel-soft:#f0fdf4}
+html[data-cel="valentine"],html[data-cel="women"],html[data-cel="white"],html[data-cel="wedding"]{--cel-a:#e11d48;--cel-b:#be123c;--cel-soft:#fff1f2}
+html[data-cel="halloween"]{--cel-a:#ea580c;--cel-b:#c2410c;--cel-soft:#fff7ed}
+html[data-cel="midautumn"],html[data-cel="newyear"]{--cel-a:#d97706;--cel-b:#b45309;--cel-soft:#fffbeb}
+html[data-cel="qixi"]{--cel-a:#7c3aed;--cel-b:#6d28d9;--cel-soft:#f5f3ff}
+html[data-cel="men"]{--cel-a:#0284c7;--cel-b:#0369a1;--cel-soft:#f0f9ff}
+html[data-cel="fools"]{--cel-a:#0d9488;--cel-b:#0f766e;--cel-soft:#f0fdfa}
+html[data-cel] .bg-sky-600,html[data-cel] .bg-sky-500{background-color:var(--cel-a)!important}
+html[data-cel] .hover\:bg-sky-700:hover{background-color:var(--cel-b)!important}
+html[data-cel] .text-sky-600,html[data-cel] .text-sky-700{color:var(--cel-a)!important}
+html[data-cel] .border-sky-100,html[data-cel] .border-sky-200{border-color:var(--cel-soft)!important}
+html[data-cel] .bg-sky-50,html[data-cel] .bg-sky-50\/60{background-color:var(--cel-soft)!important}
+html[data-cel] #brand-text{background-image:linear-gradient(90deg,var(--cel-a),var(--cel-b))!important}
+/* Logo có phụ kiện theo lễ */
+html[data-cel] *:has(> #brand-text){position:relative}
+html[data-cel] *:has(> #brand-text)::before{position:absolute;top:-8px;left:-2px;font-size:17px;-webkit-text-fill-color:initial;transform:rotate(-18deg);pointer-events:none}
+html[data-cel="xmas"] *:has(> #brand-text)::before{content:"🎅"}
+html[data-cel="tet"] *:has(> #brand-text)::before{content:"🌼"}
+html[data-cel="halloween"] *:has(> #brand-text)::before{content:"🎃"}
+html[data-cel="midautumn"] *:has(> #brand-text)::before{content:"🏮"}
+html[data-cel="valentine"] *:has(> #brand-text)::before,html[data-cel="white"] *:has(> #brand-text)::before{content:"💗"}
+html[data-cel="wedding"] *:has(> #brand-text)::before{content:"💍"}
+html[data-cel="newyear"] *:has(> #brand-text)::before{content:"🎉"}
+html[data-cel="women"] *:has(> #brand-text)::before{content:"🌹"}
+html[data-cel="qixi"] *:has(> #brand-text)::before{content:"⭐"}
+html[data-cel="men"] *:has(> #brand-text)::before{content:"🏅"}
+html[data-cel="fools"] *:has(> #brand-text)::before{content:"🃏"}

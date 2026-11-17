@@ -11,3 +11,7 @@
 **Người dùng** xem thử bằng `?celebrate=tet` (không nhận quà); tắt hiệu ứng/âm thanh và xem bộ sưu tập quà ở Cài đặt > "Hiệu ứng ngày lễ".
 
 **Thiệp và sticker trong chat:** nút 🎁 cạnh ô nhập (chat bạn bè và chat người mua/bán) cho gửi thiệp/sticker đã nhận; tin có dạng `[[gift:<sự kiện>:<số>]]` và được vẽ thành sticker/thiệp ở cả hai phía.
+
+**Giao diện cả ngày lễ:** dải màu, huy hiệu, biểu tượng rơi/bay lên, màu nhấn của app (nút, chữ, thẻ xanh dương) và logo có phụ kiện đổi theo lễ; chạm vào đâu cũng bắn vài hạt chủ đề; trước lễ tối đa 10 ngày hiện "Còn N ngày nữa đến …". Admin có thể đặt khoảng ngày tùy chỉnh cho từng lễ (thay ngày mặc định, tối đa 31 ngày).
+
+**Khung avatar nhận từ lễ:** Tết, Đám cưới, Giáng sinh, Trung thu, Halloween, Valentine.
