@@ -33,6 +33,7 @@ const FAKE_API_ENTRY = "tests/fake-api/entry.ts";
  */
 const ASSET_FILES: ReadonlySet<string> = new Set([
   "src/js/core/embedded-images.js",
+  "src/js/features/celebration-images.js",
   "src/js/players/seoul1a-lesson1.js",
   "src/css/game/bbl-art.css",
 ]);

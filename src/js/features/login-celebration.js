@@ -12,8 +12,8 @@
     xmas: { bg: "linear-gradient(#052e16,#14532d)", title: "Merry Christmas!", sub: "Chạm hộp quà để mở", hero: "🎄", fall: ["❄️", "❄️", "⭐"], gift: "🎁", giftText: "Mở hộp quà", msg: "Bạn nhận được thiệp Giáng sinh và sticker ông già Noel 🎅" },
     tet: { bg: "linear-gradient(#991b1b,#dc2626 55%,#f59e0b)", title: "Chúc Mừng Năm Mới!", sub: "Chạm vào phong bao lì xì", hero: "🏮", fall: ["🌸", "🌼", "✨", "🧧"], show: "gold", glitter: true, lanterns: true, titleLate: true, endSub: "Chúc mừng năm mới – Happy New Year!", gift: "🧧", giftText: "Mở lì xì", msg: "Vạn sự như ý, an khang thịnh vượng! 🌼 Bạn nhận được thiệp Tết, khung avatar Tết và huy hiệu chúc mừng năm mới." },
     midautumn: { bg: "linear-gradient(#1e1b4b,#312e81)", title: "Happy Mid-Autumn Festival!", sub: "Trăng rằm tháng Tám", hero: "🌕", fall: ["🏮", "✨"], rise: true, gift: "🥮", giftText: "Mở hộp bánh trung thu", msg: "Bạn nhận được sticker thỏ ngọc 🐇 và thiệp Trung thu" },
-    qixi: { bg: "linear-gradient(#0f172a,#4c1d95)", title: "Happy Qixi Festival!", sub: "Ngưu Lang – Chức Nữ gặp nhau", hero: "🌌", fall: ["⭐", "✨"], stars: true, gift: "💌", giftText: "Mở thiệp tình yêu", msg: "Bạn nhận được một tấm thiệp tình yêu 💞" },
-    wedding: { bg: "linear-gradient(#4c0519,#9f1239)", title: "THE WEDDING OF THE CENTURY!", sub: "", hero: "💍", fall: ["🌹", "🌸", "💮"], show: "gold", titleLate: true, endSub: "Chúc mừng Đám cưới thế kỷ 💒", gift: "🎁", giftText: "Mở hộp quà cưới", msg: "Bạn nhận được thiệp cưới, sticker cặp đôi, khung avatar và huy hiệu kỷ niệm 💒" }
+    qixi: { bg: "linear-gradient(#0f172a,#4c1d95)", title: "Happy Qixi Festival!", sub: "Ngưu Lang – Chức Nữ gặp nhau", hero: "🌌", fall: ["⭐", "✨"], photo: "qixi", intro: 10000, gift: "💌", giftText: "Mở thiệp tình yêu", msg: "Bạn nhận được một tấm thiệp tình yêu 💞" },
+    wedding: { bg: "linear-gradient(#4c0519,#9f1239)", title: "THE WEDDING OF THE CENTURY!", sub: "", hero: "💍", fall: ["🌹", "🌸", "💮"], show: "gold", photo: "wedding", clear: true, titleLate: true, endSub: "Chúc mừng Đám cưới thế kỷ 💒", gift: "🎁", giftText: "Mở hộp quà cưới", msg: "Bạn nhận được thiệp cưới, sticker cặp đôi, khung avatar và huy hiệu kỷ niệm 💒" }
   };
   var CELEB_DECO = { newyear: "🎆", valentine: "💖", women: "🌹", white: "🤍", fools: "🃏", halloween: "🎃", men: "💙", xmas: "🎄", tet: "🏮", midautumn: "🌕", qixi: "🌌", wedding: "💍" };
   /** Lì xì Tết và quà Đám cưới (hoặc sự kiện có Xu): chỉ nhận khi mở hộp quà sau màn pháo hoa, và còn nhận được đến hết thời gian lễ. */
@@ -106,8 +106,8 @@
     function step(now) {
       if (!running) return;
       var e = (now - t0) / 1000, dt = Math.min(2, (now - last) / 16.7); last = now;
-      ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "rgba(2,6,23,0.22)"; ctx.fillRect(0, 0, W, H);
-      ctx.globalCompositeOperation = "lighter";
+      if (opts.clear) { ctx.globalCompositeOperation = "destination-out"; ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = "source-over"; }
+      else { ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "rgba(2,6,23,0.22)"; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = "lighter"; }
       // Kịch bản theo thang 60 giây (co giãn nếu thời lượng khác)
       var k = e * 60 / dur;
       if (k < 10) { if (!nextL) { nextL = 1; launch(true, true); } }
@@ -143,9 +143,23 @@
     for (var i = 0; i < 40; i++) h += '<b style="left:' + Math.round(Math.random() * 99) + "%;animation-delay:" + (-Math.random() * 6).toFixed(1) + "s;animation-duration:" + (3 + Math.random() * 4).toFixed(1) + 's"></b>';
     return h;
   }
+  var CELEB_MAGPIE = '<svg viewBox="0 0 60 30" aria-hidden="true"><path class="w1" d="M30 15C20 1 8 1 0 6c10 2 18 6 30 9z" fill="#0f172a"/><path class="w2" d="M30 15C40 1 52 1 60 6c-10 2-18 6-30 9z" fill="#1e293b"/><path d="M22 16 8 21l15-2z" fill="#0f172a"/><ellipse cx="30" cy="16.5" rx="9" ry="4" fill="#111827"/><ellipse cx="30" cy="17.8" rx="4" ry="1.5" fill="#e2e8f0"/><path d="M38 15l8-1-7 3z" fill="#111827"/></svg>';
+  /** Cảnh dùng ảnh nền: Thất Tịch = đàn chim thước bay quanh cầu, Đám cưới = nhẫn lấp lánh. */
+  function celebPhoto(id) {
+    var h = '<div class="cel-photo" style="background-image:url(\'' + CELEB_IMG[id] + '\')"></div><div class="cel-photo-shade"></div>', i;
+    if (id === "qixi") {
+      h += '<div class="cel-moonglow"></div><div class="cel-birds">';
+      for (i = 0; i < 16; i++) h += '<span style="top:' + Math.round(6 + Math.random() * 48) + "%;width:" + (34 + Math.round(Math.random() * 34)) + "px;animation-duration:" + (9 + Math.random() * 9).toFixed(1) + "s;animation-delay:" + (-Math.random() * 14).toFixed(1) + 's">' + CELEB_MAGPIE + "</span>";
+      h += "</div>";
+    } else {
+      h += '<div class="cel-twinkle">';
+      for (i = 0; i < 26; i++) h += '<i style="left:' + Math.round(8 + Math.random() * 84) + "%;top:" + Math.round(8 + Math.random() * 80) + "%;animation-delay:" + (-Math.random() * 3).toFixed(1) + "s;font-size:" + (10 + Math.round(Math.random() * 14)) + 'px">✦</i>';
+      h += '<i class="big" style="left:47%;top:24%">✦</i></div>';
+    }
+    return h;
+  }
   function celebHeroFx(id, hero) {
-    if (id === "wedding") return '<div class="cel-rings2"><span class="rg a"></span><span class="rg b"></span><i>✨</i></div>';
-    if (id === "qixi") return '<div class="cel-qixi"><span class="qs a">⭐</span><div class="cel-bridge">' + [0, 1, 2, 3, 4, 5, 6].map(function (i) { return '<em style="--i:' + i + '">🐦</em>'; }).join("") + '</div><span class="qs b">🌟</span></div>';
+    if (id === "wedding" || id === "qixi") return ""; // hai cảnh này dùng ảnh nền (celebPhoto)
     if (id === "valentine") return '<div class="cel-rose">🌹</div>';
     if (id === "white") return '<div class="cel-boxwrap"><span class="cel-boxtop">🍫</span><span class="cel-hero">🎁</span></div>';
     if (id === "midautumn") return '<div class="cel-moon">🌕<span>🐇</span></div>';
@@ -186,15 +200,16 @@
       function stage1() {
         stage = 1;
         var show = sc.show;
-        host.innerHTML = '<div class="cel-fall">' + celebFall(host, sc.fall, sc.rise) + "</div>" + (sc.glitter ? '<div class="cel-fall cel-glitter">' + celebGlitter() + "</div>" : "") + (sc.lanterns ? '<div class="cel-lant l1">🏮</div><div class="cel-lant l2">🏮</div><div class="cel-lant l3">🏮</div>' : "") + (ev.id === "qixi" ? '<div class="cel-milky"></div>' : "") + (show ? '<canvas class="cel-cv"></canvas>' : "") + (sc.fog ? '<div class="cel-fog"></div>' : "") +
+        host.classList.toggle("cel-photoscene", !!sc.photo);
+        host.innerHTML = (sc.photo ? celebPhoto(sc.photo) : "") + '<div class="cel-fall">' + celebFall(host, sc.fall, sc.rise) + "</div>" + (sc.glitter ? '<div class="cel-fall cel-glitter">' + celebGlitter() + "</div>" : "") + (sc.lanterns ? '<div class="cel-lant l1">🏮</div><div class="cel-lant l2">🏮</div><div class="cel-lant l3">🏮</div>' : "") + (ev.id === "qixi" ? '<div class="cel-milky"></div>' : "") + (show ? '<canvas class="cel-cv"></canvas>' : "") + (sc.fog ? '<div class="cel-fog"></div>' : "") +
           '<div class="cel-main">' + (show === "multi" ? "" : celebHeroFx(ev.id, sc.hero)) + '<h1 class="cel-title" style="opacity:' + (sc.titleLate ? 0 : 1) + '">' + esc(sc.title) + '</h1><p class="cel-sub">' + esc(sc.sub || "") + "</p></div>" + chrome();
         var title = host.querySelector(".cel-title"), sub = host.querySelector(".cel-sub");
         if (!show && !opt.giftOnly) celebSound(ev, "intro");
         if (opt.giftOnly) { stage2(); return; }
         if (show) {
           var cv = host.querySelector(".cel-cv"), shown = false, countdown = opt.countdown;
-          fw = celebFireworks(cv, { silent: ev.sound === "none" || ev.sound === "chime", gold: show === "gold", duration: ev.duration || 60, onTick: function (e, k) { if (k >= 55 && !shown) { shown = true; title.style.opacity = 1; title.classList.add("cel-pop"); sub.textContent = sc.endSub || ""; } }, onEnd: stage2 });
-        } else { setTimeout(function () { if (!finished && stage === 1) stage2(); }, ev.id === "wedding" || ev.id === "women" ? 7000 : 6000); }
+          fw = celebFireworks(cv, { clear: !!sc.clear, silent: ev.sound === "none" || ev.sound === "chime", gold: show === "gold", duration: ev.duration || 60, onTick: function (e, k) { if (k >= 55 && !shown) { shown = true; title.style.opacity = 1; title.classList.add("cel-pop"); sub.textContent = sc.endSub || ""; } }, onEnd: stage2 });
+        } else { setTimeout(function () { if (!finished && stage === 1) stage2(); }, sc.intro || (ev.id === "women" ? 7000 : 6000)); }
       }
       function stage2() {
         if (finished || stage === 2) return; stage = 2; celebMarkShown(ev.id + ":" + ev.period); if (fw) { fw.stop(); fw = null; }

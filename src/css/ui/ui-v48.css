@@ -256,3 +256,25 @@ html[data-cel="women"] *:has(> #brand-text)::before{content:"🌹"}
 html[data-cel="qixi"] *:has(> #brand-text)::before{content:"⭐"}
 html[data-cel="men"] *:has(> #brand-text)::before{content:"🏅"}
 html[data-cel="fools"] *:has(> #brand-text)::before{content:"🃏"}
+/* Cảnh dùng ảnh nền (Thất Tịch, Đám cưới thế kỷ) */
+#cel-host .cel-photo{position:absolute;inset:0;background-size:cover;background-position:center;animation:celKen 24s ease-out forwards;transform-origin:50% 55%}
+@keyframes celKen{from{transform:scale(1)}to{transform:scale(1.16)}}
+#cel-host .cel-photo-shade{position:absolute;inset:0;background:linear-gradient(to top,rgba(2,6,23,.82),rgba(2,6,23,.15) 45%,rgba(2,6,23,.25))}
+#cel-host.cel-photoscene .cel-main{justify-content:flex-end;align-self:stretch;padding-bottom:11vh}
+#cel-host.cel-photoscene .cel-cv{z-index:1}
+#cel-host.cel-photoscene .cel-fall{z-index:1;opacity:.45}
+.cel-moonglow{position:absolute;left:71%;top:11%;width:90px;height:90px;margin:-45px;border-radius:50%;background:radial-gradient(circle,rgba(254,249,195,.9),rgba(254,249,195,0) 70%);animation:celMoon 4s ease-in-out infinite alternate;pointer-events:none}
+@keyframes celMoon{from{opacity:.35;transform:scale(.8)}to{opacity:.95;transform:scale(1.25)}}
+.cel-birds{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1}
+.cel-birds span{position:absolute;left:-12%;display:block;opacity:.92;filter:drop-shadow(0 2px 6px rgba(0,0,0,.45));animation:celFly linear infinite}
+.cel-birds span:nth-child(3n){animation-direction:reverse}
+.cel-birds svg{width:100%;height:auto;display:block}
+.cel-birds .w1,.cel-birds .w2{transform-box:view-box;transform-origin:30px 15px;animation:celFlap .32s ease-in-out infinite alternate}
+.cel-birds .w2{animation-delay:-.1s}
+@keyframes celFlap{from{transform:scaleY(1)}to{transform:scaleY(-.55)}}
+@keyframes celFly{from{transform:translate(0,12px)}50%{transform:translate(65vw,-26px)}to{transform:translate(135vw,10px)}}
+.cel-twinkle{position:absolute;inset:0;pointer-events:none;z-index:1}
+.cel-twinkle i{position:absolute;font-style:normal;color:#fff;text-shadow:0 0 10px #bae6fd,0 0 22px #7dd3fc;animation:celTw 2.6s ease-in-out infinite}
+.cel-twinkle i.big{font-size:54px;animation-duration:2s}
+@keyframes celTw{0%,100%{opacity:.1;transform:scale(.5) rotate(0)}50%{opacity:1;transform:scale(1.2) rotate(45deg)}}
+#cel-host.cel-photoscene .cel-fall i{font-size:13px!important}
