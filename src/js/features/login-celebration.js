@@ -392,3 +392,44 @@
     "cel-collection": function () { celeb.gifts = celeb.gifts || null; openModal(celebCollectionModal); celebSyncGifts().then(function () { if (ui.renderModal === celebCollectionModal) refreshModal(); }); },
     "cel-badge": function (el) { try { localStorage.setItem("wd_cel_badge", el.dataset.k || ""); } catch (e) { } refreshModal(); }
   });
+
+  // ----- Gửi thiệp / sticker quà lễ trong chat (tin nhắn dạng [[gift:<sự kiện>:<số thứ tự>]]) -----
+  var CELEB_TOKEN = /^\[\[gift:([a-z]+):(\d)\]\]$/;
+  function celebTokenItem(t) {
+    var m = CELEB_TOKEN.exec(String(t || "").trim()), list = m && CELEB_GIFTS[m[1]], it = list && list[+m[2]];
+    return it && (it[2] === "sticker" || it[2] === "card") ? { it: it, ev: m[1] } : null;
+  }
+  function celebChatHtml(t) {
+    var g = celebTokenItem(t); if (!g) return esc(t);
+    return g.it[2] === "sticker" ? '<span class="cel-sticker" title="' + esc(g.it[1]) + '">' + g.it[0] + "</span>"
+      : '<span class="cel-card"><span class="cel-card-e">' + g.it[0] + '</span><b>' + esc(g.it[1]) + "</b><small>" + esc(CELEB_NAMES[g.ev] || "") + "</small></span>";
+  }
+  function celebChatPlain(t) { var g = celebTokenItem(t); return g ? g.it[0] + " " + esc(g.it[1]) : esc(String(t).slice(0, 60)); }
+  function celebPickerBtn(kind) { return '<button type="button" data-action="cel-picker" data-kind="' + kind + '" aria-label="Gửi quà lễ" class="px-2.5 py-2 rounded-xl text-sm bg-amber-100 hover:bg-amber-200">🎁</button>'; }
+  function celebPickerItems() {
+    var out = [], seen = {};
+    (celeb.gifts || []).forEach(function (g) {
+      if (seen[g.id] || !CELEB_GIFTS[g.id]) return; seen[g.id] = 1;
+      CELEB_GIFTS[g.id].forEach(function (it, i) { if (it[2] === "sticker" || it[2] === "card") out.push({ tok: "[[gift:" + g.id + ":" + i + "]]", it: it }); });
+    });
+    return out;
+  }
+  function celebPickerFill(box, kind) {
+    var items = celebPickerItems();
+    box.innerHTML = items.length ? items.map(function (x) { return '<button type="button" data-action="cel-send" data-kind="' + kind + '" data-tok="' + x.tok + '" title="' + esc(x.it[1]) + '">' + x.it[0] + "</button>"; }).join("") : '<span class="text-[11px] text-slate-500 px-2">Bạn chưa có thiệp/sticker lễ nào. Đăng nhập vào dịp lễ để nhận nhé!</span>';
+  }
+  Object.assign(actions, {
+    "cel-picker": function (el) {
+      var row = el.parentElement, old = row.parentElement.querySelector("#cel-picker");
+      if (old) { old.remove(); return; }
+      var box = document.createElement("div"); box.id = "cel-picker"; box.className = "cel-picker"; box.textContent = "Đang tải…";
+      row.parentElement.insertBefore(box, row);
+      if (celeb.gifts) celebPickerFill(box, el.dataset.kind);
+      else celebSyncGifts().then(function () { if (box.isConnected) celebPickerFill(box, el.dataset.kind); });
+    },
+    "cel-send": function (el) {
+      var tok = el.dataset.tok; if (!celebTokenItem(tok)) return;
+      if (el.dataset.kind === "thread") { var box = $("#chat-text"); if (box) { box.value = tok; actions["chat-send"](); } }
+      else if (sendChat(tok)) { refreshModal(); scrollChat(); }
+    }
+  });

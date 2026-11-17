@@ -10,4 +10,4 @@
 
 **Người dùng** xem thử bằng `?celebrate=tet` (không nhận quà); tắt hiệu ứng/âm thanh và xem bộ sưu tập quà ở Cài đặt > "Hiệu ứng ngày lễ".
 
-**Chưa làm:** thiệp và sticker mới chỉ xem trong bộ sưu tập, chưa gửi được trong chat.
+**X

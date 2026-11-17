@@ -953,6 +953,8 @@ test('nhắn tin: chặn spam lặp nội dung và nhiều đường dẫn', asy
   assert.equal((await send('Còn hàng không?')).json.error, 'spam');
   assert.equal((await send('http://a.vn http://b.vn http://c.vn')).json.error, 'spam');
   assert.equal((await send('Xem http://a.vn nhé')).status, 200);
+  // Sticker/thiệp quà lễ gửi lặp lại không bị coi là spam.
+  for (let i = 0; i < 4; i++) assert.equal((await send('[[gift:valentine:0]]')).status, 200);
 });
 
 test('nhắn tin: người đăng chặn một lần thì người kia không mở cuộc mới ở tin khác', async () => {
