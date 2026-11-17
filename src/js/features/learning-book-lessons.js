@@ -339,7 +339,7 @@
       const named = !!l[0];
       const ttl = named ? esc(l[0]) : (l[3] + " " + esc(l[4]));
       const feat = (isSeoul1 && li === 0) || (l[2] != null && l[2] !== "") ? '<p class="ls-feat">Từ vựng · Flashcard · Trắc nghiệm · Luyện nghe · Trò chơi</p>' : "";
-      return `<button type="button" data-action="lesson-open" data-code="${lang.code}" data-g="${v.g}" data-v="${v.v}" data-l="${li}" class="ls-row" aria-label="Bài ${no}: ${ttl}"><span class="ls-no" style="--ls-bg:${bg}">${no}</span><span class="ls-body"><p class="ls-name">Bài ${no}: ${ttl}</p>${named ? `<p class="ls-en">${esc(l[1])}</p>` : ""}${feat}${pill}</span><span class="ls-go" aria-hidden="true">${open ? "▶" : "🔒"}</span></button>`;
+      return `<button type="button" data-action="lesson-open" data-code="${lang.code}" data-g="${v.g}" data-v="${v.v}" data-l="${li}" class="ls-row" aria-label="Bài ${no}: ${ttl}"><span class="ls-no" style="--ls-bg:${bg}">${no}</span><span class="ls-body"><p class="ls-name">Bài ${no}: ${ttl}</p>${named ? `<p class="ls-en">${esc(l[1])}</p>` : ""}${feat}${lang.code === "zh" || lang.code === "ja" ? `<span role="button" tabindex="0" class="ls-write" data-action="lesson-write" data-code="${lang.code}" data-g="${v.g}" data-v="${v.v}" data-l="${li}">✍ Luyện viết chữ Hán</span> ` : ""}${pill}</span><span class="ls-go" aria-hidden="true">${open ? "▶" : "🔒"}</span></button>`;
     };
     let body;
     if (list.length) body = `<div class="ls-list">${list.map(rowHtml).join("")}</div>`;

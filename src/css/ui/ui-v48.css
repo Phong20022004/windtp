@@ -107,3 +107,7 @@ html.dark #tab-learn .st-tabs{background:#334155}html.dark #tab-learn .st-tabs b
 html.dark .com-empty{background:linear-gradient(160deg,rgba(30,41,59,.75),rgba(49,46,129,.45));border-color:rgba(165,180,252,.55)}
 html.dark .com-empty .com-t{color:#e0e7ff}html.dark .com-empty .com-s{color:#cbd5e1}
 @media(prefers-reduced-motion:reduce){#tab-learn .lib-cover,#tab-learn .lib-lock,#tab-learn .lib-pill,#tab-learn section.glass-card h3::after,#tab-learn .rf-icon,.com-empty,.com-bubbles span,.com-cta,#tab-community [data-action="publish-post"],#tab-community>div:first-child::before{animation:none!important}}
+.ls-write{display:inline-block;margin:4px 6px 4px 0;padding:3px 10px;border-radius:999px;background:#e0f2fe;color:#0369a1;font-size:12px;font-weight:700;cursor:pointer}
+.lw-card.lw-done .st-title::after{content:" ✓";color:#059669}
+.lw-body .st-list{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+html.dark .ls-write{background:#0c4a6e;color:#bae6fd}
