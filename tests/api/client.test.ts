@@ -340,7 +340,7 @@ describe("đối soát ngân hàng", () => {
   });
 });
 
-describe("WINDTP AI", () => {
+describe("WIND AI", () => {
   it("gửi yêu cầu tới /ai/chat và trả lời kèm số lượt còn lại", async () => {
     const { client, seen } = make([{ status: 200, body: { reply: "Xin chào", cached: true, remaining: 14, limit: 15 } }]);
     const r = await client.ai({ mode: "explain", context: { lang: "ko", word: "안녕" } });

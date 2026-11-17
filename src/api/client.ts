@@ -105,7 +105,7 @@ export interface ApiClient {
   createOrder(input: OrderInput): Promise<{ id: number }>;
   myOrders(): Promise<Order[]>;
   tasks(): Promise<SpecialTask[]>;
-  /** Hỏi WINDTP AI (Cloudflare Workers AI); máy chủ giới hạn lượt hỏi theo ngày. */
+  /** Hỏi WIND AI (Cloudflare Workers AI); máy chủ giới hạn lượt hỏi theo ngày. */
   ai(request: AiRequest): Promise<AiReply>;
   /** Cấu hình cửa hàng do admin đăng (sản phẩm, chỉnh sửa, ẩn, danh mục). */
   store(): Promise<StoreConfig>;

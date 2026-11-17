@@ -712,7 +712,7 @@ export function createApi({ verify, now = () => Date.now() }) {
     await atomic(db, stmts);
     return { ok: true, count: body.items.length };
   });
-  // ----- WINDTP AI (Cloudflare Workers AI, gói free): hạn mức theo người dùng, cache KV, ngân sách Neurons theo ngày -----
+  // ----- WIND AI (Cloudflare Workers AI, gói free): hạn mức theo người dùng, cache KV, ngân sách Neurons theo ngày -----
   route('POST', '/ai/chat', 'user', async ({ db, env, user, t, body }) => {
     const w = await wallet(db, user.uid, t, '');
     const storeRow = await q(db, 'SELECT json FROM store WHERE id = 1').first();

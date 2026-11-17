@@ -1,8 +1,8 @@
-  /* ===== WINDTP AI: gia sư ngoại ngữ + trợ lý cửa hàng (Cloudflare Workers AI qua máy chủ WINDTP) =====
-     Hai lối vào dùng chung một khung chat: nút nổi 🤖 ở mọi màn hình (biết đang ở bài nào, tab nào) và mục "WINDTP AI" trong tab Tiện ích.
+  /* ===== WIND AI: gia sư ngoại ngữ + trợ lý cửa hàng (Cloudflare Workers AI qua máy chủ WINDTP) =====
+     Hai lối vào dùng chung một khung chat: nút nổi 🤖 ở mọi màn hình (biết đang ở bài nào, tab nào) và mục "WIND AI" trong tab Tiện ích.
      Máy chủ giữ lời nhắc hệ thống, hạn mức theo ngày và ngân sách Neurons; trình duyệt chỉ gửi nội dung và ngữ cảnh ngắn. */
   var AI_MODES_UI = [
-    { id: "chat", icon: "💬", label: "Hỏi đáp", hint: "Hỏi bất cứ điều gì về ngoại ngữ đang học…", hello: "Chào bạn! Mình là WINDTP AI. Bạn muốn hỏi gì về ngoại ngữ hôm nay?" },
+    { id: "chat", icon: "💬", label: "Hỏi đáp", hint: "Hỏi bất cứ điều gì về ngoại ngữ đang học…", hello: "Chào bạn! Mình là WIND AI. Bạn muốn hỏi gì về ngoại ngữ hôm nay?" },
     { id: "explain", icon: "📖", label: "Giải thích từ", hint: "Nhập một từ cần giải thích (ví dụ: 안녕하세요)", hello: "Nhập một từ, mình sẽ giải thích nghĩa, cách đọc và cho ví dụ.", word: true },
     { id: "grammar", icon: "🧩", label: "Ngữ pháp", hint: "Nhập điểm ngữ pháp (ví dụ: ～てください)", hello: "Nhập một điểm ngữ pháp, mình sẽ giải thích cách dùng kèm ví dụ.", word: true },
     { id: "correct", icon: "✍️", label: "Sửa bài viết", hint: "Dán đoạn bạn đã viết bằng ngoại ngữ để mình sửa…", hello: "Dán đoạn văn bạn viết, mình sẽ sửa lỗi và giải thích." },
@@ -10,6 +10,7 @@
     { id: "shop", icon: "🛍️", label: "Cửa hàng", hint: "Hỏi về sản phẩm, phí ship, thời gian giao…", hello: "Mình có thể trả lời về sản phẩm, phí ship và thời gian giao của WIND Store." },
     { id: "help", icon: "❓", label: "Dùng app", hint: "Hỏi cách dùng một tính năng của WINDTP…", hello: "Bạn cần hướng dẫn tính năng nào của WINDTP?" }
   ];
+  var aiSpinners = [];
   var AI_MAX_LEN = 500;
   var AI_MAX_HISTORY = 6;
   var ai = { mode: "chat", log: {}, busy: false, remaining: null, limit: null, draft: "", stats: null };
@@ -41,7 +42,7 @@
   function aiLogHtml() {
     var info = aiModeInfo(ai.mode), items = aiLog(ai.mode);
     var hello = '<div class="ai-msg ai-bot">' + esc(info.hello) + "</div>";
-    return hello + items.map(aiBubble).join("") + (ai.busy ? '<div class="ai-msg ai-bot ai-typing" aria-label="WINDTP AI đang trả lời"><i></i><i></i><i></i></div>' : "");
+    return hello + items.map(aiBubble).join("") + (ai.busy ? '<div class="ai-msg ai-bot ai-typing" aria-label="WIND AI đang trả lời"><i></i><i></i><i></i></div>' : "");
   }
   function aiQuotaText() {
     var t = ai.remaining == null ? "Mỗi ngày bạn có một số lượt hỏi miễn phí" : "Còn " + ai.remaining + "/" + ai.limit + " lượt hỏi hôm nay";
@@ -50,7 +51,8 @@
   }
   function aiModal() {
     var info = aiModeInfo(ai.mode);
-    return modalHead("🤖 WINDTP AI") + '<div class="ai-chat">' +
+    return modalHead("WIND AI") + '<div class="ai-chat">' +
+      '<div class="ai-hero">' + aiMascotHtml("ai-3d--lg") + '<div><b class="ai-name">WIND AI</b><small>Kéo hoặc chạm vào robot để xoay 360°</small></div></div>' +
       '<div class="ai-modes" role="tablist" aria-label="Chế độ">' + AI_MODES_UI.map(function (m) {
         return '<button type="button" role="tab" data-action="ai-mode" data-mode="' + m.id + '" aria-selected="' + (m.id === ai.mode) + '" class="ai-chip' + (m.id === ai.mode ? " on" : "") + '">' + m.icon + " " + m.label + "</button>";
       }).join("") + "</div>" +
@@ -73,11 +75,12 @@
     if (mode) ai.mode = aiModeInfo(mode).id;
     else if (ui.tab === "shop") ai.mode = "shop";
     openModal(aiModal);
+    aiMascotInit(document.querySelector(".ai-hero"));
     if (isAdmin()) window.WindtpApi.client.admin.aiStats().then(function (s) { ai.stats = s; aiPaint(); }).catch(function () { /* thống kê là phụ */ });
     var log = document.getElementById("ai-log"); if (log) log.scrollTop = log.scrollHeight;
   }
   function aiReady() {
-    if (!state.account || !window.WindtpApi) { toast("Hãy đăng nhập để dùng WINDTP AI"); return false; }
+    if (!state.account || !window.WindtpApi) { toast("Hãy đăng nhập để dùng WIND AI"); return false; }
     return true;
   }
   function aiHistory(mode) {
@@ -97,7 +100,7 @@
       log.push({ role: "assistant", content: r.reply, cached: r.cached });
       ai.remaining = r.remaining; ai.limit = r.limit;
     }).catch(function (e) {
-      log.push({ role: "assistant", content: (e && e.message) || "WINDTP AI chưa trả lời được, hãy thử lại.", error: true });
+      log.push({ role: "assistant", content: (e && e.message) || "WIND AI chưa trả lời được, hãy thử lại.", error: true });
       if (e && e.code === "ai-daily-limit") { ai.remaining = 0; if (ai.limit == null) ai.limit = 0; }
     }).then(function () { ai.busy = false; aiPaint(); });
   }
@@ -134,9 +137,75 @@
   (function mountFab() {
     var fab = document.createElement("button");
     fab.type = "button"; fab.id = "ai-fab"; fab.className = "ai-fab keep-white"; fab.setAttribute("data-action", "open-ai");
-    fab.setAttribute("aria-label", "Mở WINDTP AI"); fab.hidden = true; fab.innerHTML = "<span>🤖</span><small>AI</small>";
+    fab.setAttribute("aria-label", "Mở WIND AI"); fab.hidden = true; fab.innerHTML = aiMascotHtml("ai-3d--fab") + "<small>WIND AI</small>";
     document.body.appendChild(fab);
+    aiMascotInit(fab);
+    // Kéo để xoay thì không mở chat; chỉ chạm nhẹ mới mở.
+    fab.addEventListener("click", function (ev) { if (fab._moved) { fab._moved = false; ev.stopPropagation(); ev.preventDefault(); } }, true);
     var sync = function () { fab.hidden = !(state.account && !document.getElementById("login-gate")); };
     new MutationObserver(sync).observe(document.body, { childList: true });
     sync(); window.setInterval(sync, 2500);
   })();
+
+  /* ===== Linh vật robot xoay 360°: hai mặt (trước/sau) trên thẻ 3D, kéo để xoay, thả ra có quán tính, thỉnh thoảng tự xoay một vòng ===== */
+  function aiMascotHtml(cls) {
+    document.documentElement.style.setProperty("--ai-front", "url(" + AI_MASCOT.front + ")");
+    document.documentElement.style.setProperty("--ai-back", "url(" + AI_MASCOT.back + ")");
+    return '<span class="ai-3d ' + cls + '" role="img" aria-label="Robot WIND AI, kéo để xoay"><span class="ai-3d-in"><i class="ai-3d-f"></i><i class="ai-3d-b"></i></span></span>';
+  }
+  function aiMascotInit(root) {
+    var host = root && root.querySelector ? root.querySelector(".ai-3d") : null;
+    if (!host || host._ai3d) return;
+    var inner = host.querySelector(".ai-3d-in"), st = { ry: 0, v: 0, raf: 0, down: false, x0: 0, r0: 0, lastX: 0, lastT: 0 };
+    host._ai3d = st;
+    var paint = function () { inner.style.transform = "rotateY(" + st.ry + "deg)"; };
+    var stop = function () { if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0; } };
+    var glide = function () {
+      stop();
+      var step = function () {
+        st.ry += st.v; st.v *= 0.94; paint();
+        if (Math.abs(st.v) > 0.15) st.raf = requestAnimationFrame(step); else st.raf = 0;
+      };
+      st.raf = requestAnimationFrame(step);
+    };
+    host._spin = function () {
+      if (st.down) return;
+      stop();
+      var from = st.ry, to = from + 360, t0 = performance.now(), dur = 1100;
+      var step = function (now) {
+        var k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+        st.ry = from + (to - from) * e; paint();
+        if (k < 1) st.raf = requestAnimationFrame(step); else { st.raf = 0; st.ry = to % 360; paint(); }
+      };
+      st.raf = requestAnimationFrame(step);
+    };
+    var area = root.classList && root.classList.contains("ai-fab") ? root : host;
+    area.addEventListener("pointerdown", function (ev) {
+      st.down = true; st.moved = false; st.x0 = ev.clientX; st.r0 = st.ry; st.lastX = ev.clientX; st.lastT = performance.now(); st.v = 0; stop();
+      try { area.setPointerCapture(ev.pointerId); } catch (e) { }
+    });
+    area.addEventListener("pointermove", function (ev) {
+      if (!st.down) return;
+      var dx = ev.clientX - st.x0;
+      if (Math.abs(dx) > 6) { st.moved = true; area._moved = true; }
+      st.ry = st.r0 + dx * 1.2; paint();
+      var now = performance.now(), dt = Math.max(1, now - st.lastT);
+      st.v = (ev.clientX - st.lastX) * 1.2 * 16 / dt; st.lastX = ev.clientX; st.lastT = now;
+    });
+    var up = function () {
+      if (!st.down) return;
+      st.down = false;
+      if (st.moved) { if (Math.abs(st.v) > 0.5) glide(); } else host._spin();
+    };
+    area.addEventListener("pointerup", up);
+    area.addEventListener("pointercancel", up);
+    aiSpinners.push(host);
+  }
+  // Thỉnh thoảng robot tự xoay một vòng để thu hút sự chú ý (tắt khi người dùng chọn giảm chuyển động).
+  if (!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+    window.setInterval(function () {
+      aiSpinners = aiSpinners.filter(function (h) { return document.body.contains(h); });
+      var fab = document.getElementById("ai-fab");
+      if (fab && !fab.hidden && fab.querySelector(".ai-3d") && fab.querySelector(".ai-3d")._spin) fab.querySelector(".ai-3d")._spin();
+    }, 9000);
+  }

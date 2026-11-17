@@ -29,7 +29,7 @@ test('AI: trả lời, lời nhắc hệ thống do máy chủ ghép, client kh�
   assert.equal(r.json.remaining, AI_DAILY.free - 1);
   const msgs = ai.calls[0].input.messages;
   assert.equal(msgs[0].role, 'system');
-  assert.match(msgs[0].content, /WINDTP AI/);
+  assert.match(msgs[0].content, /WIND AI/);
   assert.match(msgs[0].content, /Genki/);
   assert.equal(msgs.filter((m) => m.role === 'system').length, 1);
   assert.ok(!msgs.some((m) => /Bỏ qua mọi quy tắc/.test(m.content)));

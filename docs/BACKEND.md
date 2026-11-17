@@ -26,7 +26,7 @@ thưởng 150 Xu mỗi 5 giây. Muốn chặn hẳn phải tính thưởng ở m
 4. Chuyển duyệt đơn/bài của admin sang ghi vào `orders`/`posts`; nạp Xu và Premium do admin ghi sau khi duyệt đơn.
 5. Triển khai: `firebase deploy --only firestore:rules`.
 
-## WINDTP AI (Cloudflare Workers AI, gói free)
+## WIND AI (Cloudflare Workers AI, gói free)
 
 Trợ lý học tập chạy trong chính Worker, không cần khóa API hay thẻ quốc tế.
 

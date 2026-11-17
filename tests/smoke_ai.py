@@ -1,4 +1,4 @@
-"""WINDTP AI: nút nổi, khung chat, các chế độ, lượt còn lại, lỗi, nút giải thích ở Tra cứu từ vựng (qua máy chủ thật + Workers AI giả).
+"""WIND AI: nút nổi, khung chat, các chế độ, lượt còn lại, lỗi, nút giải thích ở Tra cứu từ vựng (qua máy chủ thật + Workers AI giả).
 Chạy: npm run build:test && python3 tests/smoke_ai.py"""
 import json, sys
 from urllib.parse import urlparse
@@ -51,6 +51,17 @@ with serve_dist() as URL, sync_playwright() as p, serve_api('%s://%s' % (urlpars
     check(pg.locator('.ai-chip').count() == 7, 'khung chat có 7 chế độ')
     check(pg.locator('.ai-chip.on').inner_text().strip().endswith('Hỏi đáp'), 'mặc định là Hỏi đáp')
 
+    check(pg.inner_text('#ai-fab').strip() == 'WIND AI', 'nút nổi có chữ WIND AI')
+    check(pg.locator('.ai-hero .ai-3d-f').count() == 1 and pg.locator('.ai-hero .ai-3d-b').count() == 1, 'robot có hai mặt trước/sau')
+    box = pg.locator('.ai-hero .ai-3d').bounding_box()
+    pg.mouse.move(box['x'] + 30, box['y'] + 30); pg.mouse.down(); pg.mouse.move(box['x'] + 90, box['y'] + 30, steps=5)
+    ry = pg.evaluate("()=>parseFloat(document.querySelector('.ai-hero .ai-3d-in').style.transform.replace('rotateY(',''))")
+    pg.mouse.up()
+    check(abs(ry) > 30, 'kéo ngang làm robot xoay (rotateY=%s°)' % round(ry))
+    pg.wait_for_timeout(1500)
+    pg.click('.ai-hero .ai-3d')
+    pg.wait_for_function("(()=>{const t=document.querySelector('.ai-hero .ai-3d-in').style.transform;return t.length>0})()")
+    check(True, 'chạm vào robot để xoay một vòng')
     pg.fill('#ai-input', 'Phân biệt は và が')
     pg.click('#ai-send')
     pg.wait_for_function("document.querySelector('#ai-log').innerText.includes('Trả lời thử')", timeout=8000)
@@ -81,7 +92,7 @@ with serve_dist() as URL, sync_playwright() as p, serve_api('%s://%s' % (urlpars
     act(pg, 'close-modal')
     act(pg, 'goto', tab='utilities')
     pg.wait_for_timeout(500)
-    check('Gia sư ngoại ngữ' in pg.inner_text('#tab-utilities'), 'tab Tiện ích có mục WINDTP AI')
+    check('Gia sư ngoại ngữ' in pg.inner_text('#tab-utilities'), 'tab Tiện ích có mục WIND AI')
     act(pg, 'open-tool', tool='ai')
     pg.wait_for_selector('#ai-input', timeout=5000)
     check(pg.locator('.ai-me').count() >= 1, 'mở từ Tiện ích: giữ lịch sử đã chat')

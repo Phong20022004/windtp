@@ -260,10 +260,10 @@ export const API_MESSAGES: Readonly<Record<ApiErrorCode, string>> = {
   "bad-message": "Tin nhắn không được để trống và tối đa 1000 ký tự",
   spam: "Tin nhắn bị chặn vì giống spam (lặp lại nhiều lần hoặc có quá nhiều đường dẫn)",
   "code-expired": "Đã quá 1 tháng kể từ lúc đăng ký nên không thể nhập mã mời nữa",
-  "ai-daily-limit": "Hôm nay bạn đã dùng hết lượt hỏi WINDTP AI, mai quay lại nhé (Premium có nhiều lượt hơn)",
-  "ai-budget": "WINDTP AI đang nghỉ để tiết kiệm tài nguyên, sẽ làm việc lại lúc 07:00 sáng (giờ Việt Nam)",
-  "ai-unavailable": "WINDTP AI chưa được bật trên máy chủ",
-  "ai-failed": "WINDTP AI chưa trả lời được, hãy thử lại sau giây lát",
+  "ai-daily-limit": "Hôm nay bạn đã dùng hết lượt hỏi WIND AI, mai quay lại nhé (Premium có nhiều lượt hơn)",
+  "ai-budget": "WIND AI đang nghỉ để tiết kiệm tài nguyên, sẽ làm việc lại lúc 07:00 sáng (giờ Việt Nam)",
+  "ai-unavailable": "WIND AI chưa được bật trên máy chủ",
+  "ai-failed": "WIND AI chưa trả lời được, hãy thử lại sau giây lát",
   unavailable: "Máy chủ đang bận, hãy thử lại sau giây lát",
   "bad-response": "Máy chủ trả về dữ liệu không hợp lệ",
   unknown: "Có lỗi xảy ra, vui lòng thử lại",
@@ -286,7 +286,7 @@ export class ApiError extends Error {
 }
 
 /** Sản phẩm admin thêm (đã được máy chủ làm sạch); `img` là khóa ảnh trên máy chủ. */
-/** Chế độ trò chuyện của WINDTP AI (máy chủ giữ lời nhắc hệ thống cho từng chế độ). */
+/** Chế độ trò chuyện của WIND AI (máy chủ giữ lời nhắc hệ thống cho từng chế độ). */
 export type AiMode = "chat" | "explain" | "grammar" | "correct" | "roleplay" | "shop" | "help";
 
 export interface AiContext {
