@@ -10,4 +10,4 @@
 
 **Người dùng** xem thử bằng `?celebrate=tet` (không nhận quà); tắt hiệu ứng/âm thanh và xem bộ sưu tập quà ở Cài đặt > "Hiệu ứng ngày lễ".
 
-**X
+**Thiệp và sticker trong chat:** nút 🎁 cạnh ô nhập (chat bạn bè và chat người mua/bán) cho gửi thiệp/sticker đã nhận; tin có dạng `[[gift:<sự kiện>:<số>]]` và được vẽ thành sticker/thiệp ở cả hai phía.
