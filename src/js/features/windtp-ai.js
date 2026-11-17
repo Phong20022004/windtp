@@ -11,6 +11,10 @@
     { id: "help", icon: "❓", label: "Dùng app", hint: "Hỏi cách dùng một tính năng của WINDTP…", hello: "Bạn cần hướng dẫn tính năng nào của WINDTP?" }
   ];
   var aiSpinners = [];
+  var AI_ANCHORS = [
+    { k: 0, y: 0 }, { k: 1, y: 90 }, { k: 2, y: 120 }, { k: 3, y: 150 }, { k: 4, y: 180 },
+    { k: 3, y: 210, flip: true }, { k: 2, y: 240, flip: true }, { k: 1, y: 270, flip: true }
+  ];
   var AI_MAX_LEN = 500;
   var AI_MAX_HISTORY = 6;
   var ai = { mode: "chat", log: {}, busy: false, remaining: null, limit: null, draft: "", stats: null };
@@ -147,18 +151,32 @@
     sync(); window.setInterval(sync, 2500);
   })();
 
-  /* ===== Linh vật robot xoay 360°: hai mặt (trước/sau) trên thẻ 3D, kéo để xoay, thả ra có quán tính, thỉnh thoảng tự xoay một vòng ===== */
+  /* ===== Linh vật robot xoay 360° theo góc nhìn: kéo để xoay, thả ra có quán tính, thỉnh thoảng tự xoay một vòng =====
+     Mỗi mốc là một ảnh robot ở một góc (độ). Các góc 210°/240°/270° là ảnh 150°/120°/90° lật ngang; giữa hai mốc ảnh được hòa dần
+     và thu hẹp nhẹ theo chiều ngang để tạo cảm giác xoay. */
   function aiMascotHtml(cls) {
-    document.documentElement.style.setProperty("--ai-front", "url(" + AI_MASCOT.front + ")");
-    document.documentElement.style.setProperty("--ai-back", "url(" + AI_MASCOT.back + ")");
-    return '<span class="ai-3d ' + cls + '" role="img" aria-label="Robot WIND AI, kéo để xoay"><span class="ai-3d-in"><i class="ai-3d-f"></i><i class="ai-3d-b"></i></span></span>';
+    AI_MASCOT.forEach(function (src, i) { document.documentElement.style.setProperty("--ai-m" + i, "url(" + src + ")"); });
+    var layers = AI_ANCHORS.map(function (a, i) {
+      return '<i class="ai-3d-l" style="background-image:var(--ai-m' + a.k + ');' + (a.flip ? "transform:scaleX(-1);" : "") + 'opacity:' + (i === 0 ? 1 : 0) + '"></i>';
+    }).join("");
+    return '<span class="ai-3d ' + cls + '" role="img" aria-label="Robot WIND AI, kéo để xoay 360 độ" data-yaw="0"><span class="ai-3d-in">' + layers + "</span></span>";
+  }
+  /** Đặt góc nhìn (0–360°): hòa hai mốc ảnh liền kề và thu hẹp nhẹ khi đang chuyển giữa hai mốc. */
+  function aiMascotPaint(host, deg) {
+    var a = ((deg % 360) + 360) % 360, n = AI_ANCHORS.length, i = n - 1;
+    for (var j = 0; j < n; j++) if (AI_ANCHORS[j].y <= a) i = j;
+    var next = (i + 1) % n, y0 = AI_ANCHORS[i].y, y1 = next === 0 ? 360 : AI_ANCHORS[next].y, t = (a - y0) / (y1 - y0);
+    var layers = host.querySelectorAll(".ai-3d-l"), inner = host.querySelector(".ai-3d-in");
+    for (var k = 0; k < layers.length; k++) layers[k].style.opacity = k === i ? String(1 - t) : k === next ? String(t) : "0";
+    inner.style.transform = "scaleX(" + (1 - 0.14 * Math.sin(Math.PI * t)).toFixed(3) + ")";
+    host.dataset.yaw = String(Math.round(a));
   }
   function aiMascotInit(root) {
     var host = root && root.querySelector ? root.querySelector(".ai-3d") : null;
     if (!host || host._ai3d) return;
-    var inner = host.querySelector(".ai-3d-in"), st = { ry: 0, v: 0, raf: 0, down: false, x0: 0, r0: 0, lastX: 0, lastT: 0 };
+    var st = { ry: 0, v: 0, raf: 0, down: false, moved: false, x0: 0, r0: 0, lastX: 0, lastT: 0 };
     host._ai3d = st;
-    var paint = function () { inner.style.transform = "rotateY(" + st.ry + "deg)"; };
+    var paint = function () { aiMascotPaint(host, st.ry); };
     var stop = function () { if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0; } };
     var glide = function () {
       stop();
@@ -171,11 +189,11 @@
     host._spin = function () {
       if (st.down) return;
       stop();
-      var from = st.ry, to = from + 360, t0 = performance.now(), dur = 1100;
+      var from = ((st.ry % 360) + 360) % 360, to = from + 360, t0 = performance.now(), dur = 1600;
       var step = function (now) {
-        var k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+        var k = Math.min(1, (now - t0) / dur), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
         st.ry = from + (to - from) * e; paint();
-        if (k < 1) st.raf = requestAnimationFrame(step); else { st.raf = 0; st.ry = to % 360; paint(); }
+        if (k < 1) st.raf = requestAnimationFrame(step); else { st.raf = 0; st.ry = from; paint(); }
       };
       st.raf = requestAnimationFrame(step);
     };
@@ -188,9 +206,9 @@
       if (!st.down) return;
       var dx = ev.clientX - st.x0;
       if (Math.abs(dx) > 6) { st.moved = true; area._moved = true; }
-      st.ry = st.r0 + dx * 1.2; paint();
+      st.ry = st.r0 - dx * 1.6; paint(); // kéo sang phải: robot quay theo tay
       var now = performance.now(), dt = Math.max(1, now - st.lastT);
-      st.v = (ev.clientX - st.lastX) * 1.2 * 16 / dt; st.lastX = ev.clientX; st.lastT = now;
+      st.v = -(ev.clientX - st.lastX) * 1.6 * 16 / dt; st.lastX = ev.clientX; st.lastT = now;
     });
     var up = function () {
       if (!st.down) return;
