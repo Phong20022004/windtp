@@ -52,7 +52,7 @@ with serve_dist() as URL, sync_playwright() as p, serve_api('%s://%s' % (urlpars
     check(pg.locator('.ai-chip.on').inner_text().strip().endswith('Hỏi đáp'), 'mặc định là Hỏi đáp')
 
     check(pg.inner_text('#ai-fab').strip() == 'WIND AI', 'nút nổi có chữ WIND AI')
-    check(pg.locator('.ai-hero .ai-3d-l').count() == 8, 'robot có 8 mốc góc nhìn (5 ảnh + 3 ảnh lật)')
+    check(pg.locator('.ai-hero .ai-3d-l').count() == 12, 'robot có 12 mốc góc nhìn (mỗi 30°)')
     box = pg.locator('.ai-hero .ai-3d').bounding_box()
     yaw = lambda: int(pg.evaluate("()=>document.querySelector('.ai-hero .ai-3d').dataset.yaw"))
     seen = set()

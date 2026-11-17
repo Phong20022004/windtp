@@ -12,8 +12,8 @@
   ];
   var aiSpinners = [];
   var AI_ANCHORS = [
-    { k: 0, y: 0 }, { k: 1, y: 90 }, { k: 2, y: 120 }, { k: 3, y: 150 }, { k: 4, y: 180 },
-    { k: 3, y: 210, flip: true }, { k: 2, y: 240, flip: true }, { k: 1, y: 270, flip: true }
+    { k: 0, y: 0 }, { k: 5, y: 30 }, { k: 6, y: 60 }, { k: 1, y: 90 }, { k: 2, y: 120 }, { k: 3, y: 150 }, { k: 4, y: 180 },
+    { k: 3, y: 210, flip: true }, { k: 2, y: 240, flip: true }, { k: 1, y: 270, flip: true }, { k: 6, y: 300, flip: true }, { k: 5, y: 330, flip: true }
   ];
   var AI_MAX_LEN = 500;
   var AI_MAX_HISTORY = 6;
@@ -152,7 +152,7 @@
   })();
 
   /* ===== Linh vật robot xoay 360° theo góc nhìn: kéo để xoay, thả ra có quán tính, thỉnh thoảng tự xoay một vòng =====
-     Mỗi mốc là một ảnh robot ở một góc (độ). Các góc 210°/240°/270° là ảnh 150°/120°/90° lật ngang; giữa hai mốc ảnh được hòa dần
+     Mỗi mốc là một ảnh robot ở một góc (độ). Góc 210°–330° là các ảnh 150°–30° lật ngang; 30° và 60° là ảnh nội suy từ chính diện sang ngang; giữa hai mốc ảnh được hòa dần
      và thu hẹp nhẹ theo chiều ngang để tạo cảm giác xoay. */
   function aiMascotHtml(cls) {
     AI_MASCOT.forEach(function (src, i) { document.documentElement.style.setProperty("--ai-m" + i, "url(" + src + ")"); });
