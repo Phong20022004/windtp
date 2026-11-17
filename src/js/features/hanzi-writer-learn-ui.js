@@ -58,7 +58,7 @@
     var ja = lang.code === "ja", code = lang.code;
     // Chế độ luyện viết theo bài (giáo trình đầu tiên của tiếng Trung / tiếng Nhật), bật từ danh sách bài.
     var LS = ui.strokeLesson && ui.strokeLesson.code === code && typeof lwChars === "function" ? ui.strokeLesson : null;
-    var lessonAll = LS ? (lwChars(code, LS.l) || []) : null;
+    var lessonAll = LS ? (lwChars(code, LS.g, LS.v, LS.l) || []) : null;
     if (LS && !lessonAll.length) { ui.strokeLesson = LS = null; }
     if (ui.strokeText == null) ui.strokeText = ja ? "漢字を書く" : "写汉字";
     if (!ui.strokeTab) ui.strokeTab = "quiz";
@@ -83,7 +83,7 @@
     var list = el.querySelector("#st-list"), input = el.querySelector("#st-input");
     function lessonProgress() {
       if (!LS) return;
-      var done = lwDone(code, LS.l).filter(function (c) { return lessonAll.indexOf(c) >= 0; }).length, total = lessonAll.length;
+      var done = lwDone(code, LS.g, LS.v, LS.l).filter(function (c) { return lessonAll.indexOf(c) >= 0; }).length, total = lessonAll.length;
       var cnt = el.querySelector("#lw-count"), fill = el.querySelector("#lw-fill");
       if (cnt) cnt.textContent = "Đã viết " + done + "/" + total + " chữ" + (done >= total ? " · 🎉 Hoàn thành bài này!" : " · viết đúng hết nét để tính là xong");
       if (fill) fill.style.width = Math.round(done / total * 100) + "%";
@@ -92,7 +92,7 @@
       var msg = card.querySelector("[data-st-msg]");
       if (msg) msg.textContent = "Hoàn thành! 🎉";
       if (!LS) return;
-      lwMark(code, LS.l, card.dataset.ch);
+      lwMark(code, LS.g, LS.v, LS.l, card.dataset.ch);
       var t = card.querySelector(".st-title"); if (t) t.classList.add("st-done");
       lessonProgress();
     }
@@ -100,7 +100,7 @@
       strokeWriters.forEach(function (w) { try { w.cancelQuiz(); } catch (e) {} }); strokeWriters = [];
       var chars = LS ? lessonAll.slice(LS.page * LW_PAGE, (LS.page + 1) * LW_PAGE) : strokeChars(ui.strokeText, code);
       if (!chars.length) { list.innerHTML = '<p class="st-empty">Hãy nhập ít nhất một chữ ' + (ja ? "Nhật" : "Hán") + '.</p>'; return; }
-      var doneNow = LS ? lwDone(code, LS.l) : [];
+      var doneNow = LS ? lwDone(code, LS.g, LS.v, LS.l) : [];
       list.innerHTML = chars.map(function (c, i) { return strokeCard(c, ui.strokeTab, i, doneNow.indexOf(c) >= 0); }).join("");
       lessonProgress();
       loadHanziWriter().catch(function () { return null; }).then(function (HW) {
