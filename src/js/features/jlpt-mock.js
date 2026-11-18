@@ -3,39 +3,42 @@
      • Thi thử: thời gian từng phần đúng như kỳ thi thật (JLPT: jlpt.jp), hết giờ phần nào thì tự chuyển phần, không quay lại phần cũ.
      • Sau khi nộp: xem điểm ước tính + xem lại toàn bộ đáp án và giải thích.
      Câu hỏi do WINDTP tự soạn từ kho từ vựng Mimikara Nomi / ngữ pháp trong app (không sao chép đề thật), nên điểm chỉ để tự đánh giá. */
-  var JM_PART = { kanji: "文字", mean: "語彙", ctx: "文脈", gram: "文法", read: "読解", listen: "聴解", conv: "会話・表現" };
+  var JM_PART = { kanji: "文字", write: "表記", mean: "語彙", ctx: "文脈", para: "言い換え", usage: "用法", gram: "文法", order: "文の組み立て", cloze: "文章の文法", read: "読解", listen: "聴解", conv: "会話・表現" };
+  var JM_LANG = ["kanji", "write", "mean", "ctx", "para", "usage", "gram", "order", "cloze", "conv"];
   var JM_G3 = [
-    { n: "言語知識 (文字・語彙・文法)", max: 60, min: 19, t: ["kanji", "mean", "ctx", "gram"] },
+    { n: "言語知識 (文字・語彙・文法)", max: 60, min: 19, t: JM_LANG },
     { n: "読解 (Đọc hiểu)", max: 60, min: 19, t: ["read"] },
     { n: "聴解 (Nghe)", max: 60, min: 19, t: ["listen"] }
   ];
   var JM_G2 = [
-    { n: "言語知識・読解", max: 120, min: 38, t: ["kanji", "mean", "ctx", "gram", "read"] },
+    { n: "言語知識・読解", max: 120, min: 38, t: JM_LANG.concat(["read"]) },
     { n: "聴解 (Nghe)", max: 60, min: 19, t: ["listen"] }
   ];
+  /* Mỗi mục p: [loại, số câu, nhãn 問題, (đọc hiểu) số câu/đoạn, số câu văn/đoạn]. Cấu trúc và số câu theo đề JLPT chính thức
+     (bỏ 語形成 và 情報検索 vì cần dữ liệu/hình riêng). */
   var JM_EX = [
     { id: "n5", name: "JLPT N5", lv: [0], pass: 80, groups: JM_G2, secs: [
-      { n: "文字・語彙", min: 20, p: [["kanji", 8], ["mean", 8], ["ctx", 9]] },
-      { n: "文法・読解", min: 40, p: [["gram", 16], ["read", 10]] },
-      { n: "聴解", min: 30, p: [["listen", 20]] }] },
+      { n: "文字・語彙", min: 20, p: [["kanji", 12, "問題1"], ["write", 8, "問題2"], ["ctx", 10, "問題3"], ["para", 5, "問題4"]] },
+      { n: "文法・読解", min: 40, p: [["gram", 16, "問題1"], ["order", 5, "問題2"], ["cloze", 5, "問題3"], ["read", 3, "問題4", 1, 3], ["read", 2, "問題5", 2, 4]] },
+      { n: "聴解", min: 30, p: [["listen", 24]] }] },
     { id: "n4", name: "JLPT N4", lv: [1], pass: 90, groups: JM_G2, secs: [
-      { n: "文字・語彙", min: 25, p: [["kanji", 10], ["mean", 8], ["ctx", 10]] },
-      { n: "文法・読解", min: 55, p: [["gram", 20], ["read", 12]] },
-      { n: "聴解", min: 35, p: [["listen", 24]] }] },
+      { n: "文字・語彙", min: 25, p: [["kanji", 9, "問題1"], ["write", 6, "問題2"], ["ctx", 10, "問題3"], ["para", 5, "問題4"], ["usage", 5, "問題5"]] },
+      { n: "文法・読解", min: 55, p: [["gram", 15, "問題1"], ["order", 5, "問題2"], ["cloze", 5, "問題3"], ["read", 4, "問題4", 1, 3], ["read", 4, "問題5", 2, 5]] },
+      { n: "聴解", min: 35, p: [["listen", 28]] }] },
     { id: "n3", name: "JLPT N3", lv: [2], pass: 95, groups: JM_G3, secs: [
-      { n: "文字・語彙", min: 30, p: [["kanji", 10], ["mean", 10], ["ctx", 10]] },
-      { n: "文法・読解", min: 70, p: [["gram", 22], ["read", 14]] },
-      { n: "聴解", min: 40, p: [["listen", 24]] }] },
+      { n: "文字・語彙", min: 30, p: [["kanji", 8, "問題1"], ["write", 6, "問題2"], ["ctx", 11, "問題3"], ["para", 5, "問題4"], ["usage", 5, "問題5"]] },
+      { n: "文法・読解", min: 70, p: [["gram", 13, "問題1"], ["order", 5, "問題2"], ["cloze", 5, "問題3"], ["read", 4, "問題4", 1, 3], ["read", 6, "問題5", 3, 5], ["read", 4, "問題6", 4, 8]] },
+      { n: "聴解", min: 40, p: [["listen", 28]] }] },
     { id: "n2", name: "JLPT N2", lv: [3], pass: 90, groups: JM_G3, secs: [
-      { n: "言語知識（文字・語彙・文法）・読解", min: 105, p: [["kanji", 8], ["mean", 8], ["ctx", 10], ["gram", 24], ["read", 20]] },
-      { n: "聴解", min: 50, p: [["listen", 28]] }] },
+      { n: "言語知識（文字・語彙・文法）・読解", min: 105, p: [["kanji", 5, "問題1"], ["write", 5, "問題2"], ["ctx", 7, "問題4"], ["para", 5, "問題5"], ["usage", 5, "問題6"], ["gram", 12, "問題7"], ["order", 5, "問題8"], ["cloze", 5, "問題9"], ["read", 5, "問題10", 1, 3], ["read", 9, "問題11", 3, 5], ["read", 3, "問題13", 3, 8]] },
+      { n: "聴解", min: 50, p: [["listen", 32]] }] },
     { id: "n1", name: "JLPT N1", lv: [4], pass: 100, groups: JM_G3, secs: [
-      { n: "言語知識（文字・語彙・文法）・読解", min: 110, p: [["kanji", 8], ["mean", 8], ["ctx", 10], ["gram", 26], ["read", 22]] },
-      { n: "聴解", min: 55, p: [["listen", 30]] }] },
+      { n: "言語知識（文字・語彙・文法）・読解", min: 110, p: [["kanji", 6, "問題1"], ["ctx", 7, "問題2"], ["para", 6, "問題3"], ["usage", 6, "問題4"], ["gram", 10, "問題5"], ["order", 5, "問題6"], ["cloze", 5, "問題7"], ["read", 4, "問題8", 1, 3], ["read", 9, "問題9", 3, 5], ["read", 4, "問題10", 4, 8], ["read", 4, "問題12", 4, 8]] },
+      { n: "聴解", min: 55, p: [["listen", 37]] }] },
     { id: "jft", name: "JFT-Basic (Nhật Bản Foundation)", lv: [0, 1], jft: true, secs: [
-      { n: "Toàn bài (4 phần, không chia giờ)", min: 60, p: [["kanji", 6], ["mean", 6], ["conv", 13], ["listen", 12], ["read", 13]] }] },
+      { n: "Toàn bài (4 phần, không chia giờ)", min: 60, p: [["kanji", 6], ["mean", 6], ["conv", 13], ["listen", 12], ["read", 13, "", 1, 3]] }] },
     { id: "eju", name: "EJU – Tiếng Nhật (thi du học)", lv: [3, 4], eju: true, secs: [
-      { n: "Đọc – Nghe hiểu (phần trắc nghiệm)", min: 125, p: [["ctx", 10], ["gram", 10], ["read", 25], ["listen", 20]] }] }
+      { n: "Đọc – Nghe hiểu (phần trắc nghiệm)", min: 125, p: [["ctx", 10], ["gram", 10], ["read", 25, "", 3, 6], ["listen", 20]] }] }
   ];
   var jm = null, jmTimer = 0;
   function jmTotalMin(e) { return e.secs.reduce(function (a, s) { return a + s.min; }, 0); }
@@ -62,6 +65,21 @@
   }
   var jmWordExp = function (w) { return w[0] + (w[1] && w[1] !== w[0] ? "（" + w[1] + "）" : "") + " = " + w[3]; };
   /* Tạo câu hỏi cho một phần thi; used: các từ/mẫu đã dùng trong cả đề để không lặp. */
+  function jmCore(pat) {
+    var c = String(pat || "").split(/[\/／]/)[0].replace(/[（(][^）)]*[）)]/g, "").replace(/[～〜~\s…・]/g, "");
+    return c.length >= 2 && c.length <= 10 ? c : "";
+  }
+  function jmGBlank(g) {
+    var core = jmCore(g[0]), ex = [g[4], g[6]];
+    for (var i = 0; i < ex.length; i++) { var s = ex[i] || "", k = core ? s.indexOf(core) : -1; if (k >= 0) return { text: s.slice(0, k) + "（　　）" + s.slice(k + core.length), full: s, vi: i ? g[7] : g[5], core: core }; }
+    return null;
+  }
+  function jmChunks(s) {
+    var t = String(s || "").replace(/[。！？!?]+$/, ""), parts = t.split(/(?<=[はがをにでともへの、])/), out = [];
+    parts.forEach(function (x) { if (out.length && (x.length < 2 || out[out.length - 1].length < 2)) out[out.length - 1] += x; else out.push(x); });
+    return out;
+  }
+  /* Tạo câu hỏi cho một phần thi; used: các từ/mẫu đã dùng trong cả đề để không lặp. */
   function jmSection(e, sdef, W, G, used) {
     var out = [], S = W.filter(function (w) { return w[4] && w[5]; });
     var take = function (pool, n, pred, k) {
@@ -69,31 +87,82 @@
       for (var i = 0; i < p.length && r.length < n; i++) { var id = k + "|" + p[i][0]; if (used[id] || (pred && !pred(p[i]))) continue; used[id] = 1; r.push(p[i]); }
       return r;
     };
+    var push = function (q, t, pp, n) { q.t = t; q.part = JM_PART[t] + (pp[2] ? " · " + pp[2] : ""); out.push(q); };
     sdef.p.forEach(function (pp) {
-      var t = pp[0], n = pp[1], part = JM_PART[t];
-      if (t === "kanji") take(W.filter(function (w) { return w[1] && /[㐀-鿿]/.test(w[0]) && w[0] !== w[1]; }), n, null, "w").forEach(function (w) {
+      var t = pp[0], n = pp[1], hasK = function (w) { return w[1] && /[㐀-鿿]/.test(w[0]) && w[0] !== w[1]; };
+      if (t === "kanji") take(W.filter(hasK), n, null, "w").forEach(function (w) {
         var o = jmOpts(w[1], W.filter(function (x) { return x[1]; }), function (x) { return x[1]; });
-        if (o) out.push({ t: t, part: part, prompt: w[0], sub: "Chọn cách đọc đúng", options: o.options, answer: o.answer, exp: jmWordExp(w) });
+        if (o) push({ prompt: w[0], sub: "Chọn cách đọc đúng", options: o.options, answer: o.answer, exp: jmWordExp(w) }, t, pp);
+      });
+      else if (t === "write") take(W.filter(function (w) { return hasK(w) && w[4] && w[4].indexOf(w[0]) >= 0; }), n, null, "w").forEach(function (w) {
+        var K = W.filter(function (x) { return hasK(x) && x[0].length === w[0].length; });
+        var o = jmOpts(w[0], K.length > 8 ? K : W.filter(hasK), function (x) { return x[0]; });
+        if (o) push({ prompt: w[4].replace(w[0], "【" + w[1] + "】"), sub: "Chọn chữ Hán đúng cho từ trong 【 】", options: o.options, answer: o.answer, exp: jmWordExp(w) }, t, pp);
       });
       else if (t === "mean") take(W.filter(function (w) { return w[3]; }), n, null, "w").forEach(function (w) {
         var o = jmOpts(w[3], W.filter(function (x) { return x[3]; }), function (x) { return x[3]; });
-        if (o) out.push({ t: t, part: part, prompt: w[0] + (w[1] && w[1] !== w[0] ? "（" + w[1] + "）" : ""), sub: "Chọn nghĩa đúng", options: o.options, answer: o.answer, exp: jmWordExp(w) });
+        if (o) push({ prompt: w[0] + (w[1] && w[1] !== w[0] ? "（" + w[1] + "）" : ""), sub: "Chọn nghĩa đúng", options: o.options, answer: o.answer, exp: jmWordExp(w) }, t, pp);
       });
+      else if (t === "para") take(W.filter(function (w) { return w[3] && w[4] && w[4].indexOf(w[0]) >= 0; }), n, null, "w").forEach(function (w) {
+        var o = jmOpts(w[3], W.filter(function (x) { return x[3]; }), function (x) { return x[3]; });
+        if (o) push({ prompt: w[4].replace(w[0], "【" + w[0] + "】"), sub: "Chọn nghĩa gần nhất với từ trong 【 】", options: o.options, answer: o.answer, exp: jmWordExp(w) + "  |  " + (w[5] || "") }, t, pp);
+      });
+      else if (t === "usage") {
+        var U = W.filter(function (w) { return w[4] && w[4].length >= 8 && w[4].indexOf(w[0]) >= 0 && w[0].length >= 2; });
+        take(U, n, null, "w").forEach(function (w) {
+          var others = shuffle(U.filter(function (x) { return x[0] !== w[0] && x[4].length < 60; })).slice(0, 3);
+          if (others.length < 3) return;
+          var opts = [w[4]].concat(others.map(function (x) { return x[4].replace(x[0], w[0]); }));
+          if (opts.some(function (s, i) { return opts.indexOf(s) !== i; })) return;
+          var ord = shuffle(opts.slice());
+          push({ prompt: w[0], sub: "Chọn câu dùng từ này đúng nhất", options: ord, answer: ord.indexOf(w[4]), exp: jmWordExp(w) + "  |  " + (w[5] || "") }, t, pp);
+        });
+      }
       else if (t === "ctx" || t === "conv") take(W.filter(function (w) { return w[5] && jmBlank(w); }), n, null, "w").forEach(function (w) {
         var o = jmOpts(w[0], W, function (x) { return x[0]; });
-        if (o) out.push({ t: t, part: part, prompt: jmBlank(w), sub: "Chọn từ/cách nói điền vào chỗ trống", options: o.options, answer: o.answer, exp: w[4] + " — " + w[5] + "  |  " + jmWordExp(w) });
+        if (o) push({ prompt: jmBlank(w), sub: "Chọn từ/cách nói điền vào chỗ trống", options: o.options, answer: o.answer, exp: w[4] + " — " + w[5] + "  |  " + jmWordExp(w) }, t, pp);
       });
       else if (t === "gram") take(G.filter(function (g) { return g[4]; }), n, null, "g").forEach(function (g) {
-        var o = jmOpts(g[0], G, function (x) { return x[0]; });
-        if (o) out.push({ t: t, part: part, prompt: g[4], sub: "Câu này dùng mẫu ngữ pháp nào?", options: o.options, answer: o.answer, exp: g[0] + ": " + g[1] + (g[3] ? ". " + g[3] : "") + "  |  " + g[4] + " — " + (g[5] || "") });
+        var b = jmGBlank(g), GB = G.filter(function (x) { return jmCore(x[0]); });
+        var o = b ? jmOpts(b.core, GB, function (x) { return jmCore(x[0]); }) : jmOpts(g[0], G, function (x) { return x[0]; });
+        if (o) push({ prompt: b ? b.text : g[4], sub: b ? "Chọn mẫu ngữ pháp điền vào chỗ trống" : "Câu này dùng mẫu ngữ pháp nào?", options: o.options, answer: o.answer, exp: g[0] + ": " + g[1] + (g[3] ? ". " + g[3] : "") + "  |  " + (b ? b.full : g[4]) + " — " + (b ? b.vi : g[5]) }, t, pp);
       });
-      else if (t === "read") take(S, n, null, "s").forEach(function (w) {
-        var o = jmOpts(w[5], S, function (x) { return x[5]; });
-        if (o) out.push({ t: t, part: part, prompt: w[4], sub: "Đọc câu và chọn bản dịch đúng", options: o.options, answer: o.answer, exp: "Từ khóa: " + jmWordExp(w) });
-      });
+      else if (t === "order") {
+        var C = S.filter(function (w) { return w[4].length >= 12 && w[4].length <= 50 && jmChunks(w[4]).length >= 4; });
+        take(C, n, null, "w").forEach(function (w) {
+          var ch = jmChunks(w[4]), st = Math.floor(Math.random() * (ch.length - 3)), seg = ch.slice(st, st + 4);
+          var before = ch.slice(0, st).join(""), after = ch.slice(st + 4).join("") + "。";
+          var ord = shuffle(seg.slice());
+          push({ prompt: before + " ＿＿ ＿＿ ★ ＿＿ " + after, sub: "Sắp xếp 4 phần thành câu đúng, chọn phần đứng ở ★", options: ord, answer: ord.indexOf(seg[2]), exp: "Thứ tự đúng: " + seg.join(" → ") + "  |  " + w[4] + " — " + w[5] }, t, pp);
+        });
+      }
+      else if (t === "cloze") {
+        var GB2 = G.filter(function (g) { return g[4] && jmGBlank(g); }), picks = take(GB2, n, null, "g");
+        if (picks.length === n) {
+          var items = picks.map(function (g) { return { g: g, b: jmGBlank(g) }; }), ctx = items.map(function (x, i) { return x.b.text.replace("（　　）", "（" + (i + 1) + "）"); }).join("\n");
+          items.forEach(function (x, i) {
+            var o = jmOpts(x.b.core, GB2, function (y) { return jmCore(y[0]); });
+            if (o) { var q = { prompt: "（" + (i + 1) + "）に入るのはどれ？", sub: "Đọc đoạn văn và chọn mẫu ngữ pháp thích hợp", ctx: ctx, options: o.options, answer: o.answer, exp: x.g[0] + ": " + x.g[1] + "  |  " + x.b.full + " — " + x.b.vi }; push(q, t, pp); }
+          });
+        }
+      }
+      else if (t === "read") {
+        var per = pp[3] || 1, ns = pp[4] || 3, made = 0, guard = 0;
+        while (made < n && guard++ < 40) {
+          var ps = take(S, ns, null, "s");
+          if (ps.length < ns) break;
+          var ctx2 = ps.map(function (w) { return w[4]; }).join("　"), inP = {};
+          ps.forEach(function (w) { inP[w[5]] = 1; });
+          var pool = S.filter(function (w) { return !inP[w[5]]; });
+          for (var k = 0; k < per && made < n; k++, made++) {
+            var w = ps[k % ps.length], o = jmOpts(w[5], pool, function (x) { return x[5]; });
+            if (o) push({ prompt: "Câu nào đúng với nội dung đoạn văn?", sub: "Đọc đoạn văn rồi chọn ý đúng", ctx: ctx2, options: o.options, answer: o.answer, exp: "Đoạn văn có câu: " + w[4] + " — " + w[5] }, t, pp);
+          }
+        }
+      }
       else if (t === "listen") take(S, n, null, "s").forEach(function (w) {
         var o = jmOpts(w[5], S, function (x) { return x[5]; });
-        if (o) out.push({ t: t, part: part, prompt: "🎧", sub: "Nghe và chọn ý nghĩa đúng", speak: w[4].replace(/[（(][^）)]*[）)]/g, ""), options: o.options, answer: o.answer, exp: "Nội dung: " + w[4] + " — " + w[5] });
+        if (o) push({ prompt: "🎧", sub: "Nghe và chọn ý nghĩa đúng", speak: w[4].replace(/[（(][^）)]*[）)]/g, ""), options: o.options, answer: o.answer, exp: "Nội dung: " + w[4] + " — " + w[5] }, t, pp);
       });
     });
     return out;
@@ -170,10 +239,10 @@
     var h = jmHist();
     var hist = h.length ? '<div><p class="text-xs font-bold text-slate-700 mb-1">Lịch sử thi thử gần đây</p><ul class="text-xs text-slate-600 space-y-0.5">' + h.slice(0, 8).map(function (r) {
       return '<li>' + esc(r.date) + ' · ' + esc(r.name || r.lv) + ' · <b>' + esc(String(r.show || (r.total + "/180"))) + '</b> · ' + (r.pass ? "✅" : "❌") + '</li>'; }).join("") + '</ul></div>' : "";
-    return modalHead("🎌 Đề thi tiếng Nhật") + '<div class="p-5 space-y-3"><p class="text-xs text-slate-600">Mỗi đề có 2 chế độ: <b>Luyện tập</b> (không tính giờ, có đáp án ngay) và <b>Thi thử</b> (tính giờ từng phần như thi thật). Sau khi nộp bài bạn xem lại được toàn bộ đáp án.</p>' + JM_EX.map(jmCard).join("") + '<button data-action="jlpt-real" class="w-full text-left rounded-2xl border border-amber-300 bg-amber-50 hover:bg-amber-100 p-3.5"><span class="font-extrabold text-amber-800">📚 JLPT N2 · Đề thật 2010–nay</span><span class="block text-xs text-amber-700">32 đề thi thật, có đáp án · Luyện tập &amp; Thi thử</span></button>' + hist + '</div>';
+    return modalHead("🎌 Đề thi tiếng Nhật") + '<div class="p-5 space-y-3"><p class="text-xs text-slate-600">Mỗi đề có 2 chế độ: <b>Luyện tập</b> (không tính giờ, có đáp án ngay) và <b>Thi thử</b> (tính giờ từng phần như thi thật). Sau khi nộp bài bạn xem lại được toàn bộ đáp án. Các đề N5–N1, JFT, EJU là <b>đề mô phỏng</b> đúng cấu trúc, số câu và thời gian của đề thật, mỗi lần làm sẽ sinh một đề mới từ kho từ vựng/ngữ pháp của app; riêng N2 có thêm đề thật.</p>' + JM_EX.map(jmCard).join("") + '<button data-action="jlpt-real" class="w-full text-left rounded-2xl border border-amber-300 bg-amber-50 hover:bg-amber-100 p-3.5"><span class="font-extrabold text-amber-800">📚 JLPT N2 · Đề thật 2010–nay</span><span class="block text-xs text-amber-700">32 đề thi thật, có đáp án · Luyện tập &amp; Thi thử</span></button>' + hist + '</div>';
   }
   function jmDetail(e) {
-    var rows = e.secs.map(function (s, i) { return '<li class="flex justify-between gap-2"><span>' + esc(s.n) + '</span><b class="whitespace-nowrap">' + s.min + ' phút · ' + jmCount(s) + ' câu</b></li>'; }).join("");
+    var rows = e.secs.map(function (s, i) { return '<li><div class="flex justify-between gap-2"><span>' + esc(s.n) + '</span><b class="whitespace-nowrap">' + s.min + ' phút · ' + jmCount(s) + ' câu</b></div><div class="text-[10px] text-slate-500">' + s.p.map(function (x) { return (x[2] ? x[2] + " " : "") + JM_PART[x[0]] + " ×" + x[1]; }).join(" · ") + '</div></li>'; }).join("");
     var sec = e.secs.length > 1 ? '<p class="text-xs font-bold text-slate-700 pt-1">Luyện theo từng phần</p>' + e.secs.map(function (s, i) { return '<button data-action="jlpt-go" data-id="' + e.id + '" data-mode="practice" data-s="' + i + '" class="w-full ' + btnGhost + '">📖 ' + esc(s.n) + '</button>'; }).join("") : "";
     var note = e.pass ? 'Điểm quy đổi thang 180; đạt khi tổng ≥ ' + e.pass + ' và từng phần ≥ mức tối thiểu.' : e.jft ? 'JFT-Basic thang 10–250, không có điểm đậu/rớt; mốc A1 ≥145, A2.1 ≥175, A2.2 ≥200. Điểm ở đây chỉ là ước tính.' : 'EJU: hiển thị tỉ lệ đúng; phần viết (記述) không có trong bản trắc nghiệm này.';
     return modalHead(esc(e.name)) + '<div class="p-5 space-y-3"><ul class="text-xs text-slate-700 space-y-1.5">' + rows + '</ul><p class="text-xs text-slate-500">' + note + ' Thời gian từng phần theo quy định kỳ thi thật; nghe chỉ được phát tối đa 2 lần/câu ở chế độ thi thử.</p>' +
