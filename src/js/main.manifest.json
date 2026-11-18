@@ -34,6 +34,7 @@
   "src/js/features/exam-data.js",
   "src/js/features/exam-data-ko.js",
   "src/js/features/exam-data-ko-writing.js",
+  "src/js/features/exam-data-zh5.js",
   "src/js/features/exam-papers.js",
   "src/js/games/card-game-quan-hung.js"
 ]
