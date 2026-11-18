@@ -31,5 +31,7 @@
   "src/js/features/economy-api.js",
   "src/js/features/ai-mascot-data.js",
   "src/js/features/windtp-ai.js",
+  "src/js/features/exam-data.js",
+  "src/js/features/exam-papers.js",
   "src/js/games/card-game-quan-hung.js"
 ]

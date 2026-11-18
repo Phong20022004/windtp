@@ -487,6 +487,7 @@
   }
   function openTool(tool) {
     if (tool === "ai") actions["open-ai"]();
+    else if (tool === "exam") actions["open-exam"]();
     else if (tool === "pomodoro") openModal(pomodoroModal);
     else if (tool === "reminders") openModal(remindersModal);
     else if (tool === "gpa") openModal(gpaModal);
