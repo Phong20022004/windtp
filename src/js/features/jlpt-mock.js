@@ -109,6 +109,58 @@
     });
     return qs.length >= 10 ? { qs: qs, secs: secs } : null;
   }
+
+  /* ---- Đề thi thật (tách từ PDF đề JLPT; chỉ phần chữ: 文字・語彙 / 文法 / 読解, chưa có phần nghe) ---- */
+  var JM_REAL_SECS = ["文字・語彙", "文法", "読解"], jmRealCache = {};
+  var JM_REAL_G = [{ n: "言語知識 (文字・語彙・文法)", max: 60, min: 19, t: ["lang"] }, { n: "読解 (Đọc hiểu)", max: 60, min: 19, t: ["read"] }];
+  function jmExamUrl(name) {
+    try { var m = JSON.parse(document.getElementById("windtp-data-manifest").textContent); return m.exams && m.exams[name] || null; } catch (e) { return null; }
+  }
+  function jmRealLoad(name) {
+    if (jmRealCache[name]) return Promise.resolve(jmRealCache[name]);
+    var u = jmExamUrl(name); if (!u) return Promise.reject(new Error("no-url"));
+    return fetch(new URL(u, document.baseURI).href, { credentials: "same-origin" }).then(function (r) { if (!r.ok) throw new Error("http"); return r.json(); }).then(function (d) { jmRealCache[name] = d; return d; });
+  }
+  function jmRealEx(lvl, en) {
+    return { id: en.id, name: "JLPT " + lvl + " · đề thật " + en.period, real: true, groups: JM_REAL_G, secs: [{ n: "言語知識（文字・語彙・文法）・読解", min: lvl === "N1" ? 110 : 105, p: [] }] };
+  }
+  function jmRealQs(en, only) {
+    var out = [];
+    en.questions.forEach(function (q) {
+      if (only != null && q.s !== JM_REAL_SECS[only]) return;
+      var m = /問題\s*(\d+)/.exec(q.i || "");
+      out.push({ t: q.s === "読解" ? "read" : "lang", part: q.s + (m ? " · 問題" + m[1] : ""), prompt: q.q || "（" + q.n + "）", sub: (q.i || "").replace(/^問題\s*\d+\s*/, "").slice(0, 70), ctx: q.p != null ? en.passages[q.p] : "", options: q.o, answer: q.a - 1, exp: "Câu " + q.n + " · đáp án đúng: " + q.o[q.a - 1] });
+    });
+    return out;
+  }
+  function jmRealList() {
+    jmRealLoad("jlpt-n2").then(function (d) {
+      var rows = d.exams.map(function (en) { return '<button data-action="jlpt-real-exam" data-id="' + en.id + '" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">' + en.period + '<span class="block text-[10px] font-normal">' + en.questions.length + ' câu</span></button>'; }).join("");
+      openModal(function () { return modalHead("📚 JLPT N2 · Đề thật") + '<div class="p-5 space-y-3"><p class="text-xs text-slate-600">Đề các kỳ thi N2 từ 2010 đến nay (phần chữ: từ vựng, ngữ pháp, đọc hiểu; phần nghe chưa có). Mỗi đề có Luyện tập và Thi thử tính giờ ' + 105 + ' phút. Đề nào có hình/bảng mà bản chữ không đọc được thì đã được lược bỏ.</p><div class="grid grid-cols-3 gap-2">' + rows + '</div><button data-action="jlpt-menu" class="w-full text-xs text-slate-500 underline">← Danh sách đề</button></div>'; });
+    }, function () { toast("Không tải được đề thật, hãy kiểm tra mạng rồi thử lại"); });
+  }
+  function jmRealDetail(en) {
+    var e = jmRealEx("N2", en), n = en.questions.length;
+    var cnt = {}; en.questions.forEach(function (q) { cnt[q.s] = (cnt[q.s] || 0) + 1; });
+    var secBtns = JM_REAL_SECS.map(function (s, i) { return cnt[s] ? '<button data-action="jlpt-real-go" data-id="' + en.id + '" data-mode="practice" data-s="' + i + '" class="w-full ' + btnGhost + '">📖 ' + s + ' (' + cnt[s] + ' câu)</button>' : ""; }).join("");
+    return modalHead(esc(e.name)) + '<div class="p-5 space-y-3"><p class="text-xs text-slate-600">' + n + ' câu · thời gian thi thử ' + e.secs[0].min + ' phút (phần chữ). Điểm hiển thị là tỉ lệ đúng và điểm quy đổi ước tính từng phần (chưa gồm phần nghe).</p>' +
+      '<button data-action="jlpt-real-go" data-id="' + en.id + '" data-mode="mock" class="w-full ' + btnPrimary + '">⏱ Thi thử · ' + e.secs[0].min + ' phút</button>' +
+      '<button data-action="jlpt-real-go" data-id="' + en.id + '" data-mode="practice" class="w-full ' + btnGhost + '">📖 Luyện tập cả đề · không tính giờ</button>' + secBtns +
+      '<button data-action="jlpt-real" class="w-full text-xs text-slate-500 underline">← Danh sách đề thật</button></div>';
+  }
+  function jmRealStart(id, mode, only) {
+    var go = function () {
+      jmRealLoad("jlpt-n2").then(function (d) {
+        var en = d.exams.filter(function (x) { return x.id === id; })[0]; if (!en) return;
+        var qs = jmRealQs(en, only); if (qs.length < 3) { toast("Đề này chưa có câu để làm"); return; }
+        var e = jmRealEx("N2", en); qs.forEach(function (q) { q.si = 0; });
+        jmStop(); jm = { ex: e, mode: mode, qs: qs, secs: [{ def: e.secs[0], from: 0, to: qs.length - 1 }], idx: 0, si: 0, ans: [], plays: {}, done: false, wait: mode === "mock", view: "", end: 0 };
+        openModal(jmRender);
+      }, function () { toast("Không tải được đề thật, hãy kiểm tra mạng rồi thử lại"); });
+    };
+    if (!hasCourse("ja")) { lockWith("ja"); return; }
+    go();
+  }
   function jmFmt(s) { s = Math.max(0, s); var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return (h ? h + ":" + ("0" + m).slice(-2) : m) + ":" + ("0" + (s % 60)).slice(-2); }
   function jmCard(e) {
     var n = e.secs.reduce(function (a, s) { return a + jmCount(s); }, 0);
@@ -118,7 +170,7 @@
     var h = jmHist();
     var hist = h.length ? '<div><p class="text-xs font-bold text-slate-700 mb-1">Lịch sử thi thử gần đây</p><ul class="text-xs text-slate-600 space-y-0.5">' + h.slice(0, 8).map(function (r) {
       return '<li>' + esc(r.date) + ' · ' + esc(r.name || r.lv) + ' · <b>' + esc(String(r.show || (r.total + "/180"))) + '</b> · ' + (r.pass ? "✅" : "❌") + '</li>'; }).join("") + '</ul></div>' : "";
-    return modalHead("🎌 Đề thi tiếng Nhật") + '<div class="p-5 space-y-3"><p class="text-xs text-slate-600">Mỗi đề có 2 chế độ: <b>Luyện tập</b> (không tính giờ, có đáp án ngay) và <b>Thi thử</b> (tính giờ từng phần như thi thật). Sau khi nộp bài bạn xem lại được toàn bộ đáp án.</p>' + JM_EX.map(jmCard).join("") + hist + '</div>';
+    return modalHead("🎌 Đề thi tiếng Nhật") + '<div class="p-5 space-y-3"><p class="text-xs text-slate-600">Mỗi đề có 2 chế độ: <b>Luyện tập</b> (không tính giờ, có đáp án ngay) và <b>Thi thử</b> (tính giờ từng phần như thi thật). Sau khi nộp bài bạn xem lại được toàn bộ đáp án.</p>' + JM_EX.map(jmCard).join("") + '<button data-action="jlpt-real" class="w-full text-left rounded-2xl border border-amber-300 bg-amber-50 hover:bg-amber-100 p-3.5"><span class="font-extrabold text-amber-800">📚 JLPT N2 · Đề thật 2010–nay</span><span class="block text-xs text-amber-700">24 đề thi thật, có đáp án · Luyện tập &amp; Thi thử</span></button>' + hist + '</div>';
   }
   function jmDetail(e) {
     var rows = e.secs.map(function (s, i) { return '<li class="flex justify-between gap-2"><span>' + esc(s.n) + '</span><b class="whitespace-nowrap">' + s.min + ' phút · ' + jmCount(s) + ' câu</b></li>'; }).join("");
@@ -157,7 +209,7 @@
     var map = '<div class="flex flex-wrap gap-1">' + jm.qs.map(function (x, i) { return i < sec.from || i > sec.to ? "" : '<button data-action="jlpt-go-q" data-i="' + i + '" class="w-6 h-6 rounded text-[10px] font-bold ' + (i === jm.idx ? "bg-rose-600 text-white" : jm.ans[i] != null ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-500") + '">' + (i + 1) + '</button>'; }).join("") + '</div>';
     return modalHead(esc(jm.ex.name) + " · " + esc(q.part)) + '<div class="p-5 space-y-3">' +
       '<div class="flex justify-between text-xs text-slate-500"><span>Câu ' + (jm.idx + 1) + '/' + jm.qs.length + ' · đã làm ' + answered + '</span>' + timer + '</div>' +
-      '<p class="text-xs text-slate-500">' + esc(q.sub) + '</p>' + head + '<div class="space-y-2">' + opts + '</div>' + info + nav +
+      '<p class="text-xs text-slate-500">' + esc(q.sub) + '</p>' + (q.ctx ? '<div class="rounded-xl bg-slate-50 border border-slate-200 p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto">' + esc(q.ctx) + '</div>' : "") + head + '<div class="space-y-2">' + opts + '</div>' + info + nav +
       (mock || jm.qs.length > 30 ? map : "") + (last ? "" : '<button data-action="jlpt-submit" class="w-full text-xs text-slate-500 underline">' + (mock && jm.si < jm.secs.length - 1 ? "Nộp phần này sớm" : "Nộp bài sớm") + '</button>') + '</div>';
   }
   function jmScore() {
@@ -171,23 +223,25 @@
     var r = { gs: gs, ok: allOk, tot: allTot, total: gs.reduce(function (a, g) { return a + g.sc; }, 0) };
     var parts = {}; jm.qs.forEach(function (q, i) { var p = parts[q.part] || (parts[q.part] = [0, 0]); p[1]++; if (jm.ans[i] === q.answer) p[0]++; }); r.parts = parts;
     if (e.pass) { r.pass = r.total >= e.pass && gs.every(function (g) { return !g.tot || g.sc >= g.min; }); r.show = r.total + "/180"; }
+    else if (e.real) { r.total = Math.round(100 * (allTot ? allOk / allTot : 0)); r.show = r.total + "%"; r.pass = r.total >= 60; }
     else if (e.jft) { r.total = Math.round(10 + 240 * (allTot ? allOk / allTot : 0)); r.show = r.total + "/250"; r.pass = r.total >= 145; r.level = r.total >= 200 ? "A2.2" : r.total >= 175 ? "A2.1" : r.total >= 145 ? "A1" : "chưa đạt A1"; }
     else { r.total = Math.round(100 * (allTot ? allOk / allTot : 0)); r.show = r.total + "%"; r.pass = r.total >= 60; }
     return r;
   }
   function jmResult() {
     var r = jm.result, e = jm.ex, wrong = jm.qs.length - r.ok;
-    var big = e.pass ? r.total + '<span class="text-base">/180</span>' : e.jft ? r.total + '<span class="text-base">/250</span>' : r.total + '<span class="text-base">%</span>';
-    var verdict = e.pass ? (r.pass ? "✅ Đạt (ước tính)" : "❌ Chưa đạt (ước tính)") : e.jft ? "Mức ước tính: " + r.level : (r.pass ? "✅ Khá tốt" : "Cần luyện thêm");
-    var sub = e.pass ? 'Đạt ' + esc(e.name) + ': ≥ ' + e.pass + '/180 và mỗi phần ≥ mức tối thiểu' : e.jft ? "Thang ước tính từ tỉ lệ đúng; điểm chính thức được quy đổi (equating) nên có thể lệch" : "Tỉ lệ câu đúng trên phần trắc nghiệm";
-    var rows = r.gs.map(function (g) { return e.pass ? '<div class="flex justify-between text-sm"><span>' + esc(g.n) + '</span><b class="' + (g.sc < g.min ? "text-rose-600" : "text-emerald-600") + '">' + g.sc + '/' + g.max + ' <span class="text-xs font-normal">(' + g.ok + '/' + g.tot + ' câu · tối thiểu ' + g.min + ')</span></b></div>' : ""; }).join("");
+    if (e.real) { var bigR = r.total + '<span class="text-base">%</span>'; }
+    var big = e.real ? bigR : e.pass ? r.total + '<span class="text-base">/180</span>' : e.jft ? r.total + '<span class="text-base">/250</span>' : r.total + '<span class="text-base">%</span>';
+    var verdict = e.real ? (r.pass ? "✅ Khá tốt (≥ 60% câu đúng)" : "Cần luyện thêm") : e.pass ? (r.pass ? "✅ Đạt (ước tính)" : "❌ Chưa đạt (ước tính)") : e.jft ? "Mức ước tính: " + r.level : (r.pass ? "✅ Khá tốt" : "Cần luyện thêm");
+    var sub = e.real ? "Điểm quy đổi ước tính từng phần bên dưới; chưa gồm phần nghe nên chưa thể kết luận đạt/rớt JLPT" : e.pass ? 'Đạt ' + esc(e.name) + ': ≥ ' + e.pass + '/180 và mỗi phần ≥ mức tối thiểu' : e.jft ? "Thang ước tính từ tỉ lệ đúng; điểm chính thức được quy đổi (equating) nên có thể lệch" : "Tỉ lệ câu đúng trên phần trắc nghiệm";
+    var rows = r.gs.map(function (g) { return (e.pass || e.real) ? '<div class="flex justify-between text-sm"><span>' + esc(g.n) + '</span><b class="' + (g.sc < g.min ? "text-rose-600" : "text-emerald-600") + '">' + g.sc + '/' + g.max + ' <span class="text-xs font-normal">(' + g.ok + '/' + g.tot + ' câu · tối thiểu ' + g.min + ')</span></b></div>' : ""; }).join("");
     var pr = Object.keys(r.parts).map(function (k) { return '<span class="inline-block text-xs rounded-lg bg-slate-100 px-2 py-1 mr-1 mb-1">' + esc(k) + ' <b>' + r.parts[k][0] + '/' + r.parts[k][1] + '</b></span>'; }).join("");
     return modalHead("🎌 Kết quả · " + esc(e.name)) + '<div class="p-5 space-y-3">' +
       '<div class="rounded-2xl p-4 text-center ' + (r.pass ? "bg-emerald-50 border border-emerald-200" : "bg-rose-50 border border-rose-200") + '"><p class="text-3xl font-extrabold">' + big + '</p><p class="font-bold">' + verdict + '</p><p class="text-xs text-slate-600 mt-1">' + sub + '</p><p class="text-xs text-slate-500 mt-1">' + (jm.mode === "mock" ? "⏱ Thi thử" : "📖 Luyện tập") + ' · đúng ' + r.ok + '/' + r.tot + ' câu</p></div>' +
       (rows ? '<div class="space-y-1">' + rows + '</div>' : "") + '<div>' + pr + '</div>' +
       '<button data-action="jlpt-review" data-f="all" class="w-full ' + btnPrimary + '">🔍 Xem lại đáp án (' + jm.qs.length + ' câu)</button>' +
       (wrong ? '<button data-action="jlpt-review" data-f="wrong" class="w-full ' + btnGhost + '">Chỉ xem câu sai / bỏ trống (' + wrong + ')</button>' : '<p class="text-sm font-bold text-emerald-600 text-center">Hoàn hảo, không sai câu nào! 🎉</p>') +
-      '<div class="flex gap-2"><button data-action="jlpt-exam" data-id="' + e.id + '" class="flex-1 ' + btnGhost + '">Làm lại / đổi chế độ</button><button data-action="jlpt-menu" class="flex-1 ' + btnGhost + '">Danh sách đề</button></div></div>';
+      '<div class="flex gap-2"><button data-action="' + (e.real ? "jlpt-real-exam" : "jlpt-exam") + '" data-id="' + e.id + '" class="flex-1 ' + btnGhost + '">Làm lại / đổi chế độ</button><button data-action="jlpt-menu" class="flex-1 ' + btnGhost + '">Danh sách đề</button></div></div>';
   }
   function jmReview() {
     var f = jm.rf || "all", items = [];
@@ -199,7 +253,7 @@
         return '<div class="rounded-lg border px-2.5 py-1.5 text-xs ' + c + '">' + (k === q.answer ? "✅ " : k === a ? "❌ " : "") + esc(o) + '</div>';
       }).join("");
       return '<div class="rounded-2xl border border-slate-200 p-3 space-y-1.5"><p class="text-[11px] text-slate-500">Câu ' + (i + 1) + ' · ' + esc(q.part) + ' · ' + (a == null ? "bỏ trống" : good ? "đúng" : "sai") + '</p>' +
-        (q.speak ? '<button data-action="jlpt-rsay" data-i="' + i + '" class="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold">🔊 Nghe</button>' : '<p class="font-bold text-slate-800">' + esc(q.prompt) + '</p>') +
+        (q.ctx ? '<details class="text-xs text-slate-500"><summary>Xem đoạn văn</summary><div class="whitespace-pre-wrap mt-1">' + esc(q.ctx) + '</div></details>' : "") + (q.speak ? '<button data-action="jlpt-rsay" data-i="' + i + '" class="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold">🔊 Nghe</button>' : '<p class="font-bold text-slate-800">' + esc(q.prompt) + '</p>') +
         '<div class="space-y-1">' + opts + '</div><p class="text-xs text-slate-600">💡 ' + esc(q.exp || "") + '</p></div>';
     }).join("");
     return modalHead("🔍 Đáp án · " + esc(jm.ex.name)) + '<div class="p-5 space-y-3"><div class="flex gap-2"><button data-action="jlpt-review" data-f="all" class="flex-1 ' + (f === "all" ? btnPrimary : btnGhost) + '">Tất cả</button><button data-action="jlpt-review" data-f="wrong" class="flex-1 ' + (f === "wrong" ? btnPrimary : btnGhost) + '">Sai / trống</button></div>' +
@@ -249,6 +303,9 @@
     return lang && lang.code === "ja" && cert && cert.id === "jlpt" ? '<button data-action="jlpt-menu" class="w-full ' + btnPrimary + '">🎌 Đề thi tiếng Nhật: Luyện tập &amp; Thi thử</button>' : "";
   }
   Object.assign(actions, {
+    "jlpt-real": function () { jmStop(); jm = null; jmRealList(); },
+    "jlpt-real-exam": function (el) { jmRealLoad("jlpt-n2").then(function (d) { var en = d.exams.filter(function (x) { return x.id === el.dataset.id; })[0]; if (en) openModal(function () { return jmRealDetail(en); }); }); },
+    "jlpt-real-go": function (el) { jmRealStart(el.dataset.id, el.dataset.mode === "mock" ? "mock" : "practice", el.dataset.s != null ? Number(el.dataset.s) : null); },
     "jlpt-menu": function () { jmStop(); jm = null; openModal(jmMenu); },
     "jlpt-exam": function (el) { jmStop(); var e = jmEx(el.dataset.id); if (e) openModal(function () { return jmDetail(e); }); },
     "jlpt-go": function (el) { jmStart(el.dataset.id, el.dataset.mode === "mock" ? "mock" : "practice", el.dataset.s != null ? Number(el.dataset.s) : null); },

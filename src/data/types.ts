@@ -39,4 +39,6 @@ export interface DailyFile {
 export interface DataManifest {
   vocab: Record<LangCode, string>;
   daily: Record<LangCode, string>;
+  /** Đề thi thật theo tên (vd. "jlpt-n2"), tải theo nhu cầu; không bắt buộc. */
+  exams?: Record<string, string>;
 }

@@ -118,7 +118,19 @@ function buildDataFiles(): DataManifest {
     dataFiles.set(dailyPath, daily);
     manifest.daily[code] = dailyPath;
   }
-  return manifest as DataManifest;
+  // Đề thi thật (JLPT...) tách từ PDF: data/exams/*.json -> data/exam.<tên>.<hash>.json, tải theo nhu cầu.
+  const exams: Record<string, string> = {};
+  const examDir = path.join(ROOT, "data/exams");
+  if (fs.existsSync(examDir)) {
+    for (const f of fs.readdirSync(examDir).filter((x) => x.endsWith(".json")).sort()) {
+      const text = JSON.stringify(JSON.parse(readRaw(`data/exams/${f}`)));
+      const name = f.replace(/\.json$/, "");
+      const rel = `data/exam.${name}.${contentHash(text)}.json`;
+      dataFiles.set(rel, text);
+      exams[name] = rel;
+    }
+  }
+  return { ...(manifest as DataManifest), exams } as DataManifest;
 }
 
 /** Ghi file mới và xóa file cũ không còn được tham chiếu trong data/ và assets/ (tên đã băm nên không ghi đè nhầm). */
