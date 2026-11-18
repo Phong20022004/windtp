@@ -92,7 +92,7 @@
     var wrong = all.filter(function (x) { return !examIsRight(x.it, r.ans[x.k]); });
     var list = r.showAll ? all : wrong;
     return modalHead("📝 Kết quả") + '<div class="exam-wrap"><div class="exam-card exam-score"><b>' + right + "/" + total + " câu đúng</b><span>" + pct + "%</span>" +
-      (r.paper.section === "reading" ? "<p>Quy đổi thang đọc TOPIK II: <b>" + pct + "/100</b></p>" : "") + "<p>" + (r.mode === "practice" ? "Luyện tập" : "Thi thử") + " · thời gian làm: " + examClock(r.spent) + (r.mode === "mock" ? " / " + examClock(r.paper.minutes * 60) : "") + (r.timeUp ? " (hết giờ)" : "") + "</p></div>" +
+      (r.paper.section === "reading" ? "<p>Quy đổi thang 100 điểm của phần Đọc (" + (r.paper.sys === "hsk" ? "HSK 5" : "TOPIK II") + ", tính tỷ lệ, không phải điểm chính thức): <b>" + pct + "/100</b></p>" : "") + "<p>" + (r.mode === "practice" ? "Luyện tập" : "Thi thử") + " · thời gian làm: " + examClock(r.spent) + (r.mode === "mock" ? " / " + examClock(r.paper.minutes * 60) : "") + (r.timeUp ? " (hết giờ)" : "") + "</p></div>" +
       '<div class="exam-card"><b>Theo từng phần</b>' + order.map(function (s) {
         var p = per[s], w = Math.round(p.ok * 100 / p.n);
         return '<div class="exam-row"><span>' + esc(s) + "</span><span>" + p.ok + "/" + p.n + '</span><i style="--w:' + w + '%"></i></div>';
