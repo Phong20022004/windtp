@@ -42,3 +42,13 @@
 html.dark .exam-card,html[data-theme=dark] .exam-card{background:#1e293b;border-color:#334155;color:#e2e8f0}
 html.dark .exam-q,html[data-theme=dark] .exam-q{color:#f8fafc}
 html.dark .exam-opt,html[data-theme=dark] .exam-opt,html.dark .exam-input,html[data-theme=dark] .exam-input,html.dark .exam-dot,html[data-theme=dark] .exam-dot{background:#0f172a;color:#e2e8f0;border-color:#475569}
+.exam-modes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.exam-modes .exam-btn{display:flex;flex-direction:column;gap:2px;align-items:center;text-align:center}
+.exam-modes small{font-size:10px;font-weight:600;opacity:.85}
+.exam-p{white-space:normal;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:15px;line-height:1.8;color:#1e293b;max-height:42vh;overflow-y:auto}
+.exam-rp{font-size:12px;color:#64748b;line-height:1.6}
+.exam-opt.right{border-color:#16a34a;background:#dcfce7}
+.exam-opt.wrong{border-color:#dc2626;background:#fee2e2}
+.exam-card .good{color:#15803d;font-weight:700}
+.exam-card .bad{color:#b91c1c}
+html.dark .exam-p,html[data-theme=dark] .exam-p{background:#0f172a;color:#e2e8f0;border-color:#475569}

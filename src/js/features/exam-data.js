@@ -19,8 +19,8 @@
       time: "HSK 3: khoảng 90 phút (gồm 5 phút điền phiếu)", score: "HSK 3: 300 điểm (Nghe/Đọc/Viết mỗi phần 100)",
       pass: "HSK 3 đạt từ 180/300. HSK 1–2 chỉ có Nghe và Đọc (200 điểm, đạt 120)." },
     { id: "topik", flag: "🇰🇷", name: "TOPIK I / II", lang: "ko", sections: [
-        { n: "듣기 (Nghe)", d: "TOPIK I: 30 câu, 40 phút. TOPIK II: 50 câu, 60 phút" },
-        { n: "읽기 (Đọc)", d: "TOPIK I: 40 câu, 60 phút. TOPIK II: 50 câu, 70 phút" },
+        { n: "듣기 (Nghe)", d: "TOPIK I: 30 câu, 40 phút. TOPIK II: 50 câu, 60 phút (tiết 1, cùng với 쓰기)" },
+        { n: "읽기 (Đọc)", d: "TOPIK I: 40 câu, 60 phút (tiết 2). TOPIK II: 50 câu, 70 phút (tiết 2), mỗi câu 2 điểm, 100 điểm" },
         { n: "쓰기 (Viết)", d: "Chỉ có ở TOPIK II: 4 câu (điền câu, 2 bài ngắn, 1 bài luận 600–700 chữ), 50 phút" }],
       time: "TOPIK I ≈ 100 phút. TOPIK II ≈ 180 phút", score: "TOPIK I 200 điểm. TOPIK II 300 điểm",
       pass: "TOPIK I: cấp 1 ≥ 80, cấp 2 ≥ 140. TOPIK II: cấp 3 ≥ 120, cấp 4 ≥ 150, cấp 5 ≥ 190, cấp 6 ≥ 230." },
