@@ -24,6 +24,7 @@
   "src/js/features/shared-player-data-chat.js",
   "src/js/features/content-lock-premium.js",
   "src/js/features/lesson-writing.js",
+  "src/js/features/jlpt-mock.js",
   "src/js/features/alphabet-data.js",
   "src/js/features/alphabet.js",
   "src/js/features/alphabet-everest.js",

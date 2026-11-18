@@ -707,6 +707,7 @@ function renderWallet() {
     <div><p class="text-xs font-bold text-slate-700 mb-1">C\u1EA5u tr\xFAc b\xE0i thi</p><ul class="list-disc pl-5 text-xs text-slate-600 space-y-0.5">${c.structure.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>
     <p class="text-xs text-slate-600"><b>C\u1EA5p \u0111\u1ED9 / thang \u0111i\u1EC3m:</b> ${esc(c.levels)}</p>
     <div class="rounded-xl bg-sky-50 border border-sky-200 p-3 text-xs text-sky-900">\u0110\u1EC1 th\u1EED g\u1ED3m 7 c\xE2u (t\u1EEB v\u1EF1ng v\xE0 ng\u1EEF ph\xE1p). L\xE0m \u0111\u1EC1 \u0111\u1EC3 t\u1EF1 \u0111\xE1nh gi\xE1 tr\xECnh \u0111\u1ED9 c\u1EE7a b\u1EA1n.</div>
+    ${typeof jlptButton === "function" ? jlptButton(lang, c) : ""}
     <button data-action="start-cert-quiz" data-id="${c.id}" class="w-full ${btnPrimary}">Gi\u1EA3i \u0111\u1EC1 th\u1EED 7 c\xE2u</button>
   </div>`;
   }
