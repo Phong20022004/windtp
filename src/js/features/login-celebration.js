@@ -181,7 +181,7 @@
         if (finished) return; finished = true;
         if (fw) fw.stop(); host.remove(); document.body.style.overflow = "";
         if (opt.preview) { done(); return; }
-        if (!celebHeld(ev) || claimed) celebMarkSeen(ev.id + ":" + ev.period);
+        celebMarkSeen(ev.id + ":" + ev.period); // chỉ tự hiện một lần; quà chưa nhận vẫn lấy được bằng nút "Nhận quà" trên giao diện
         if (!claimed && !prank && !celebHeld(ev) && window.WindtpApi) { claimed = true; claimNow(true); }
         else if (prank && window.WindtpApi) { try { econClient().claimCelebration(ev.id, celebDate(), celebCountry()).catch(function () {}); } catch (e) {} }
         done();
@@ -283,7 +283,7 @@
       list.forEach(function (ev) {
         var k = ev.id + ":" + ev.period;
         if (ev.claimed || celeb.seen[k]) return;
-        if (!celebHeld(ev) && seen.indexOf(k) >= 0) return;
+        if (seen.indexOf(k) >= 0) return;
         if (celebHeld(ev) && shown.indexOf(k) >= 0) ev.__opt = { giftOnly: true }; // đã xem pháo hoa rồi: vào thẳng hộp quà
         celeb.seen[k] = 1; celeb.queue.push(ev);
       });
