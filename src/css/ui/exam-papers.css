@@ -52,3 +52,8 @@ html.dark .exam-opt,html[data-theme=dark] .exam-opt,html.dark .exam-input,html[d
 .exam-card .good{color:#15803d;font-weight:700}
 .exam-card .bad{color:#b91c1c}
 html.dark .exam-p,html[data-theme=dark] .exam-p{background:#0f172a;color:#e2e8f0;border-color:#475569}
+.exam-blanks{display:flex;flex-direction:column;gap:6px}
+.exam-blank{display:flex;align-items:center;gap:8px}
+.exam-blank b{flex:none;font-size:13px;color:#4338ca}
+.exam-input.ok{border-color:#16a34a;background:#dcfce7}
+.exam-input.ng{border-color:#dc2626;background:#fee2e2}

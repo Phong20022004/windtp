@@ -3,8 +3,15 @@
   function examPaper(id) { return EXAM_PAPERS.filter(function (p) { return p.id === id; })[0]; }
   function examSystem(id) { return EXAM_SYSTEMS.filter(function (s) { return s.id === id; })[0]; }
   function examNorm(s) { return String(s || "").replace(/[\s　.。,，?？!！]/g, "").toLowerCase(); }
+  var EXAM_MARK = ["ㄱ", "ㄴ", "ㄷ", "ㄹ"];
+  function examFilled(ans) {
+    if (Array.isArray(ans)) return ans.some(function (a) { return examNorm(a) !== ""; });
+    return ans !== undefined && ans !== null && ans !== "";
+  }
+  function examOne(accepted, typed) { return accepted.some(function (t) { return examNorm(t) === examNorm(typed); }); }
   function examIsRight(item, ans) {
-    if (ans === undefined || ans === null || ans === "") return false;
+    if (!examFilled(ans)) return false;
+    if (item.blanks) return Array.isArray(ans) && item.blanks.every(function (b, k) { return examOne(b, ans[k]); });
     if (item.text) return item.text.some(function (t) { return examNorm(t) === examNorm(ans); });
     return ans === item.a;
   }
@@ -37,11 +44,20 @@
     var secs = [];
     r.paper.items.forEach(function (x) { if (secs.indexOf(x.sec) < 0) secs.push(x.sec); });
     var pal = r.paper.items.map(function (x, k) {
-      var done = r.ans[k] !== undefined && r.ans[k] !== "";
+      var done = examFilled(r.ans[k]);
       return '<button type="button" data-action="exam-jump" data-i="' + k + '" class="exam-dot' + (done ? " done" : "") + (k === r.i ? " cur" : "") + '" aria-label="Câu ' + (k + 1) + '">' + (k + 1) + "</button>";
     }).join("");
     var practice = r.mode === "practice", checked = practice && r.checked[r.i], body;
-    if (it.text) {
+    if (it.blanks) {
+      var mine = Array.isArray(ans) ? ans : [];
+      body = '<div class="exam-blanks">' + it.blanks.map(function (b, k) {
+        var ok = checked && examOne(b, mine[k]);
+        return '<label class="exam-blank"><b>( ' + EXAM_MARK[k] + ' )</b><input id="exam-b' + k + '" class="exam-input' + (checked ? (ok ? " ok" : " ng") : "") + '" type="text" autocomplete="off" lang="ko" value="' + esc(mine[k] || "") + '" placeholder="Điền vào chỗ trống"' + (checked ? " disabled" : k === 0 ? " data-autofocus" : "") + "></label>" +
+          (checked ? '<p class="' + (ok ? "good" : "bad") + '">' + (ok ? "✓ Khớp đáp án tham khảo" : "✗ Đáp án tham khảo: " + esc(b.join(" / "))) + "</p>" : "");
+      }).join("") + "</div>" +
+        (practice && !checked ? '<button type="button" class="exam-btn keep-white" data-action="exam-check">Kiểm tra</button>' : "") +
+        '<p class="exam-note">Đáp án tham khảo, có thể còn cách viết đúng khác. Khoảng trắng và dấu câu không bị tính.</p>';
+    } else if (it.text) {
       body = '<input id="exam-text" class="exam-input" type="text" autocomplete="off" value="' + esc(ans || "") + '" placeholder="Nhập đáp án"' + (checked ? " disabled" : " data-autofocus") + ">" +
         (practice && !checked ? '<button type="button" class="exam-btn keep-white" data-action="exam-check">Kiểm tra</button>' : "") +
         (checked ? '<p class="' + (examIsRight(it, ans) ? "good" : "bad") + '">' + (examIsRight(it, ans) ? "✓ Đúng" : "✗ Sai. Đáp án: " + esc(it.text[0])) + "</p>" : "");
@@ -83,13 +99,13 @@
       }).join("") + "</div>" +
       '<button type="button" class="exam-btn ghost" data-action="exam-review">' + (r.showAll ? "Chỉ xem câu sai" : "Xem đáp án toàn bộ " + total + " câu") + "</button>" +
       (list.length ? '<div class="exam-card"><b>' + (r.showAll ? "Đáp án toàn bộ (" : "Câu cần xem lại (") + list.length + ")</b>" + list.map(function (x) {
-        var it = x.it, mine = r.ans[x.k], good = it.text ? it.text[0] : String.fromCharCode(65 + it.a) + ". " + it.opts[it.a];
-        var yours = mine === undefined || mine === "" ? "Chưa trả lời" : (it.text ? mine : String.fromCharCode(65 + mine) + ". " + it.opts[mine]);
+        var it = x.it, mine = r.ans[x.k], good = it.blanks ? it.blanks.map(function (b, k) { return "( " + EXAM_MARK[k] + " ) " + b.join(" / "); }).join("  ·  ") : it.text ? it.text[0] : String.fromCharCode(65 + it.a) + ". " + it.opts[it.a];
+        var yours = !examFilled(mine) ? "Chưa trả lời" : (it.blanks ? it.blanks.map(function (b, k) { return "( " + EXAM_MARK[k] + " ) " + (mine[k] || "—"); }).join("  ·  ") : it.text ? mine : String.fromCharCode(65 + mine) + ". " + it.opts[mine]);
         return '<div class="exam-rev"><small>Câu ' + (x.k + 1) + (it.n ? " (đề gốc " + it.n + ")" : "") + " · " + esc(it.sec) + (examIsRight(it, r.ans[x.k]) ? " · ✓ đúng" : " · ✗ sai") + '</small>' +
           (it.p ? '<p class="exam-rp" lang="' + esc(r.paper.lang) + '">' + esc(it.p).replace(/\n/g, "<br>") + "</p>" : "") +
           '<p lang="' + esc(r.paper.lang) + '">' + esc(it.q).replace(/\n/g, "<br>") + '</p>' +
           (it.speak ? '<p class="exam-rp" lang="' + esc(r.paper.lang) + '">🔊 ' + esc(it.speak) + "</p>" : "") +
-          (examIsRight(it, r.ans[x.k]) ? "" : '<p class="bad">Bạn chọn: ' + esc(yours) + "</p>") + '<p class="good">Đáp án: ' + esc(good) + "</p></div>";
+          (examIsRight(it, r.ans[x.k]) ? "" : '<p class="bad">Bạn chọn: ' + esc(yours) + "</p>") + '<p class="good">' + (it.blanks ? "Đáp án tham khảo: " : "Đáp án: ") + esc(good) + "</p></div>";
       }).join("") + "</div>" : '<div class="exam-card"><b>🎉 Đúng toàn bộ!</b></div>') +
       '<p class="exam-note">Điểm ở đây là số câu đúng trong đề mẫu, chưa quy đổi theo thang điểm chính thức của kỳ thi.</p>' +
       '<div class="exam-nav"><button type="button" class="exam-btn ghost" data-action="exam-home">Về danh sách</button><button type="button" class="exam-btn keep-white" data-action="exam-start" data-id="' + r.paper.id + '">Làm lại</button></div></div>';
@@ -102,7 +118,10 @@
   function examStop() { if (examUi.timer) { clearInterval(examUi.timer); examUi.timer = 0; } }
   function examSaveText() {
     var r = examUi.run, el = document.getElementById("exam-text");
-    if (r && el && !r.done) r.ans[r.i] = el.value;
+    if (!r || r.done) return;
+    if (r.paper.items[r.i].blanks) {
+      r.ans[r.i] = r.paper.items[r.i].blanks.map(function (_, k) { var b = document.getElementById("exam-b" + k); return b ? b.value : ""; });
+    } else if (el) r.ans[r.i] = el.value;
   }
   function examFinish(timeUp) {
     var r = examUi.run; if (!r || r.done) return;
@@ -167,7 +186,7 @@
     "exam-finish": function () {
       var r = examUi.run; if (!r) return;
       examSaveText();
-      var left = r.paper.items.filter(function (_, k) { return r.ans[k] === undefined || r.ans[k] === ""; }).length;
+      var left = r.paper.items.filter(function (_, k) { return !examFilled(r.ans[k]); }).length;
       if (r.mode === "mock" && left && !window.confirm("Còn " + left + " câu chưa trả lời. Vẫn nộp bài?")) return;
       examFinish(false);
     }
