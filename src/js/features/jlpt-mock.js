@@ -129,7 +129,7 @@
     en.questions.forEach(function (q) {
       if (only != null && q.s !== JM_REAL_SECS[only]) return;
       var m = /問題\s*(\d+)/.exec(q.i || "");
-      out.push({ t: q.s === "読解" ? "read" : "lang", part: q.s + (m ? " · 問題" + m[1] : ""), prompt: q.q || "（" + q.n + "）", sub: (q.i || "").replace(/^問題\s*\d+\s*/, "").slice(0, 70), ctx: q.p != null ? en.passages[q.p] : "", options: q.o, answer: q.a - 1, exp: "Câu " + q.n + " · đáp án đúng: " + q.o[q.a - 1] });
+      out.push({ t: q.s === "読解" ? "read" : "lang", part: q.s + (m ? " · 問題" + m[1] : ""), prompt: (q.q && q.q.replace(/[。\s.]/g, "").length > 1) ? q.q : "（" + q.n + "）に入るのはどれ？", sub: (q.i || "").replace(/^問題\s*\d+\s*/, "").slice(0, 70), ctx: q.p != null ? en.passages[q.p] : "", options: q.o, answer: q.a - 1, exp: "Câu " + q.n + " · đáp án đúng: " + q.o[q.a - 1] });
     });
     return out;
   }
@@ -170,7 +170,7 @@
     var h = jmHist();
     var hist = h.length ? '<div><p class="text-xs font-bold text-slate-700 mb-1">Lịch sử thi thử gần đây</p><ul class="text-xs text-slate-600 space-y-0.5">' + h.slice(0, 8).map(function (r) {
       return '<li>' + esc(r.date) + ' · ' + esc(r.name || r.lv) + ' · <b>' + esc(String(r.show || (r.total + "/180"))) + '</b> · ' + (r.pass ? "✅" : "❌") + '</li>'; }).join("") + '</ul></div>' : "";
-    return modalHead("🎌 Đề thi tiếng Nhật") + '<div class="p-5 space-y-3"><p class="text-xs text-slate-600">Mỗi đề có 2 chế độ: <b>Luyện tập</b> (không tính giờ, có đáp án ngay) và <b>Thi thử</b> (tính giờ từng phần như thi thật). Sau khi nộp bài bạn xem lại được toàn bộ đáp án.</p>' + JM_EX.map(jmCard).join("") + '<button data-action="jlpt-real" class="w-full text-left rounded-2xl border border-amber-300 bg-amber-50 hover:bg-amber-100 p-3.5"><span class="font-extrabold text-amber-800">📚 JLPT N2 · Đề thật 2010–nay</span><span class="block text-xs text-amber-700">24 đề thi thật, có đáp án · Luyện tập &amp; Thi thử</span></button>' + hist + '</div>';
+    return modalHead("🎌 Đề thi tiếng Nhật") + '<div class="p-5 space-y-3"><p class="text-xs text-slate-600">Mỗi đề có 2 chế độ: <b>Luyện tập</b> (không tính giờ, có đáp án ngay) và <b>Thi thử</b> (tính giờ từng phần như thi thật). Sau khi nộp bài bạn xem lại được toàn bộ đáp án.</p>' + JM_EX.map(jmCard).join("") + '<button data-action="jlpt-real" class="w-full text-left rounded-2xl border border-amber-300 bg-amber-50 hover:bg-amber-100 p-3.5"><span class="font-extrabold text-amber-800">📚 JLPT N2 · Đề thật 2010–nay</span><span class="block text-xs text-amber-700">32 đề thi thật, có đáp án · Luyện tập &amp; Thi thử</span></button>' + hist + '</div>';
   }
   function jmDetail(e) {
     var rows = e.secs.map(function (s, i) { return '<li class="flex justify-between gap-2"><span>' + esc(s.n) + '</span><b class="whitespace-nowrap">' + s.min + ' phút · ' + jmCount(s) + ' câu</b></li>'; }).join("");

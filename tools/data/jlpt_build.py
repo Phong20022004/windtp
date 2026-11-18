@@ -17,7 +17,8 @@ def main():
     exams = []
     for f in ins:
         d = json.load(open(f)); qs = d["questions"]
-        if any(len(q["options"]) != 4 or q["a"] not in (1, 2, 3, 4) or not (q["stem"] or q["sec"] == "文法") for q in qs): continue
+        qs = [q for q in qs if len(q["options"]) == 4 and q["a"] in (1, 2, 3, 4) and (q["stem"] or q["sec"] == "文法")]  # bỏ câu tách lỗi / thiếu đáp án
+        if len(qs) < 55: continue
         mo, yr = d["period"].split("/")
         passages, items = [], []
         for q in qs:

@@ -64,14 +64,25 @@ def parse_exam(txt):
             d = int(m.group(1))
             if d == k or (k == 4 and d == 3 and len(o) == 3):
                 o.append((m.start(), m.end())); k += 1
-        if len(o) < 4: return None
+        if len(o) < 4:
+            pos = {}
+            for m in re.finditer(r"(?:(?<=\s)|^)([1-4])(?!\d)\s*", text):
+                pos.setdefault(int(m.group(1)), (m.start(), m.end()))
+            if len(pos) < 4: return None
+            order = sorted(pos.values())
+            by = {d: i for i, d in enumerate(sorted(pos, key=lambda d: pos[d]))}
+            segs = {}
+            for d, (st, en) in pos.items():
+                j = by[d]
+                segs[d] = text[en:(order[j + 1][0] if j + 1 < 4 else len(text))].strip()
+            return [segs[d] for d in (1, 2, 3, 4)]
         res = []
         for j, (s, e) in enumerate(o):
             res.append(text[e:(o[j + 1][0] if j + 1 < 4 else len(text))].strip())
         return res
     while i < len(lines):
         l = lines[i]
-        if re.fullmatch(r"\s*\d{1,3}\s*", l) and not (int(l) == cur + 1):
+        if re.fullmatch(r"\s*\d{1,3}\s*", l) and not (cur + 1 <= int(l) <= cur + 3):
             i += 1; continue
         if re.match(r"^\s*(文字・語彙|文法|読解|聴解)\s*$", l):
             section = l.strip()
@@ -81,7 +92,7 @@ def parse_exam(txt):
             instr = l.strip(); passage = []; buf = []; lastctx = ""
             i += 1; continue
         m = re.match(r"^\s{0,8}(\d{1,2})a?(?:\s*(\S.*))?$", l)
-        if m and int(m.group(1)) == cur + 1:
+        if m and cur + 1 <= int(m.group(1)) <= cur + 3:
             n = int(m.group(1)); g2 = m.group(2) or ""; stem = [g2.strip()]; j = i + 1; text = ""
             # gom đến khi có đủ 4 đáp án
             body = [g2]
