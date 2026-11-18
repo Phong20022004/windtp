@@ -112,6 +112,7 @@ export interface ApiClient {
   claimCelebration(id: string, date: string, country?: string): Promise<{ xu: number; chips: number }>;
   /** Từ vựng đầy đủ của một ngôn ngữ; máy chủ chỉ gửi khi còn Premium và có khóa học đó. */
   vocabContent(lang: string): Promise<unknown>;
+  examContent(name: string): Promise<unknown>;
   /** Mã mời của mình (máy chủ tạo lần đầu gọi) cùng số người đã mời/đã được thưởng. */
   referral(): Promise<Referral>;
   /** Nhập mã mời của người khác (một lần, trước khi tự mua khóa học). */
@@ -246,6 +247,7 @@ export function createApiClient({ baseUrl, getToken, getDeviceId, session, fetch
     purchase: async (itemId) => ({ itemId: String((await post("/purchase", { itemId })).itemId ?? itemId) }),
     createOrder: async (input) => ({ id: Number((await post("/orders", input)).id) }),
     vocabContent: (lang) => request<unknown>("GET", `/content/vocab/${encodeURIComponent(lang)}`),
+    examContent: (name) => request<unknown>("GET", `/content/exam/${encodeURIComponent(name)}`),
     referral: async () => {
       const r = await request<Referral>("GET", "/referral");
       if (typeof r.code !== "string" || !r.reward || typeof r.reward.xu !== "number" || typeof r.reward.chips !== "number") throw new ApiError("bad-response", 200);

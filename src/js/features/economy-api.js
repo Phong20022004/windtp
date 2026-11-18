@@ -547,6 +547,16 @@
     return !!ok;
   }
 
+  // Đề thi thật (trả phí): tải từ máy chủ khi có Premium + khóa học tương ứng.
+  var examCache = {};
+  async function econExamContent(name) {
+    if (examCache[name]) return examCache[name];
+    if (!econ.me) { await econRefresh(false); if (!econ.me) { toast("Cần kết nối máy chủ để mở đề thi thật"); return null; } }
+    const data = await econRun("exam:" + name, async () => { toast("Đang tải đề thi…"); return await econClient().examContent(name); });
+    if (data) examCache[name] = data;
+    return data || null;
+  }
+
   // ----- Bài đăng cộng đồng: lưu và kiểm duyệt ở máy chủ -----
   const serverPostId = (el) => Number(String(el.dataset.id || "").replace(/^s/, ""));
   actions["publish-post"] = async () => {

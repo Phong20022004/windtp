@@ -395,6 +395,21 @@ test('nội dung trả phí: cần Premium còn hạn và khóa học của đú
   assert.equal((await get('boss', 'fr', true)).status, 404, 'chưa tải nội dung lên R2');
 });
 
+test('đề thi thật: cùng điều kiện nội dung trả phí (Premium + khóa tiếng Nhật), admin xem được, tên lạ 404', async () => {
+  const app = await makeApp();
+  app.objects.set('exam/jlpt-n2.json', '{"level":"N2","exams":[]}');
+  const get = (uid, name, admin) => app.call('GET', `/content/exam/${name}`, { uid, admin });
+  assert.equal((await app.call('GET', '/content/exam/jlpt-n2')).status, 401);
+  assert.equal((await get('u1', 'jlpt-n2')).status, 403, 'chưa có Premium');
+  assert.equal((await get('u1', 'unknown')).status, 404);
+  assert.equal((await get('u1', 'constructor')).status, 404);
+  const o = await shopOrder(app, 'u1', [{ id: 'cr-en-1m', qty: 1 }], 100000);
+  assert.equal((await approveShop(app, o)).status, 200);
+  assert.equal((await get('u1', 'jlpt-n2')).status, 403, 'Premium nhưng chưa có khóa tiếng Nhật');
+  assert.equal((await get('boss', 'jlpt-n2', true)).status, 200, 'admin xem được');
+  assert.equal((await get('boss', 'jlpt-n3', true)).status, 404, 'đề chưa khai báo');
+});
+
 test('khóa kiểu "constructor"/"__proto__" không lọt qua bảng tra (nhiệm vụ, tiền tệ, gói, nhiệm vụ đặc biệt)', async () => {
   const app = await makeApp();
   for (const id of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {

@@ -182,13 +182,10 @@
   /* ---- Đề thi thật (tách từ PDF đề JLPT; chỉ phần chữ: 文字・語彙 / 文法 / 読解, chưa có phần nghe) ---- */
   var JM_REAL_SECS = ["文字・語彙", "文法", "読解"], jmRealCache = {};
   var JM_REAL_G = [{ n: "言語知識 (文字・語彙・文法)", max: 60, min: 19, t: ["lang"] }, { n: "読解 (Đọc hiểu)", max: 60, min: 19, t: ["read"] }];
-  function jmExamUrl(name) {
-    try { var m = JSON.parse(document.getElementById("windtp-data-manifest").textContent); return m.exams && m.exams[name] || null; } catch (e) { return null; }
-  }
   function jmRealLoad(name) {
     if (jmRealCache[name]) return Promise.resolve(jmRealCache[name]);
-    var u = jmExamUrl(name); if (!u) return Promise.reject(new Error("no-url"));
-    return fetch(new URL(u, document.baseURI).href, { credentials: "same-origin" }).then(function (r) { if (!r.ok) throw new Error("http"); return r.json(); }).then(function (d) { jmRealCache[name] = d; return d; });
+    if (typeof econExamContent !== "function") return Promise.reject(new Error("no-api"));
+    return econExamContent(name).then(function (d) { if (!d || !d.exams) throw new Error("no-data"); jmRealCache[name] = d; return d; });
   }
   function jmRealEx(lvl, en) {
     return { id: en.id, name: "JLPT " + lvl + " · đề thật " + en.period, real: true, groups: JM_REAL_G, secs: [{ n: "言語知識（文字・語彙・文法）・読解", min: lvl === "N1" ? 110 : 105, p: [] }] };

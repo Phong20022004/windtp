@@ -698,6 +698,22 @@ export function createApi({ verify, now = () => Date.now() }) {
     return new Response(obj.body);
   });
 
+  // Đề thi thật: cùng điều kiện với bài học trả phí (Premium + khóa học của ngôn ngữ đó, hoặc admin).
+  route('GET', '/content/exam/:name', 'user', async ({ db, env, user, t, params }) => {
+    await rate(db, user, t, 'content', 60, 3600000);
+    const lang = Object.prototype.hasOwnProperty.call(E.EXAM_CONTENT, params.name) ? E.EXAM_CONTENT[params.name] : null;
+    if (!lang) throw new HttpError(404, 'no-content');
+    if (!user.admin) {
+      const w = await wallet(db, user.uid, t);
+      if (!(w.premiumUntil > t)) throw new HttpError(403, 'premium-required');
+      const own = await q(db, 'SELECT 1 AS x FROM entitlements WHERE uid = ? AND item_id = ?', user.uid, `access:${lang}`).first();
+      if (!own) throw new HttpError(403, 'course-required');
+    }
+    const obj = await blobGet(env, `exam/${params.name}.json`);
+    if (!obj) throw new HttpError(404, 'no-content');
+    return new Response(obj.body);
+  });
+
   // Danh sách nhiệm vụ đặc biệt: admin ghi đè toàn bộ, mọi người dùng đọc được.
   route('PUT', '/admin/tasks', 'admin', async ({ db, body }) => {
     if (!Array.isArray(body.items) || body.items.length > E.MAX_TASKS) throw bad('bad-items');

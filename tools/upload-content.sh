@@ -7,3 +7,7 @@ BUCKET="${WINDTP_R2_BUCKET:-windtp-content}"
 for f in premium-content/vocab/*.json; do
   npx wrangler r2 object put "$BUCKET/vocab/$(basename "$f")" --file="$f" --content-type=application/json --remote
 done
+for f in premium-content/exam/*.json; do
+  [ -e "$f" ] || continue
+  npx wrangler r2 object put "$BUCKET/exam/$(basename "$f")" --file="$f" --content-type=application/json --remote
+done
