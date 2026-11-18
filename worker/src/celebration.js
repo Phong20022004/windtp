@@ -38,6 +38,10 @@ export function sanitizeCelebration(input) {
     if (!['auto', 'boom', 'chime', 'none'].includes(sound)) return null;
     const repeat = e.repeat ?? 'year';
     if (!['year', 'daily'].includes(repeat)) return null;
+    const scene = e.scene || '';
+    if (scene && !ID_LIST.includes(scene)) return null;
+    const message = typeof e.message === 'string' ? e.message.trim() : '';
+    if (message.length > 200) return null;
     const countries = Array.isArray(e.countries) ? e.countries.map((c) => String(c).toUpperCase()) : [];
     if (countries.length > 10 || countries.some((c) => !/^[A-Z]{2}$/.test(c))) return null;
     // Khoảng ngày tùy chỉnh (ghi đè ngày mặc định): from/to dạng YYYY-MM-DD, cả hai hoặc không có.
@@ -47,7 +51,7 @@ export function sanitizeCelebration(input) {
       if (Date.parse(e.to) - Date.parse(e.from) > 31 * 86400000) return null;
       range = { from: e.from, to: e.to };
     }
-    out.events[id] = { enabled: e.enabled !== false, range, xu: id === 'fools' ? 0 : xu, chips: id === 'fools' ? 0 : chips, duration, sound, repeat, countries };
+    out.events[id] = { enabled: e.enabled !== false, range, xu: id === 'fools' ? 0 : xu, chips: id === 'fools' ? 0 : chips, duration, sound, repeat, countries, scene, message };
   }
   const w = input.wedding;
   if (w) {
@@ -118,7 +122,7 @@ export function eventsOn(y, m, d, config = DEFAULT_CONFIG, country = '') {
     .map((e) => {
       const cfg = config.events?.[e.id] || {}, def = EVENTS[e.id];
       const period = cfg.repeat === 'daily' && !e.forced ? `${e.period}:${ymd(y, m, d)}` : e.period;
-      return { ...e, period, range: undefined, name: def.name, theme: def.theme, gift: def.gift, xu: def.reward || e.id !== 'fools' ? cfg.xu || 0 : 0, chips: cfg.chips || 0, duration: cfg.duration || 60, sound: cfg.sound || 'auto', repeat: cfg.repeat || 'year' };
+      return { ...e, period, range: undefined, name: def.name, theme: def.theme, gift: def.gift, xu: def.reward || e.id !== 'fools' ? cfg.xu || 0 : 0, chips: cfg.chips || 0, scene: cfg.scene || '', message: cfg.message || '', duration: cfg.duration || 60, sound: cfg.sound || 'auto', repeat: cfg.repeat || 'year' };
     });
 }
 

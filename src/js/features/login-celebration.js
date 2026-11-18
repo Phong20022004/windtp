@@ -42,15 +42,15 @@
       u.innerHTML = '<div class="cel-badge">' + (CELEB_DECO[up.id] || "🎉") + " Còn " + up.days + " ngày nữa đến " + esc(up.name) + "</div>"; document.body.appendChild(u); return;
     }
     if (!ev) { root.removeAttribute("data-cel"); return; }
-    root.setAttribute("data-cel", ev.theme);
-    var sc = CELEB_SCENES[ev.id] || {}, em = sc.fall || [CELEB_DECO[ev.id]], d = document.createElement("div");
+    root.setAttribute("data-cel", ev.scene || ev.theme);
+    var sc = CELEB_SCENES[ev.scene || ev.id] || {}, em = sc.fall || [CELEB_DECO[ev.id]], d = document.createElement("div");
     d.id = "cel-deco"; d.setAttribute("aria-hidden", "true");
     var n = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 14, h = '<div class="cel-strip"></div>' + (celebHeld(ev) && !ev.claimed && !ev.forcedPreview ? '<button class="cel-badge cel-pending" data-action="cel-gift" data-id="' + ev.id + '">' + (CELEB_DECO[ev.id] || "🎁") + " Nhận quà " + esc(ev.name) + "</button>" : '<div class="cel-badge">' + (CELEB_DECO[ev.id] || "🎉") + " " + esc(ev.name) + "</div>");
     for (var i = 0; i < n; i++) h += '<i style="left:' + Math.round(Math.random() * 96) + "%;animation-delay:" + (-Math.random() * 14).toFixed(1) + "s;animation-duration:" + (9 + Math.random() * 9).toFixed(1) + "s;font-size:" + (14 + Math.round(Math.random() * 14)) + 'px">' + em[i % em.length] + "</i>";
     d.innerHTML = h; document.body.appendChild(d);
   }
 
-  function celebThemeEmoji() { var t = celeb.top; return t && CELEB_SCENES[t.id] ? CELEB_SCENES[t.id].fall : null; }
+  function celebThemeEmoji() { var t = celeb.top, sc = t && CELEB_SCENES[t.scene || t.id]; return sc ? sc.fall : null; }
   // Chạm vào đâu trên giao diện ngày lễ cũng bắn vài biểu tượng đúng chủ đề.
   document.addEventListener("click", function (e) {
     var list = celebThemeEmoji(); if (!list || !document.documentElement.getAttribute("data-cel") || e.target.closest("#cel-host") || celebOff()) return;
@@ -170,10 +170,10 @@
   }
   function celebRun(ev, opt) {
     opt = opt || {};
-    var sc = CELEB_SCENES[ev.id]; if (!sc) return Promise.resolve();
+    var sid = ev.scene && CELEB_SCENES[ev.scene] ? ev.scene : ev.id, sc = CELEB_SCENES[sid]; if (!sc) return Promise.resolve(); // admin có thể chọn cảnh khác cho sự kiện
     return new Promise(function (done) {
       var host = document.createElement("div"), fw = null, finished = false, claimed = false, stage = 0;
-      host.id = "cel-host"; host.className = "cel-" + ev.id + (sc.dark === false ? " cel-light" : ""); host.style.background = sc.bg;
+      host.id = "cel-host"; host.className = "cel-" + sid + (sc.dark === false ? " cel-light" : ""); host.style.background = sc.bg;
       host.setAttribute("role", "dialog"); host.setAttribute("aria-modal", "true"); host.setAttribute("aria-label", ev.name);
       document.body.appendChild(host); document.body.style.overflow = "hidden";
       var prank = !!sc.prank;
@@ -201,22 +201,22 @@
         stage = 1;
         var show = sc.show;
         host.classList.toggle("cel-photoscene", !!sc.photo);
-        host.innerHTML = (sc.photo ? celebPhoto(sc.photo) : "") + '<div class="cel-fall">' + celebFall(host, sc.fall, sc.rise) + "</div>" + (sc.glitter ? '<div class="cel-fall cel-glitter">' + celebGlitter() + "</div>" : "") + (sc.lanterns ? '<div class="cel-lant l1">🏮</div><div class="cel-lant l2">🏮</div><div class="cel-lant l3">🏮</div>' : "") + (ev.id === "qixi" ? '<div class="cel-milky"></div>' : "") + (show ? '<canvas class="cel-cv"></canvas>' : "") + (sc.fog ? '<div class="cel-fog"></div>' : "") +
-          '<div class="cel-main">' + (show === "multi" ? "" : celebHeroFx(ev.id, sc.hero)) + '<h1 class="cel-title" style="opacity:' + (sc.titleLate ? 0 : 1) + '">' + esc(sc.title) + '</h1><p class="cel-sub">' + esc(sc.sub || "") + "</p></div>" + chrome();
+        host.innerHTML = (sc.photo ? celebPhoto(sc.photo) : "") + '<div class="cel-fall">' + celebFall(host, sc.fall, sc.rise) + "</div>" + (sc.glitter ? '<div class="cel-fall cel-glitter">' + celebGlitter() + "</div>" : "") + (sc.lanterns ? '<div class="cel-lant l1">🏮</div><div class="cel-lant l2">🏮</div><div class="cel-lant l3">🏮</div>' : "") + (sid === "qixi" ? '<div class="cel-milky"></div>' : "") + (show ? '<canvas class="cel-cv"></canvas>' : "") + (sc.fog ? '<div class="cel-fog"></div>' : "") +
+          '<div class="cel-main">' + (show === "multi" ? "" : celebHeroFx(sid, sc.hero)) + '<h1 class="cel-title" style="opacity:' + (sc.titleLate ? 0 : 1) + '">' + esc(sc.title) + '</h1><p class="cel-sub">' + esc(sc.sub || "") + "</p></div>" + chrome();
         var title = host.querySelector(".cel-title"), sub = host.querySelector(".cel-sub");
         if (!show && !opt.giftOnly) celebSound(ev, "intro");
         if (opt.giftOnly) { stage2(); return; }
         if (show) {
           var cv = host.querySelector(".cel-cv"), shown = false, countdown = opt.countdown;
           fw = celebFireworks(cv, { clear: !!sc.clear, silent: ev.sound === "none" || ev.sound === "chime", gold: show === "gold", duration: ev.duration || 60, onTick: function (e, k) { if (k >= 55 && !shown) { shown = true; title.style.opacity = 1; title.classList.add("cel-pop"); sub.textContent = sc.endSub || ""; } }, onEnd: stage2 });
-        } else { setTimeout(function () { if (!finished && stage === 1) stage2(); }, sc.intro || (ev.id === "women" ? 7000 : 6000)); }
+        } else { setTimeout(function () { if (!finished && stage === 1) stage2(); }, sc.intro || (sid === "women" ? 7000 : 6000)); }
       }
       function stage2() {
         if (finished || stage === 2) return; stage = 2; celebMarkShown(ev.id + ":" + ev.period); if (fw) { fw.stop(); fw = null; }
         if (prank) return stagePrank();
         var cv = host.querySelector(".cel-cv"); if (cv) cv.style.opacity = 0.35;
         var main = host.querySelector(".cel-main");
-        main.innerHTML = (ev.id === "xmas" ? '<div class="cel-hero cel-glow cel-tree">🎄</div>' : "") + '<h1 class="cel-title cel-pop">' + esc(sc.title) + '</h1><button class="cel-gift" data-cel="open" aria-label="' + esc(sc.giftText) + '">' + sc.gift + '</button><p class="cel-sub">' + esc(sc.giftText) + "</p>";
+        main.innerHTML = (sid === "xmas" ? '<div class="cel-hero cel-glow cel-tree">🎄</div>' : "") + '<h1 class="cel-title cel-pop">' + esc(sc.title) + '</h1><button class="cel-gift" data-cel="open" aria-label="' + esc(sc.giftText) + '">' + sc.gift + '</button><p class="cel-sub">' + esc(sc.giftText) + "</p>";
       }
       function stagePrank() {
         var main = host.querySelector(".cel-main");
@@ -226,7 +226,7 @@
         if (stage !== 2 || finished) return; stage = 3;
         var main = host.querySelector(".cel-main"), burst = sc.burst, friends = sc.friends;
         if (sc.glow) host.insertAdjacentHTML("afterbegin", '<div class="cel-blueglow"></div>');
-        main.innerHTML = '<div class="cel-hero cel-pop">' + (sc.reveal || sc.gift) + '</div><h1 class="cel-title">' + esc(sc.title) + '</h1><p class="cel-msg">' + esc(sc.msg) + '</p><p class="cel-reward" data-reward></p>' +
+        main.innerHTML = '<div class="cel-hero cel-pop">' + (sc.reveal || sc.gift) + '</div><h1 class="cel-title">' + esc(sc.title) + '</h1><p class="cel-msg">' + esc(ev.message || sc.msg) + '</p><p class="cel-reward" data-reward></p>' +
           (friends ? '<button class="cel-btn alt" data-cel="friend">🌹 Gửi hoa cho bạn bè</button>' : "") + '<button class="cel-btn" data-cel="done">Vào WINDTP</button>';
         celebSound(ev, "gift"); celebConfetti(host, sc.fall);
         claimed = true;
@@ -328,6 +328,7 @@
         (id === "fools" ? '<p class="text-[10px] text-slate-500">Chỉ là trò đùa — không bao giờ cộng Xu.</p>' : '<div class="flex gap-2 text-[11px]"><label>Xu <input data-f="xu" type="number" min="0" value="' + (e.xu || 0) + '" class="w-20 border rounded px-1"></label><label>Chip <input data-f="chips" type="number" min="0" value="' + (e.chips || 0) + '" class="w-16 border rounded px-1"></label></div>') +
         '<div class="flex flex-wrap gap-2 text-[11px]"><label>Thời lượng (giây, 0 = mặc định) <input data-f="duration" type="number" min="0" max="120" value="' + (e.duration || 0) + '" class="w-14 border rounded px-1"></label><label>Âm thanh <select data-f="sound" class="border rounded px-1">' + [["auto", "Tự động"], ["boom", "Tiếng nổ"], ["chime", "Chuông"], ["none", "Tắt"]].map(function (o) { return '<option value="' + o[0] + '"' + ((e.sound || "auto") === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + '</select></label><label>Phát lại <select data-f="repeat" class="border rounded px-1"><option value="year"' + ((e.repeat || "year") === "year" ? " selected" : "") + '>1 lần/năm</option><option value="daily"' + (e.repeat === "daily" ? " selected" : "") + '>Mỗi ngày lễ</option></select></label><label>Quốc gia (VN,KR,JP,TW; trống = tất cả) <input data-f="countries" type="text" value="' + esc((e.countries || []).join(",")) + '" class="w-24 border rounded px-1"></label></div>' +
         (id === "wedding" ? "" : '<div class="flex flex-wrap gap-2 text-[11px] items-center"><span class="font-bold">Ngày diễn ra tùy chỉnh (trống = mặc định):</span><input data-f="from" type="date" value="' + esc((e.range && e.range.from) || "") + '" class="border rounded px-1"> → <input data-f="to" type="date" value="' + esc((e.range && e.range.to) || "") + '" class="border rounded px-1"></div>') +
+        '<div class="flex flex-wrap gap-2 text-[11px] items-center"><label>Cảnh hiệu ứng <select data-f="scene" class="border rounded px-1"><option value="">Mặc định của lễ</option>' + Object.keys(CELEB_NAMES).map(function (k) { return '<option value="' + k + '"' + (e.scene === k ? " selected" : "") + ">" + esc(CELEB_NAMES[k]) + "</option>"; }).join("") + '</select></label></div><label class="block text-[11px]">Lời chúc/quà hiển thị khi mở quà (trống = mặc định)<input data-f="message" type="text" maxlength="200" value="' + esc(e.message || "") + '" class="w-full border rounded px-1 mt-0.5"></label>' +
         '<div class="flex gap-1.5"><button data-action="cel-preview" data-id="' + id + '" class="px-2 py-1 rounded-lg bg-slate-100 text-[11px] font-bold">👁 Xem thử</button><button data-action="cel-force" data-id="' + id + '" class="px-2 py-1 rounded-lg bg-rose-100 text-rose-700 text-[11px] font-bold">⚡ Bật cho mọi người</button></div></div>';
     }).join("");
     return modalHead("🎉 Sự kiện lễ") + '<div class="p-4 space-y-2.5 text-slate-800"><label class="flex items-center gap-2 text-xs font-extrabold"><input type="checkbox" id="cel-all"' + (c.enabled !== false ? " checked" : "") + '> Bật hệ thống sự kiện</label>' +
@@ -343,6 +344,7 @@
       var dur = Math.min(120, f("duration")); if (dur > 0 && dur < 10) dur = 10;
       c.events[r.dataset.celRow] = { enabled: f("enabled"), xu: f("xu"), chips: f("chips"), duration: dur, sound: t("sound", "auto"), repeat: t("repeat", "year"),
         countries: String(t("countries", "")).split(/[,\s]+/).map(function (x) { return x.trim().toUpperCase(); }).filter(Boolean) };
+      c.events[r.dataset.celRow].scene = t("scene", ""); c.events[r.dataset.celRow].message = String(t("message", "")).trim();
       var fr = t("from", ""), to = t("to", ""); if (fr && to) { c.events[r.dataset.celRow].from = fr; c.events[r.dataset.celRow].to = to; }
     });
     c.wedding = { start: host.querySelector("#cel-wd").value || "", days: Math.min(14, Math.max(1, parseInt(host.querySelector("#cel-wn").value, 10) || 3)) };

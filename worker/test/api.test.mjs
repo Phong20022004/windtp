@@ -1311,3 +1311,13 @@ test('sự kiện chào mừng: khoảng ngày tùy chỉnh thay ngày mặc đ�
   assert.equal(upcomingFrom(2027, 12, 25), null);
   assert.equal(upcomingFrom(2027, 6, 1), null);
 });
+
+test('sự kiện chào mừng: admin chọn cảnh và lời chúc tùy chỉnh', async () => {
+  const { eventsOn, sanitizeCelebration } = await import('../src/celebration.js');
+  assert.equal(sanitizeCelebration({ events: { tet: { scene: 'nope' } } }), null);
+  assert.equal(sanitizeCelebration({ events: { tet: { message: 'x'.repeat(201) } } }), null);
+  const cfg = sanitizeCelebration({ events: { xmas: { scene: 'newyear', message: ' Chúc vui! ' } } });
+  const e = eventsOn(2027, 12, 25, cfg)[0];
+  assert.deepEqual([e.id, e.scene, e.message], ['xmas', 'newyear', 'Chúc vui!']);
+  assert.equal(eventsOn(2027, 12, 25)[0].scene, '');
+});

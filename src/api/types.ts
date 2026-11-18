@@ -390,6 +390,9 @@ export interface CelebrationEvent {
   duration: number;
   sound: "auto" | "boom" | "chime" | "none";
   repeat: "year" | "daily";
+  /** Cảnh hiệu ứng thay thế (id sự kiện khác) và lời chúc tùy chỉnh do admin đặt; rỗng = mặc định. */
+  scene: string;
+  message: string;
 }
 
 export interface CelebrationGift {
@@ -400,7 +403,7 @@ export interface CelebrationGift {
 
 export interface CelebrationConfig {
   enabled: boolean;
-  events: Record<string, { enabled: boolean; xu: number; chips: number; duration: number; sound: string; repeat: string; countries: string[]; range: { from: string; to: string } | null }>;
+  events: Record<string, { enabled: boolean; xu: number; chips: number; duration: number; sound: string; repeat: string; countries: string[]; scene: string; message: string; range: { from: string; to: string } | null }>;
   wedding: { start: string; days: number };
   force: { id: string; nonce: number } | null;
 }
