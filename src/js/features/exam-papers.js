@@ -1,5 +1,5 @@
   /* ===== Thi thử đề thật: danh sách kỳ thi + cấu trúc đề, làm bài có đồng hồ, chấm điểm theo phần, xem lại câu sai ===== */
-  var examUi = { sys: null, run: null, timer: 0 };
+  var examUi = { sys: null, run: null, timer: 0, level: "", skill: "all" };
   function examPaper(id) { return EXAM_PAPERS.filter(function (p) { return p.id === id; })[0]; }
   function examSystem(id) { return EXAM_SYSTEMS.filter(function (s) { return s.id === id; })[0]; }
   function examNorm(s) { return String(s || "").replace(/[\s　.。,，?？!！]/g, "").toLowerCase(); }
@@ -19,24 +19,64 @@
     sec = Math.max(0, sec);
     return String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
   }
+  var EXAM_LEVELS = {
+    hsk: ["HSK 1", "HSK 2", "HSK 3", "HSK 4", "HSK 5", "HSK 6"],
+    topik: ["TOPIK I", "TOPIK II"],
+    jlpt: ["N5", "N4", "N3", "N2", "N1"],
+    en: ["IELTS", "TOEIC", "TOEFL"]
+  };
+  var EXAM_SKILLS = [["all", "Tất cả"], ["listening", "🎧 Nghe"], ["reading", "📖 Đọc"], ["writing", "✍️ Viết"], ["mixed", "🧩 Tổng hợp"]];
+  function examLevelOf(p) {
+    if (p.level) return p.level;
+    var m = /^hsk(\d)/.exec(p.id);
+    if (m) return "HSK " + m[1];
+    if (p.sys === "topik") return "TOPIK II";
+    if (p.sys === "jlpt") return /-n(\d)-/.exec(p.id) ? "N" + /-n(\d)-/.exec(p.id)[1] : "N2";
+    return "";
+  }
+  function examSkillOf(p) { return p.section || "mixed"; }
+  function examPaperCard(p) {
+    return '<div class="exam-card"><b>' + esc(p.title) + "</b><p>" + p.items.length + " câu · thi thử " + p.minutes + " phút" +
+      (p.fullMinutes && p.fullCount !== p.items.length ? " (đề gốc " + p.fullCount + " câu / " + p.fullMinutes + " phút)" : "") + '</p><p class="exam-note">' + esc(p.note) + "</p>" +
+      '<div class="exam-modes"><button type="button" class="exam-btn ghost" data-action="exam-start" data-mode="practice" data-id="' + p.id + '">📖 Luyện tập<small>không tính giờ, có đáp án ngay</small></button>' +
+      '<button type="button" class="exam-btn keep-white" data-action="exam-start" data-mode="mock" data-id="' + p.id + '">⏱ Thi thử<small>' + p.minutes + ' phút, xem đáp án sau khi nộp</small></button></div></div>';
+  }
   function examHomeHtml() {
     var sys = examSystem(examUi.sys);
     var tabs = EXAM_SYSTEMS.map(function (s) {
       return '<button type="button" data-action="exam-sys" data-id="' + s.id + '" class="exam-chip' + (s.id === examUi.sys ? " on" : "") + '">' + s.flag + " " + esc(s.name) + "</button>";
     }).join("");
-    var papers = EXAM_PAPERS.filter(function (p) { return p.sys === sys.id; });
+    var all = EXAM_PAPERS.filter(function (p) { return p.sys === sys.id; });
+    var levels = EXAM_LEVELS[sys.id] || [];
+    var level = examUi.level && levels.indexOf(examUi.level) >= 0 ? examUi.level : (levels.filter(function (l) { return all.some(function (p) { return examLevelOf(p) === l; }); })[0] || levels[0] || "");
+    var inLevel = all.filter(function (p) { return examLevelOf(p) === level; });
+    var skill = examUi.skill || "all";
+    var lvChips = levels.map(function (l) {
+      var n = all.filter(function (p) { return examLevelOf(p) === l; }).length;
+      return '<button type="button" data-action="exam-level" data-id="' + esc(l) + '" class="exam-chip' + (l === level ? " on" : "") + '">' + esc(l) + (n ? " · " + n : "") + "</button>";
+    }).join("");
+    var skChips = EXAM_SKILLS.filter(function (k) { return k[0] === "all" || inLevel.some(function (p) { return examSkillOf(p) === k[0]; }); }).map(function (k) {
+      var n = k[0] === "all" ? inLevel.length : inLevel.filter(function (p) { return examSkillOf(p) === k[0]; }).length;
+      return '<button type="button" data-action="exam-skill" data-id="' + k[0] + '" class="exam-chip' + (k[0] === skill ? " on" : "") + '">' + k[1] + " · " + n + "</button>";
+    }).join("");
+    var shown = inLevel.filter(function (p) { return skill === "all" || examSkillOf(p) === skill; }).sort(function (a, b) {
+      var ka = EXAM_SKILLS.map(function (k) { return k[0]; }).indexOf(examSkillOf(a)), kb = EXAM_SKILLS.map(function (k) { return k[0]; }).indexOf(examSkillOf(b));
+      return ka - kb || (a.id < b.id ? -1 : 1);
+    });
+    var body = "", last = "";
+    shown.forEach(function (p) {
+      var sk = examSkillOf(p);
+      if (skill === "all" && sk !== last) { last = sk; body += '<b class="exam-h">' + esc((EXAM_SKILLS.filter(function (k) { return k[0] === sk; })[0] || ["", sk])[1]) + "</b>"; }
+      body += examPaperCard(p);
+    });
     return modalHead("📝 Thi thử đề thật") + '<div class="exam-wrap"><div class="exam-tabs">' + tabs + "</div>" +
       '<div class="exam-card"><b>Cấu trúc đề</b><ul class="exam-sec">' + sys.sections.map(function (x) {
         return "<li><b>" + esc(x.n) + "</b><span>" + esc(x.d) + "</span></li>";
       }).join("") + "</ul>" +
       '<p><b>⏱ Thời gian:</b> ' + esc(sys.time) + "</p><p><b>🎯 Thang điểm:</b> " + esc(sys.score) + "</p><p><b>✅ Mốc đậu:</b> " + esc(sys.pass) + "</p></div>" +
-      "<b class=\"exam-h\">Đề làm trong app</b>" +
-      (papers.length ? papers.map(function (p) {
-        return '<div class="exam-card"><b>' + esc(p.title) + "</b><p>" + p.items.length + " câu · thi thử " + p.minutes + " phút" +
-          (p.fullMinutes ? " (đề gốc " + p.fullCount + " câu / " + p.fullMinutes + " phút, giờ được tính theo tỷ lệ số câu)" : "") + "</p><p class=\"exam-note\">" + esc(p.note) + "</p>" +
-          '<div class="exam-modes"><button type="button" class="exam-btn ghost" data-action="exam-start" data-mode="practice" data-id="' + p.id + '">📖 Luyện tập<small>không tính giờ, có đáp án ngay</small></button>' +
-          '<button type="button" class="exam-btn keep-white" data-action="exam-start" data-mode="mock" data-id="' + p.id + '">⏱ Thi thử<small>' + p.minutes + ' phút, xem đáp án sau khi nộp</small></button></div></div>';
-      }).join("") : '<div class="exam-card"><p class="exam-note">Đề của kỳ thi này đang được nạp thêm từ thư mục trên Google Drive. Bạn vẫn xem được cấu trúc đề ở trên để chuẩn bị.</p></div>') +
+      '<b class="exam-h">Chọn cấp độ</b><div class="exam-tabs">' + lvChips + "</div>" +
+      (inLevel.length ? '<div class="exam-tabs">' + skChips + "</div>" : "") +
+      (body || '<div class="exam-card"><p class="exam-note">' + (level ? esc(level) + ": " : "") + "chưa có đề trong app. Đề của cấp này đang được nạp thêm từ thư mục trên Google Drive. Bạn vẫn xem được cấu trúc đề ở trên để chuẩn bị.</p></div>") +
       "</div>";
   }
   function examQuestionHtml() {
@@ -148,7 +188,9 @@
   }
   Object.assign(actions, {
     "open-exam": function () { examOpen(); },
-    "exam-sys": function (el) { examUi.sys = el.dataset.id; refreshModal(); },
+    "exam-sys": function (el) { examUi.sys = el.dataset.id; examUi.level = ""; examUi.skill = "all"; refreshModal(); },
+    "exam-level": function (el) { examUi.level = el.dataset.id; examUi.skill = "all"; refreshModal(); },
+    "exam-skill": function (el) { examUi.skill = el.dataset.id; refreshModal(); },
     "exam-home": function () { examStop(); examUi.run = null; refreshModal(); },
     "exam-start": function (el) {
       var p = examPaper(el.dataset.id); if (!p) return;
