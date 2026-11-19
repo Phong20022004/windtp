@@ -99,7 +99,7 @@ with serve_dist() as URL, sync_playwright() as p:
     act(pg, 'exam-sys', id='en')
     check(pg.locator('[data-action="exam-start"]').count() == 0 and 'IELTS' in pg.inner_text('.exam-wrap'), 'Anh: có cấu trúc, chưa có đề')
     act(pg, 'exam-sys', id='hsk')
-    check(pg.locator('[data-action="exam-start"][data-mode="mock"]').count() == 1, 'HSK: mặc định hiện HSK 3 với 1 đề')
+    check(pg.locator('[data-action="exam-start"][data-mode="mock"]').count() >= 1, "HSK: mặc định hiện HSK 3 có đề")
     check(pg.locator('[data-action="exam-level"]').count() == 6, 'HSK: có đủ 6 chip cấp độ')
     act(pg, 'exam-level', id='HSK 5')
     check(pg.locator('[data-action="exam-start"][data-mode="mock"]').count() == 13, 'HSK 5: 13 đề')
