@@ -403,7 +403,12 @@
       N(45, P44 + "问：地毯式自动门通过什么来控制门的开关？", "地毯式自动门通过什么来控制门的开关？", ["光线的明暗", "声音的大小", "人与门距离的远近", "地毯上重量的变化"], "D")
     ];
 
+    var carry = function (list) {
+      var last = "";
+      list.forEach(function (x) { if (x.opts && x.sec.indexOf("Nghe") !== 0) { if (x.p) last = x.p; else x.p = last; } });
+    };
     var mk = function (id, code, all, note) {
+      carry(all);
       var rd = all.filter(function (x) { return x.n <= 90; });
       var wr = all.filter(function (x) { return x.n > 90; });
       EXAM_PAPERS.push({ id: id + "-read", sys: "hsk", section: "reading", lang: "zh-CN", items: rd, title: "HSK 5 – đề " + code + " (Đọc 阅读 46–90)", minutes: 45, fullMinutes: 45, fullCount: 45,
