@@ -12,6 +12,8 @@ def clean_ctx(t):
         keep.append(s)
     return "\n".join(keep)
 
+SPLIT = {"N1": (4, 7), "N2": (6, 9), "N3": (5, 8)}  # số 問題 cuối của 文字・語彙 và 文法 (dùng khi PDF không có tiêu đề phần)
+
 def main():
     level, out, *ins = sys.argv[1:]
     exams = []
@@ -20,6 +22,11 @@ def main():
         qs = [q for q in qs if len(q["options"]) == 4 and q["a"] in (1, 2, 3, 4) and (q["stem"] or q["sec"] == "文法")]  # bỏ câu tách lỗi / thiếu đáp án
         if len(qs) < 55: continue
         mo, yr = d["period"].split("/")
+        for q in qs:
+            if not q["sec"]:
+                m = re.search(r"問題\s*(\d+)", q["instr"] or "")
+                a, b = SPLIT.get(level, (6, 9)); k = int(m.group(1)) if m else 0
+                q["sec"] = "文字・語彙" if k <= a else "文法" if k <= b else "読解"
         passages, items = [], []
         for q in qs:
             if any(not x.strip() or re.search(r"\s{3,}\d\s", x) for x in q["options"]): continue  # tách đáp án bị lẫn số trong nội dung
