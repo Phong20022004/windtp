@@ -1,15 +1,17 @@
   /* ===== Thư viện dựng đề HSK (2.0) từ PDF trong Drive: dùng chung cho các file exam-data-zh-*.js =====
      ZH.R(sec, n, đoạn, đề, [4 đáp án], "A".."D")   câu đọc trắc nghiệm; đoạn "" nếu câu không có đoạn văn, "^" nếu dùng chung đoạn với câu ngay trước
      ZH.L(sec, n, kịch bản, đề, [đáp án], "A".."D") câu nghe, chỉ dùng khi PDF có kịch bản chữ (đọc bằng giọng trình duyệt)
+     ZH.O(sec, n, [câu A, câu B, câu C], "CBA")      câu sắp xếp thứ tự 3 câu (HSK 4–5), gõ thứ tự chữ cái
      ZH.W(n, "từ / từ / từ", "câu đúng")            câu sắp xếp từ thành câu (gõ lại cả câu)
      ZH.add("HSK 4", "H41327", [..các câu..], "ghi chú")  tự tách thành đề Nghe / Đọc / Viết và đặt thời gian */
   var ZH = (function () {
-    var LET = "ABCD";
+    var LET = "ABCDEF";
     var TIME = { "HSK 1": { r: 17, rn: 20, l: 15 }, "HSK 2": { r: 22, rn: 25, l: 25 }, "HSK 3": { r: 30, rn: 30, l: 35 }, "HSK 4": { r: 40, rn: 40, l: 30 }, "HSK 5": { r: 45, rn: 45, l: 30 }, "HSK 6": { r: 50, rn: 50, l: 35 } };
     var rng = function (items) { var ns = items.map(function (x) { return x.n; }); return Math.min.apply(null, ns) + "–" + Math.max.apply(null, ns); };
     return {
       R: function (sec, n, p, q, o, a) { return { kind: "reading", n: n, sec: sec, p: p || "", q: q, opts: o, a: LET.indexOf(a) }; },
       L: function (sec, n, speak, q, o, a) { return { kind: "listening", n: n, sec: sec, q: q, opts: o, a: LET.indexOf(a), speak: speak }; },
+      O: function (sec, n, lines, ans) { return { kind: "reading", n: n, sec: sec, p: "", q: "排列顺序：\n" + lines.map(function (x, k) { return "ABC"[k] + " " + x; }).join("\n") + "\n（gõ thứ tự 3 chữ cái, ví dụ ABC）", text: [ans] }; },
       W: function (n, words, ans) { return { kind: "writing", n: n, sec: "Viết: sắp xếp câu", q: "把下列词语连成一个句子：\n" + words, text: [ans] }; },
       add: function (level, code, items, note) {
         var num = level.replace(/\D/g, ""), base = "hsk" + num + "-" + code.toLowerCase();
