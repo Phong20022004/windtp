@@ -46,7 +46,7 @@ export const FB_REWARD = 1000; // thưởng chia sẻ Facebook, mỗi người m
 export const FB_LINK_RE = /^https:\/\/(?:www\.|m\.|web\.|mbasic\.)?(?:facebook\.com|fb\.com|fb\.watch|fb\.me)\/[^\s]{3,}$/i;
 export const MAX_TASKS = 100;
 /** Đề thi thật trả phí: tên -> ngôn ngữ phải sở hữu khóa học. */
-export const EXAM_CONTENT = { 'jlpt-n2': 'ja', 'jlpt-n1': 'ja', 'jlpt-n5': 'ja' };
+export const EXAM_CONTENT = { 'jlpt-n2': 'ja', 'jlpt-n1': 'ja', 'jlpt-n3': 'ja', 'jlpt-n5': 'ja' };
 export const CONTENT_LANGS = ['en', 'zh', 'ja', 'ko', 'de', 'fr', 'es']; // khớp LANG_CODES của app
 
 // Mã mời: người mời nhận thưởng MỘT LẦN cho mỗi người được mời, chỉ khi đơn có quyền học khóa (access:<ngôn ngữ>) của người đó được duyệt.
