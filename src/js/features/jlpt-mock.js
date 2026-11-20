@@ -187,8 +187,9 @@
     if (typeof econExamContent !== "function") return Promise.reject(new Error("no-api"));
     return econExamContent(name).then(function (d) { if (!d || !d.exams) throw new Error("no-data"); jmRealCache[name] = d; return d; });
   }
+  var JM_REAL_MIN = { N1: 110, N2: 105, N3: 100, N4: 90, N5: 75 };
   function jmRealEx(lvl, en) {
-    return { id: en.id, name: "JLPT " + lvl + " · đề thật " + en.period, real: true, groups: JM_REAL_G, secs: [{ n: "言語知識（文字・語彙・文法）・読解", min: lvl === "N1" ? 110 : 105, p: [] }] };
+    return { id: en.id, name: "JLPT " + lvl + " · đề thật " + en.period, real: true, groups: JM_REAL_G, secs: [{ n: "言語知識（文字・語彙・文法）・読解", min: JM_REAL_MIN[lvl] || 105, p: [] }] };
   }
   function jmRealQs(en, only) {
     var out = [];
@@ -201,7 +202,7 @@
   }
   function jmRealList(lvl) {
     jmRealLoad("jlpt-" + lvl.toLowerCase()).then(function (d) {
-      var min = lvl === "N1" ? 110 : 105;
+      var min = JM_REAL_MIN[lvl] || 105;
       var rows = d.exams.map(function (en) { return '<button data-action="jlpt-real-exam" data-lv="' + lvl + '" data-id="' + en.id + '" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">' + en.period + '<span class="block text-[10px] font-normal">' + en.questions.length + ' câu</span></button>'; }).join("");
       openModal(function () { return modalHead("📚 JLPT " + lvl + " · Đề thật") + '<div class="p-5 space-y-3"><p class="text-xs text-slate-600">Đề thi ' + lvl + ' thật (phần chữ: từ vựng, ngữ pháp, đọc hiểu; phần nghe chưa có). Mỗi đề có Luyện tập và Thi thử tính giờ ' + min + ' phút. Câu cần hình/bảng mà bản chữ không đọc được đã được lược bỏ.</p><div class="grid grid-cols-3 gap-2">' + rows + '</div><button data-action="jlpt-menu" class="w-full text-xs text-slate-500 underline">← Danh sách đề</button></div>'; });
     }, function () { toast("Không tải được đề thật, hãy kiểm tra mạng rồi thử lại"); });
@@ -234,7 +235,7 @@
     var h = jmHist();
     var hist = h.length ? '<div><p class="text-xs font-bold text-slate-700 mb-1">Lịch sử thi thử gần đây</p><ul class="text-xs text-slate-600 space-y-0.5">' + h.slice(0, 8).map(function (r) {
       return '<li>' + esc(r.date) + ' · ' + esc(r.name || r.lv) + ' · <b>' + esc(String(r.show || (r.total + "/180"))) + '</b> · ' + (r.pass ? "✅" : "❌") + '</li>'; }).join("") + '</ul></div>' : "";
-    return modalHead("🎌 Đề thi tiếng Nhật") + '<div class="p-5 space-y-3"><p class="text-xs text-slate-600">Mỗi đề có 2 chế độ: <b>Luyện tập</b> (không tính giờ, có đáp án ngay) và <b>Thi thử</b> (tính giờ từng phần như thi thật). Sau khi nộp bài bạn xem lại được toàn bộ đáp án. Các đề N5–N1, JFT, EJU là <b>đề mô phỏng</b> đúng cấu trúc, số câu và thời gian của đề thật, mỗi lần làm sẽ sinh một đề mới từ kho từ vựng/ngữ pháp của app; riêng N2 có thêm đề thật.</p>' + JM_EX.map(jmCard).join("") + '<button data-action="jlpt-real" data-lv="N2" class="w-full text-left rounded-2xl border border-amber-300 bg-amber-50 hover:bg-amber-100 p-3.5"><span class="font-extrabold text-amber-800">📚 JLPT N2 · Đề thật 2010–nay</span><span class="block text-xs text-amber-700">32 đề thi thật, có đáp án · Luyện tập &amp; Thi thử</span></button><button data-action="jlpt-real" data-lv="N1" class="w-full text-left rounded-2xl border border-amber-300 bg-amber-50 hover:bg-amber-100 p-3.5"><span class="font-extrabold text-amber-800">📚 JLPT N1 · Đề thật</span><span class="block text-xs text-amber-700">2 đề thật (12/2011, 12/2025), sẽ bổ sung thêm · Luyện tập &amp; Thi thử</span></button>' + hist + '</div>';
+    return modalHead("🎌 Đề thi tiếng Nhật") + '<div class="p-5 space-y-3"><p class="text-xs text-slate-600">Mỗi đề có 2 chế độ: <b>Luyện tập</b> (không tính giờ, có đáp án ngay) và <b>Thi thử</b> (tính giờ từng phần như thi thật). Sau khi nộp bài bạn xem lại được toàn bộ đáp án. Các đề N5–N1, JFT, EJU là <b>đề mô phỏng</b> đúng cấu trúc, số câu và thời gian của đề thật, mỗi lần làm sẽ sinh một đề mới từ kho từ vựng/ngữ pháp của app; riêng N2 có thêm đề thật.</p>' + JM_EX.map(jmCard).join("") + '<button data-action="jlpt-real" data-lv="N2" class="w-full text-left rounded-2xl border border-amber-300 bg-amber-50 hover:bg-amber-100 p-3.5"><span class="font-extrabold text-amber-800">📚 JLPT N2 · Đề thật 2010–nay</span><span class="block text-xs text-amber-700">32 đề thi thật, có đáp án · Luyện tập &amp; Thi thử</span></button><button data-action="jlpt-real" data-lv="N1" class="w-full text-left rounded-2xl border border-amber-300 bg-amber-50 hover:bg-amber-100 p-3.5"><span class="font-extrabold text-amber-800">📚 JLPT N1 · Đề thật</span><span class="block text-xs text-amber-700">2 đề thật (12/2011, 12/2025), sẽ bổ sung thêm · Luyện tập &amp; Thi thử</span></button><button data-action="jlpt-real" data-lv="N5" class="w-full text-left rounded-2xl border border-amber-300 bg-amber-50 hover:bg-amber-100 p-3.5"><span class="font-extrabold text-amber-800">📚 JLPT N5 · Đề thật</span><span class="block text-xs text-amber-700">1 đề thật (12/2021), sẽ bổ sung thêm · Luyện tập &amp; Thi thử</span></button>' + hist + '</div>';
   }
   function jmDetail(e) {
     var rows = e.secs.map(function (s, i) { return '<li><div class="flex justify-between gap-2"><span>' + esc(s.n) + '</span><b class="whitespace-nowrap">' + s.min + ' phút · ' + jmCount(s) + ' câu</b></div><div class="text-[10px] text-slate-500">' + s.p.map(function (x) { return (x[2] ? x[2] + " " : "") + JM_PART[x[0]] + " ×" + x[1]; }).join(" · ") + '</div></li>'; }).join("");
