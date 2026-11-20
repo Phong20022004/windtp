@@ -422,7 +422,7 @@
     mk("hsk5-h51330", "H51330", R30, "Đáp án theo phần đáp án cuối đề.");
     mk("hsk5-h51332", "H51332", R32, "Đáp án theo phần đáp án cuối đề.");
     mk("hsk5-h51333", "H51333", R33, "Đáp án theo phần đáp án cuối đề.");
-    EXAM_PAPERS.push({ id: "hsk5-h51333-listen", sys: "hsk", section: "listening", lang: "zh-CN", items: L33, title: "HSK 5 – đề H51333 (Nghe 听力 1–45)", minutes: 30, fullMinutes: 30, fullCount: 45,
-      note: "45 câu / 30 phút như đề thật. Phần nghe được đọc bằng giọng của trình duyệt từ kịch bản gốc của đề (không phải audio gốc, có thể khác tốc độ và ngữ điệu). Đáp án theo đề." });
+    EXAM_PAPERS.push({ id: "hsk5-h51333-listen", sys: "hsk", section: "listening", lang: "zh-CN", items: L33, title: "HSK 5 – đề H51333 (Nghe 听力 1–45)", minutes: 33, fullMinutes: 30, fullCount: 45, audio: "exam-media/audio/H51333.mp3",
+      note: "45 câu như đề thật, nghe bản thu thật của đề (30 phút) và có thêm 3 phút điền phiếu. Đáp án theo đề." });
     void Q1;
   })();

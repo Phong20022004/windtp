@@ -57,3 +57,7 @@ html.dark .exam-p,html[data-theme=dark] .exam-p{background:#0f172a;color:#e2e8f0
 .exam-blank b{flex:none;font-size:13px;color:#4338ca}
 .exam-input.ok{border-color:#16a34a;background:#dcfce7}
 .exam-input.ng{border-color:#dc2626;background:#fee2e2}
+
+.exam-img{display:block;width:100%;max-width:560px;height:auto;margin:6px auto;border:1px solid #cbd5e1;border-radius:10px;background:#fff}
+.exam-audio{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0}
+.exam-audio small{color:#64748b;font-weight:700}

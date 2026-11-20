@@ -148,6 +148,15 @@ function writeOutputs(html: string): { dataBytes: number; assetBytes: number } {
     }
   }
 
+  // Hình và audio của đề thi thử (src/exam-media): chép nguyên vẹn, bỏ qua file đã có cùng dung lượng.
+  const mediaSrc = path.join(ROOT, "src/exam-media");
+  if (fs.existsSync(mediaSrc)) {
+    fs.cpSync(mediaSrc, path.join(OUT_DIR, "exam-media"), {
+      recursive: true,
+      filter: (from, to) => fs.statSync(from).isDirectory() || !fs.existsSync(to) || fs.statSync(to).size !== fs.statSync(from).size,
+    });
+  }
+
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(OUT, html);
   return { dataBytes, assetBytes };

@@ -109,10 +109,12 @@
       }).join("") + "</div>" + (checked ? '<p class="' + (ans === it.a ? "good" : "bad") + '">' + (ans === it.a ? "✓ Đúng" : "✗ Sai. Đáp án đúng: " + String.fromCharCode(65 + it.a)) + "</p>" : "");
     }
     return modalHead("📝 " + esc(r.paper.title)) + '<div class="exam-wrap"><div class="exam-bar"><span id="exam-clock" class="exam-clock">' + (practice ? "📖 Luyện tập · không tính giờ" : "⏱ " + examClock(r.left)) + "</span><span>Câu " + (r.i + 1) + "/" + r.paper.items.length + (it.n ? " (đề gốc câu " + it.n + ")" : "") + "</span></div>" +
+      (r.paper.audio ? '<div class="exam-audio"><button type="button" id="exam-abtn" class="exam-btn exam-listen keep-white" data-action="exam-audio">' + examAudioLabel() + '</button><span id="exam-atime">' + examAudioClock(examAudio ? examAudio.currentTime : 0) + '</span><small>' + (r.mode === "mock" ? "Bản thu thật, nghe một lượt như thi thật" : "Có thể tua lại để nghe lại") + '</small></div>' : "") +
       '<div class="exam-pal">' + pal + "</div>" +
       '<div class="exam-card"><small>' + esc(it.sec) + "</small>" +
       (it.p ? '<div class="exam-p" lang="' + esc(r.paper.lang) + '">' + esc(it.p).replace(/\n/g, "<br>") + "</div>" : "") +
-      (it.speak ? '<button type="button" class="exam-btn exam-listen keep-white" data-action="exam-speak">🔊 Nghe đề (' + (r.plays[r.i] || 0) + " lần)</button>" : "") +
+      (it.img ? '<img class="exam-img" src="' + esc(it.img) + '" alt="Hình của câu ' + (r.i + 1) + '">' : "") +
+      (it.speak && !r.paper.audio ? '<button type="button" class="exam-btn exam-listen keep-white" data-action="exam-speak">🔊 Nghe đề (' + (r.plays[r.i] || 0) + " lần)</button>" : "") +
       '<p class="exam-q" lang="' + esc(r.paper.lang) + '">' + esc(it.q).replace(/\n/g, "<br>") + "</p>" + body + "</div>" +
       '<div class="exam-nav"><button type="button" class="exam-btn ghost" data-action="exam-go" data-d="-1"' + (r.i === 0 ? " disabled" : "") + ">← Trước</button>" +
       (r.i === r.paper.items.length - 1
@@ -155,7 +157,22 @@
     if (!r) return examHomeHtml();
     return r.done ? examResultHtml() : examQuestionHtml();
   }
-  function examStop() { if (examUi.timer) { clearInterval(examUi.timer); examUi.timer = 0; } }
+  var examAudio = null;
+  function examAudioLabel() { return examAudio && !examAudio.paused ? "⏸ Tạm dừng audio" : "▶ Phát audio"; }
+  function examAudioClock(t) { var m = Math.floor(t / 60), s = Math.floor(t % 60); return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s; }
+  function examAudioStart(url) {
+    examAudio = new Audio(url);
+    examAudio.preload = "auto";
+    examAudio.addEventListener("timeupdate", function () {
+      var el = document.getElementById("exam-atime");
+      if (el && examAudio) el.textContent = examAudioClock(examAudio.currentTime) + " / " + (isFinite(examAudio.duration) ? examAudioClock(examAudio.duration) : "--:--");
+    });
+    examAudio.addEventListener("ended", function () { var b = document.getElementById("exam-abtn"); if (b) b.textContent = examAudioLabel(); });
+  }
+  function examStop() {
+    if (examUi.timer) { clearInterval(examUi.timer); examUi.timer = 0; }
+    if (examAudio) { examAudio.pause(); examAudio = null; }
+  }
   function examSaveText() {
     var r = examUi.run, el = document.getElementById("exam-text");
     if (!r || r.done) return;
@@ -197,6 +214,7 @@
       examStop();
       var mode = el.dataset.mode === "practice" ? "practice" : "mock";
       examUi.run = { paper: p, mode: mode, i: 0, ans: [], plays: [], checked: [], warned: {}, showAll: false, done: false, t0: Date.now(), left: p.minutes * 60 };
+      if (p.audio) examAudioStart(p.audio);
       openModal(examModal);
       if (mode === "mock") examUi.timer = setInterval(examTick, 1000);
     },
@@ -218,6 +236,11 @@
       refreshModal();
     },
     "exam-jump": function (el) { var r = examUi.run; if (!r || r.done) return; examSaveText(); r.i = Number(el.dataset.i); refreshModal(); },
+    "exam-audio": function () {
+      var r = examUi.run; if (!r || r.done || !examAudio) return;
+      if (examAudio.paused) { var pr = examAudio.play(); if (pr && pr.catch) pr.catch(function () {}); } else examAudio.pause();
+      var b = document.getElementById("exam-abtn"); if (b) b.textContent = examAudioLabel();
+    },
     "exam-speak": function () {
       var r = examUi.run; if (!r || r.done) return;
       var it = r.paper.items[r.i];

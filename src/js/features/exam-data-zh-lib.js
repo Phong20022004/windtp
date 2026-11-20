@@ -13,6 +13,19 @@
       L: function (sec, n, speak, q, o, a) { return { kind: "listening", n: n, sec: sec, q: q, opts: o, a: LET.indexOf(a), speak: speak }; },
       O: function (sec, n, lines, ans) { return { kind: "reading", n: n, sec: sec, p: "", q: "排列顺序：\n" + lines.map(function (x, k) { return "ABC"[k] + " " + x; }).join("\n") + "\n（gõ thứ tự 3 chữ cái, ví dụ ABC）", text: [ans] }; },
       W: function (n, words, ans) { return { kind: "writing", n: n, sec: "Viết: sắp xếp câu", q: "把下列词语连成一个句子：\n" + words, text: [ans] }; },
+      /* Đề có audio thật và câu dạng ảnh cắt từ đề gốc: items đã đủ trường (kind, n, sec, q, img, opts, a). Nghe 18 phút gồm 3 phút điền phiếu. */
+      addMedia: function (level, code, items, audio) {
+        var num = level.replace(/\D/g, ""), base = "hsk" + num + "-" + code.toLowerCase();
+        [["listening", "listen", "Nghe 听力", 18], ["reading", "read", "Đọc 阅读", 17]].forEach(function (d) {
+          var its = items.filter(function (x) { return x.kind === d[0]; }).map(function (x) { var c = {}; for (var f in x) if (f !== "kind") c[f] = x[f]; return c; });
+          if (!its.length) return;
+          var p = { id: base + "-" + d[1], sys: "hsk", level: level, section: d[0], lang: "zh-CN", items: its,
+            title: level + " – đề " + code + " (" + d[2] + " " + rng(its) + ")", minutes: d[3],
+            note: "Nguồn: thư mục ĐỀ THI TIẾNG TRUNG trên Google Drive. Mỗi câu là ảnh cắt từ đề gốc; chọn đáp án theo hình và chữ trong ảnh." + (d[0] === "listening" ? " Audio là bản thu thật của đề, nghe một lượt như thi thật." : "") };
+          if (d[0] === "listening" && audio) p.audio = audio;
+          EXAM_PAPERS.push(p);
+        });
+      },
       add: function (level, code, items, note) {
         var num = level.replace(/\D/g, ""), base = "hsk" + num + "-" + code.toLowerCase();
         var last = "";

@@ -19,11 +19,13 @@ for (const p of papers) {
   if (ids.has(p.id)) errs.push("trùng id " + p.id);
   ids.add(p.id);
   if (!p.items.length) errs.push(p.id + ": không có câu");
+  if (p.audio && !fs.existsSync(path.join(root, "src", p.audio))) errs.push(p.id + ": thiếu file audio " + p.audio);
   const seen = new Set();
   p.items.forEach((it, k) => {
     const w = p.id + " #" + (k + 1) + (it.n ? " (câu " + it.n + ")" : "");
     if (it.n !== undefined) { if (seen.has(it.n)) errs.push(w + ": trùng số câu"); seen.add(it.n); }
     if (!it.q) errs.push(w + ": thiếu đề");
+    if (it.img && !fs.existsSync(path.join(root, "src", it.img))) errs.push(w + ": thiếu file ảnh " + it.img);
     if (it.opts) {
       if (it.opts.length < 2 || it.opts.some((o) => !String(o).trim())) errs.push(w + ": đáp án rỗng");
       if (!(it.a >= 0 && it.a < it.opts.length)) errs.push(w + ": đáp án đúng ngoài phạm vi");
