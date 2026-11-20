@@ -26,7 +26,17 @@
           EXAM_PAPERS.push(p);
         });
       },
-      add: function (level, code, items, note) {
+      /* Gắn audio thật cho đề Nghe đã có: bỏ giọng máy, cộng 5 phút điền phiếu. */
+      attachAudio: function (id, url) {
+        EXAM_PAPERS.forEach(function (p) {
+          if (p.id !== id) return;
+          p.audio = url; p.minutes += 5;
+          p.note = p.note.replace(/ Phần nghe được đọc bằng giọng[^.]*\./, " Audio là bản thu thật của đề, nghe một lượt như thi thật.");
+        });
+      },
+      /* Câu nghe không có kịch bản (chỉ có audio gốc): chữ chọn lấy từ đề. */
+      LA: function (sec, n, q, o, a) { return { kind: "listening", n: n, sec: sec, q: q, opts: o, a: LET.indexOf(a) }; },
+      add: function (level, code, items, note, audio) {
         var num = level.replace(/\D/g, ""), base = "hsk" + num + "-" + code.toLowerCase();
         var last = "";
         items.forEach(function (x) { if (x.kind === "reading") { if (x.p === "^") x.p = last; else last = x.p; } });
@@ -39,6 +49,7 @@
           EXAM_PAPERS.push({ id: base + "-" + d[1], sys: "hsk", level: level, section: d[0], lang: "zh-CN", items: its,
             title: level + " – đề " + code + " (" + d[2] + " " + rng(its) + ")", minutes: mins,
             note: (note || "") + (d[0] === "listening" ? " Phần nghe được đọc bằng giọng của trình duyệt từ kịch bản gốc của đề, không phải audio gốc." : d[0] === "writing" ? " Gõ lại cả câu theo đúng trật tự; chỉ nhận câu giống đáp án mẫu. Thời gian là ước tính." : " Đáp án theo phần đáp án cuối đề. Câu cần xem hình đã được bỏ.") });
+          if (audio && d[0] === "listening") ZH.attachAudio(base + "-" + d[1], audio);
         });
       }
     };
