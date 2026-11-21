@@ -12,7 +12,16 @@ NOISE = re.compile(r"^([a-z.]{1,4}|tru|tie|H\d{5}\s*-\s*\d+|-\d+-)$")
 J = lambda x: json.dumps(x, ensure_ascii=False)
 def find(code, ext):
     h = glob.glob(os.path.join(SRC, "*-" + code + "." + ext)) + glob.glob(os.path.join(SRC, code + "." + ext)); return h[0] if h else None
-def lines(t): return [l.rstrip() for l in t.split("\n") if l.strip() and not NOISE.match(l.strip()) and not re.match(r"^\s*(第 ?[一二三四] ?部 ?分|[一二三] ?、.{1,6})\s*$", l)]
+def lines(t):
+    out = []; pend = False
+    for l in t.split("\n"):
+        if not l.strip() or NOISE.match(l.strip()) or re.match(r"^\s*(第 ?[一二三四] ?部 ?分|[一二三] ?、.{1,6})\s*$", l): continue
+        if l.strip() == "（": pend = True; continue
+        if pend:
+            m = re.match(r"^(\s*(?:\d{2}[．.]\s*)?(?:[AB][：:]\s*)?)(.*)$", l)
+            l = m.group(1) + "（" + m.group(2); pend = False
+        out.append(l.rstrip())
+    return out
 def blank(s): return re.sub(r"（\s*）", "（　）", s)
 def crops(code):
     pdfp = find(code, "pdf"); pdf = pdfplumber.open(pdfp); doc = pdfium.PdfDocument(pdfp); out = {}
