@@ -148,7 +148,7 @@ def reading(code):
         items[n] = ("", "%d．%s" % (n, blank(q["text"])), [q["opts"][c] for c in "ABCD"])
     # 71-80: chọn câu
     blk = L[a71 + 1:a81]
-    heads = [x for x, s in enumerate(blk) if re.match(r"^\d{2}-\d{2}[．.]", s.strip())]
+    heads = [x for x, s in enumerate(blk) if re.match(r"^\d{2}-\d{2,3}[．.]", s.strip())]
     if len(heads) != 2: raise SystemExit(code + ": đoạn 71-80 lỗi")
     for hi, h in enumerate(heads):
         end = heads[hi + 1] if hi + 1 < len(heads) else len(blk)
@@ -163,19 +163,23 @@ def reading(code):
         for n in range(lo, lo + 5):
             items[n] = (ptxt if n == lo else "^", "%d．chọn câu điền vào chỗ （%d）" % (n, n), [ops[c] for c in "ABCDE"])
     # 81-100: đọc hiểu
-    blk = L[a81 + 1:]
+    blk = [x for y in L[a81 + 1:] for x in re.split(r"\s*(?=(?<!\d)\d{2}-\d{2,3}[．.])", y) if x.strip()]
     cur = None; passages = {}; qlist = {}; qn = None; last = None
     for s in blk:
         st = s.strip()
         if re.match(r"^第[一二三四]部分", st): continue
-        m = re.match(r"^(\d{2})-(\d{2})[．.]\s*(.*)$", st)
+        m = re.match(r"^(\d{2})-(\d{2,3})[．.]\s*(.*)$", st)
         if m:
             cur = int(m.group(1)); passages[cur] = m.group(3); qn = None; continue
         m = re.match(r"^(\d{2,3})[．.]\s*(.*)$", st)
         if m and 81 <= int(m.group(1)) <= 100 and re.match(r"^\s+\d", s):
             qn = int(m.group(1)); qlist[qn] = {"q": m.group(2), "opts": {}, "p": cur}; last = "q"; continue
         if qn and re.match(r"^[A-D]\s", st):
-            for piece in re.split(r"\s{2,}(?=[A-D]\s)", st):
+            nxt = "ABCD"[len(qlist[qn]["opts"])]; pieces = []
+            for piece in re.split(r"\s+(?=[A-D]\s)", st):
+                if pieces and piece[0] != nxt: pieces[-1] += " " + piece; continue
+                pieces.append(piece); nxt = "ABCD"[min(3, "ABCD".index(piece[0]) + 1)] if piece[0] in "ABCD" else nxt
+            for piece in pieces:
                 mm = re.match(r"^([A-D])\s+(.*)$", piece.strip())
                 if mm: qlist[qn]["opts"][mm.group(1)] = mm.group(2).strip(); last = mm.group(1)
             continue
