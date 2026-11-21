@@ -51,10 +51,8 @@
   "src/js/features/exam-data-zh-hsk4-f.js",
   "src/js/features/exam-data-zh-hsk5-a.js",
   "src/js/features/exam-data-zh-hsk5-b.js",
-  "src/js/features/exam-data-zh-hsk6-a.js",
-  "src/js/features/exam-data-zh-hsk6-b.js",
   "src/js/features/exam-data-zh-hsk6-c.js",
-  "src/js/features/exam-data-zh-hsk6-d.js",
+  "src/js/features/exam-data-zh-hsk6-e.js",
   "src/js/features/exam-papers.js",
   "src/js/games/card-game-quan-hung.js"
 ]
